@@ -1,80 +1,24 @@
-###> node / nuxt ###
-node_modules/
-.nuxt/
-.output/
-dist/
-.cache/
-###< node / nuxt ###
+# Nuxt dev/build outputs
+.output
+.data
+.nuxt
+.nitro
+.cache
+dist
 
-###> symfony/framework-bundle ###
-/.env.local
-/.env.local.php
-/.env.*.local
-/config/secrets/prod/prod.decrypt.private.php
-/public/bundles/
-/var/
-/vendor/
-###< symfony/framework-bundle ###
+# Node dependencies
+node_modules
 
-
-###> phpunit/phpunit ###
-/phpunit.xml
-.phpunit.result.cache
-###< phpunit/phpunit ###
-
-
-###> symfony/phpunit-bridge ###
-.phpunit.result.cache
-/phpunit.xml
-###< symfony/phpunit-bridge ###
-/public/upload/images/profil/*
-
-
-###> remove doc project ###
-/saas-airfryer
-/tjm-calculator
-/air-fryer-calculator
-###> remove doc project ###
-
-###> test files ###
-test-*.pdf
-test_*.json
-test*.pdf
-test*.json
-###< test files ###
-
-###> remove guide test file ###
-# /docs
-# /docs/*
-# /archive
-/documents
-###> remove guide test file ###
-
-# Local Netlify folder
-.netlify
-.env
-
-.specstory
-.cursorindexingignore
-
-# Composer locks (keep lock committed normally; comment out if undesired)
-# composer.lock
-
-# Generated
-coverage/
+# Logs
+logs
+*.log
 
 # Misc
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+.DS_Store
+.fleet
+.idea
 
-
-# Fichiers/Dossiers de gestion MCP
-# .github
-# .mcp
-# .vscode
-# CLAUDE.md
-
-# Dossiers et fichiers de gestion de projet temporaire
-/tmp
-/backup
+# Local env files
+.env
+.env.*
+!.env.example

@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Sora:wght@600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-clippeak-bg text-clippeak-text font-body antialiased;
+  background-image:
+    radial-gradient(circle at 50% 8%, rgba(124, 58, 237, 0.28), rgba(10, 10, 15, 0) 46%),
+    radial-gradient(circle at 20% 80%, rgba(66, 30, 134, 0.16), rgba(10, 10, 15, 0) 40%),
+    linear-gradient(160deg, #0a0a0f 0%, #08090d 100%);
+  min-height: 100vh;
+}
+
+.noise-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.025) 0.8px, transparent 0.8px);
+  background-size: 3px 3px;
+  opacity: 0.45;
+  z-index: -1;
+}
+
+.card-surface {
+  @apply bg-clippeak-surface/65 border border-white/10 backdrop-blur-md rounded-2xl;
+}

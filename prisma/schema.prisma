@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AutomationChoice {
+  oui
+  non
+  peut_etre
+}
+
+model Feedback {
+  id                  String           @id @default(uuid()) @db.Uuid
+  version             String           @default("v1") @db.VarChar(20)
+  zipParMail          Boolean          @map("zip_par_mail")
+  outilAutomatise     AutomationChoice @map("outil_automatise")
+  plateformeReception String           @map("plateforme_reception") @db.VarChar(40)
+  plateformeAutre     String?          @map("plateforme_autre") @db.VarChar(120)
+  vodsParMois         String           @map("vods_par_mois") @db.VarChar(20)
+  profil              String           @db.VarChar(40)
+  manque              String?
+  email               String?          @db.VarChar(255)
+  createdAt           DateTime         @default(now()) @map("created_at")
+
+  @@map("feedbacks")
+}
