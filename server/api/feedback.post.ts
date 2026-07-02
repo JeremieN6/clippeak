@@ -3,7 +3,6 @@ import { prisma } from '../utils/prisma'
 
 const feedbackSchema = z.object({
   version: z.string().default('v1'),
-  zipParMail: z.boolean(),
   outilAutomatise: z.enum(['oui', 'non', 'peut-etre']),
   plateformeReception: z.enum(['discord', 'telegram', 'mail', 'autre']),
   plateformeAutre: z.string().trim().max(120).optional().nullable(),
@@ -29,7 +28,6 @@ export default defineEventHandler(async (event) => {
   const feedback = await prisma.feedback.create({
     data: {
       version: payload.version,
-      zipParMail: payload.zipParMail,
       outilAutomatise: payload.outilAutomatise === 'peut-etre' ? 'peut_etre' : payload.outilAutomatise,
       plateformeReception: payload.plateformeReception,
       plateformeAutre: payload.plateformeAutre || null,

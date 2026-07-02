@@ -13,6 +13,7 @@
 - [x] Implementer la landing Clippeak V1 (hero, validation URL Twitch, flow fake processing)
 - [x] Implementer la generation et telechargement du ZIP beta
 - [x] Implementer le formulaire feedback et branchement API
+- [x] Supprimer la question redondante "ZIP par mail" du feedback (UI + API + schema)
 - [x] Creer le schema Prisma et preparer la migration feedbacks
 - [x] Creer API POST /api/feedback
 - [x] Creer espace admin protege par mot de passe (/admin) avec metriques + tableau

@@ -42,3 +42,9 @@
 **Cause racine** : J ai privilegie le positionnement sous le formulaire au lieu de conserver le resultat dans son conteneur d origine.
 **Solution** : Reintegrer la carte de resultat et le bouton de telechargement dans le composant du flow, tout en laissant le formulaire apparaître en dessous.
 **Regle** : Quand l utilisateur demande de deplacer un CTA, conserver son conteneur logique d origine sauf demande explicite de sortir aussi le resultat de cette section.
+
+### [2026-07-02] Redondance dans les questions feedback
+**Probleme** : Le formulaire posait deux questions qui se recoupaient sur la reception par mail, ce qui creait une redondance inutile.
+**Cause racine** : Une ancienne question binaire sur le ZIP par mail etait conservee en plus de la question plus complete sur la plateforme de reception.
+**Solution** : Suppression de la question redondante dans l UI, retrait du champ de l API et du schema Prisma, puis ajout d une migration pour supprimer la colonne correspondante en base.
+**Regle** : Eviter les champs doublons dans les formulaires ; conserver une seule question source de verite et aligner front, API et schema de donnees dans la meme correction.

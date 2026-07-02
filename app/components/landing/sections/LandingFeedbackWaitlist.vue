@@ -9,7 +9,6 @@ const feedbackError = ref('')
 
 const feedback = reactive({
   profil: 'streamer',
-  zipParMail: 'oui',
   outilAutomatise: 'oui',
   plateformeReception: 'discord',
   vodsParMois: '1-2',
@@ -31,7 +30,6 @@ async function submitFeedback() {
       body: {
         version: 'v1',
         profil: feedback.profil,
-        zipParMail: feedback.zipParMail === 'oui',
         outilAutomatise: feedback.outilAutomatise,
         plateformeReception: feedback.plateformeReception,
         plateformeAutre: feedback.plateformeReception === 'autre' ? feedback.plateformeAutre || null : null,
@@ -67,14 +65,6 @@ async function submitFeedback() {
           <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.profil === 'streamer' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.profil = 'streamer'">Streamer</button>
           <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.profil === 'clippeur' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.profil = 'clippeur'">Clippeur (je clippe pour un streamer)</button>
           <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.profil === 'les deux' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.profil = 'les deux'">Les deux</button>
-        </div>
-      </div>
-
-      <div>
-        <p class="mb-2 text-sm font-semibold">Préfererais-tu reçevoir le ZIP par mail ?</p>
-        <div class="flex gap-2">
-          <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.zipParMail === 'oui' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.zipParMail = 'oui'">Oui</button>
-          <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.zipParMail === 'non' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.zipParMail = 'non'">Non</button>
         </div>
       </div>
 

@@ -16,7 +16,6 @@ enum AutomationChoice {
 model Feedback {
   id                  String           @id @default(uuid()) @db.Uuid
   version             String           @default("v1") @db.VarChar(20)
-  zipParMail          Boolean          @map("zip_par_mail")
   outilAutomatise     AutomationChoice @map("outil_automatise")
   plateformeReception String           @map("plateforme_reception") @db.VarChar(40)
   plateformeAutre     String?          @map("plateforme_autre") @db.VarChar(120)

@@ -25,7 +25,7 @@ const sectionIds = {
 const navLinks = [
       { href: '/try-now', label: 'Try now' },
   { href: `#${sectionIds.features}`, label: 'Benefices' },
-  { href: `#${sectionIds.how}`, label: 'Comment ca marche' },
+  { href: `#${sectionIds.how}`, label: 'Comment ça marche' },
   { href: `#${sectionIds.offers}`, label: 'Offres' },
   { href: `#${sectionIds.testimonials}`, label: 'Temoignages' },
   { href: `#${sectionIds.faq}`, label: 'FAQ' },

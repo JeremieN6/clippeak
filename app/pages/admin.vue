@@ -9,7 +9,6 @@ interface AdminResponse {
   feedbacks: Array<{
     id: string
     version: string
-    zipParMail: boolean
     outilAutomatise: 'oui' | 'non' | 'peut_etre'
     plateformeReception: string
     plateformeAutre: string | null
@@ -138,7 +137,6 @@ function percent(count: number) {
               <th class="px-3 py-2">Date</th>
               <th class="px-3 py-2">Profil</th>
               <th class="px-3 py-2">Auto</th>
-              <th class="px-3 py-2">ZIP mail</th>
               <th class="px-3 py-2">Plateforme</th>
               <th class="px-3 py-2">VOD/mois</th>
               <th class="px-3 py-2">Email</th>
@@ -150,7 +148,6 @@ function percent(count: number) {
               <td class="px-3 py-3 text-white/80">{{ new Date(item.createdAt).toLocaleString('fr-FR') }}</td>
               <td class="px-3 py-3">{{ item.profil }}</td>
               <td class="px-3 py-3">{{ item.outilAutomatise }}</td>
-              <td class="px-3 py-3">{{ item.zipParMail ? 'oui' : 'non' }}</td>
               <td class="px-3 py-3">{{ item.plateformeAutre || item.plateformeReception }}</td>
               <td class="px-3 py-3">{{ item.vodsParMois }}</td>
               <td class="px-3 py-3">{{ item.email || '-' }}</td>
