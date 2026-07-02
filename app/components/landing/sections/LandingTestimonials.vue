@@ -1,21 +1,21 @@
 <script setup lang="ts">
 const testimonials = [
   {
-    quote: "J'ai recupere 12 clips de mon dernier live en moins de 2 minutes. J'aurais mis des heures a faire ca manuellement.",
+    quote: "J'ai récupéré 12 clips de mon dernier live en moins de 2 minutes. J'aurais mis des heures à faire ça manuellement.",
     name: 'Kevin',
     handle: '@kevplay_fr',
     role: 'streamer Twitch',
     avatar: 'https://i.pravatar.cc/80?img=12'
   },
   {
-    quote: "Le clip qui a le plus buzze sur mon TikTok ce mois-ci, c'est Clippeak qui l'a detecte. Je l'aurais jamais trouve seul.",
+    quote: "Le clip qui a le plus buzzé sur mon TikTok ce mois-ci, c'est Clippeak qui l'a détecté. Je ne l'aurais jamais trouvé seul.",
     name: 'Manon',
     handle: '@manongaming',
     role: 'streamer Twitch',
     avatar: 'https://i.pravatar.cc/80?img=32'
   },
   {
-    quote: "Enfin un outil qui comprend que les streameurs n'ont pas le temps de tout regarder apres un live.",
+    quote: "Enfin un outil qui comprend que les streameurs n'ont pas le temps de tout regarder après un live.",
     name: 'Thomas',
     handle: '@tomstreamz',
     role: 'streamer Twitch',

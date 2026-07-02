@@ -15,10 +15,10 @@ const intervals: Array<ReturnType<typeof setInterval>> = []
 
 const flowSteps = [
   { label: 'Analyse de la VOD', duration: 4000 },
-  { label: 'Telechargement du chat Twitch', duration: 11000 },
-  { label: 'Detection des pics d activite', duration: 12000 },
-  { label: 'Extraction des sequences video', duration: 19000 },
-  { label: 'Creation du ZIP', duration: 14000 }
+  { label: 'Téléchargement du chat Twitch', duration: 11000 },
+  { label: "Détection des pics d'activité", duration: 12000 },
+  { label: 'Extraction des séquences vidéo', duration: 19000 },
+  { label: 'Création du ZIP', duration: 14000 }
 ]
 
 const totalDurationMs = flowSteps.reduce((sum, step) => sum + step.duration, 0)
@@ -118,12 +118,12 @@ function launchFlow() {
 
   if (!validateVodUrl(twitchUrl.value)) {
     validationSuccess.value = ''
-    validationError.value = 'Cette URL ne semble pas etre une VOD Twitch. Elle doit ressembler a : twitch.tv/videos/123456789'
+    validationError.value = 'Cette URL ne semble pas être une VOD Twitch. Elle doit ressembler à : twitch.tv/videos/123456789'
     return
   }
 
   validationError.value = ''
-  validationSuccess.value = 'VOD Twitch detectee ✓'
+  validationSuccess.value = 'VOD Twitch détectée ✓'
   clearTimers()
   startFakeProcessing()
 }
@@ -133,7 +133,7 @@ async function downloadZip() {
   const zip = new JSZip()
   zip.file(
     'readme.txt',
-    "Clippeak est en cours de developpement. Merci d'avoir teste ! Tes clips seront bien reels tres bientot. Laisse-nous ton email ci-dessous pour etre prevenu en avant-premiere."
+    "Clippeak est en cours de développement. Merci d'avoir testé ! Tes clips seront bientôt réels. Laisse-nous ton email ci-dessous pour être prévenu en avant-première."
   )
 
   const blob = await zip.generateAsync({ type: 'blob' })
@@ -154,8 +154,8 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="scroll-mt-24">
-    <h2 class="font-display text-3xl font-extrabold sm:text-4xl">Essaie Clippeak sur ta derniere VOD</h2>
-    <p class="mt-2 text-clippeak-muted">Colle l URL de ta VOD Twitch ci-dessous. Aucun compte requis.</p>
+    <h2 class="font-display text-3xl font-extrabold sm:text-4xl">Essaye Clippeak sur ta dernière VOD</h2>
+    <p class="mt-2 text-clippeak-muted">Colle l'URL de ta VOD Twitch ci-dessous. Aucun compte requis.</p>
 
     <div class="mt-6 rounded-2xl border border-clippeak-violet/20 bg-clippeak-surface/55 p-5 sm:p-7">
       <form class="space-y-4" @submit.prevent="launchFlow">
@@ -171,7 +171,7 @@ onBeforeUnmount(() => {
             :disabled="processingPhase === 'running'"
             class="h-12 whitespace-nowrap rounded-xl bg-clippeak-violet px-6 text-sm font-semibold transition hover:bg-clippeak-violetLight disabled:cursor-not-allowed disabled:opacity-70"
           >
-            Generer mes clips
+            Générer mes clips viraux
           </button>
         </div>
 
@@ -181,7 +181,7 @@ onBeforeUnmount(() => {
 
       <div v-if="processingPhase !== 'idle'" class="mt-6">
         <p class="text-sm text-white/80">
-          Ne ferme pas cet onglet pendant que Clippeak travaille. Tu seras notifie des que tes clips sont prets.
+          Ne ferme pas cet onglet pendant que Clippeak travaille. Tu seras notifié dès que tes clips sont prêts.
         </p>
 
         <div class="mt-4 flex items-center justify-between text-sm text-white/85">
@@ -194,7 +194,7 @@ onBeforeUnmount(() => {
             :style="{ width: `${progressPct}%` }"
           ></div>
         </div>
-        <p class="mt-2 text-sm text-clippeak-muted">Temps restant estime: {{ remainingTimeLabel }}</p>
+        <p class="mt-2 text-sm text-clippeak-muted">Temps restant estimé : {{ remainingTimeLabel }}</p>
 
         <ol class="mt-5 space-y-3">
           <li v-for="(step, index) in flowSteps" :key="step.label" class="rounded-xl border border-white/10 bg-black/20 p-4">
@@ -208,28 +208,28 @@ onBeforeUnmount(() => {
                   'text-emerald-400': stepState(index) === 'done'
                 }"
               >
-                {{ stepState(index) === 'pending' ? 'En attente' : stepState(index) === 'running' ? 'En cours' : 'Termine' }}
+                {{ stepState(index) === 'pending' ? 'En attente' : stepState(index) === 'running' ? 'En cours' : 'Terminé' }}
               </span>
             </div>
             <p v-if="index === 0 && stepState(index) !== 'pending'" class="mt-2 text-sm text-clippeak-muted">
-              Faux scan ultra-rapide: {{ analysisPct }}%
+              Faux scan ultra-rapide : {{ analysisPct }}%
             </p>
             <p v-if="index === 2 && detectedPeaks !== null && stepState(index) === 'done'" class="mt-2 text-sm text-emerald-300">
-              {{ detectedPeaks }} pics trouves
+              {{ detectedPeaks }} pics trouvés
             </p>
           </li>
         </ol>
       </div>
 
       <div v-if="processingPhase === 'done'" class="mt-6 rounded-xl border border-clippeak-violet/30 bg-clippeak-violet/10 p-5">
-        <h3 class="font-display text-2xl font-bold">Tes clips sont prets 🎉</h3>
-        <p class="mt-2 text-white/85">{{ resultClipsCount }} clips detectes sur ta VOD</p>
+        <h3 class="font-display text-2xl font-bold">Tes clips sont prêts 🎉</h3>
+        <p class="mt-2 text-white/85">{{ resultClipsCount }} clips détectés sur ta VOD</p>
         <button
           type="button"
-          class="mt-4 rounded-xl bg-emerald-500 px-6 py-3 font-semibold text-emerald-950 transition hover:bg-emerald-400"
+          class="mt-4 rounded-xl bg-clippeak-violet px-6 py-3 font-semibold text-white transition hover:bg-clippeak-violetLight"
           @click="downloadZip"
         >
-          Telecharger mes clips (.zip)
+          Télécharger mes clips (.zip)
         </button>
       </div>
     </div>

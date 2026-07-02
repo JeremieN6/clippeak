@@ -4,23 +4,23 @@ const faqOpen = ref<number | null>(0)
 const faqs = [
   {
     q: 'Comment Clippeak sait quels moments clipper ?',
-    a: "On analyse l'activite de ton chat en temps reel. Quand les messages explosent soudainement, c'est signe qu'il se passe quelque chose d'interessant. On extrait automatiquement la sequence correspondante."
+    a: "On analyse l'activité de ton chat en temps réel. Quand les messages explosent soudainement, c'est signe qu'il se passe quelque chose d'intéressant. On extrait automatiquement la séquence correspondante."
   },
   {
     q: 'Est-ce que Clippeak fonctionne sur YouTube ?',
-    a: "Pour l'instant Clippeak est optimise pour Twitch, dont on exploite le chat pour detecter les moments forts. YouTube sera supporte dans une version future."
+    a: "Pour l'instant Clippeak est optimisé pour Twitch, dont on exploite le chat pour détecter les moments forts. YouTube sera supporté dans une version future."
   },
   {
     q: 'Combien de clips vais-je obtenir ?',
-    a: "Ca depend de l'activite de ton chat. En moyenne, un live de 3-4h genere entre 8 et 15 clips."
+    a: "Ça dépend de l'activité de ton chat. En moyenne, un live de 3-4h génère entre 8 et 15 clips."
   },
   {
-    q: 'Mes donnees sont-elles conservees ?',
-    a: 'Non. Tes clips sont disponibles au telechargement pendant 30 minutes apres generation, puis tout est supprime de nos serveurs.'
+    q: 'Mes données sont-elles conservées ?',
+    a: 'Non. Tes clips sont disponibles au téléchargement pendant 30 minutes après génération, puis tout est supprimé de nos serveurs.'
   },
   {
     q: 'C est gratuit ?',
-    a: 'Oui, completement gratuit pendant la periode de beta.'
+    a: 'Oui, complètement gratuit pendant la période de beta.'
   }
 ]
 
