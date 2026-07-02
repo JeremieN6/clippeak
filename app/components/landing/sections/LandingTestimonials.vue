@@ -25,23 +25,28 @@ const testimonials = [
 </script>
 
 <template>
-  <section>
-    <h2 class="font-display text-3xl font-extrabold sm:text-4xl">Ce que les streameurs en disent</h2>
+  <section class="relative overflow-hidden rounded-3xl px-6 py-10 sm:px-10"> <!-- bg-clippeak-surface/40 -->
+    <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(124,58,237,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(124,58,237,0.04)_1px,transparent_1px)] bg-[size:52px_52px]"></div>
 
-    <div class="mt-6 grid gap-4 md:grid-cols-3">
-      <article v-for="item in testimonials" :key="item.handle" class="card-surface p-5">
-        <div class="mb-3 flex items-center gap-3">
-          <img :src="item.avatar" :alt="`Avatar de ${item.name}`" class="h-10 w-10 rounded-full object-cover">
-          <div>
-            <p class="font-semibold">{{ item.name }}</p>
-            <p class="text-xs text-clippeak-muted">{{ item.role }} {{ item.handle }}</p>
+    <div class="relative">
+      <p class="text-center text-xs uppercase tracking-[0.26em] text-clippeak-violetLight/80">Témoignages</p>
+      <h2 class="mt-4 text-center font-display text-4xl font-extrabold sm:text-5xl">Ce que les streameurs en disent</h2>
+
+      <div class="mt-10 grid gap-4 md:grid-cols-3">
+        <article v-for="item in testimonials" :key="item.handle" class="card-surface p-5">
+          <div class="mb-3 flex items-center gap-3">
+            <img :src="item.avatar" :alt="`Avatar de ${item.name}`" class="h-10 w-10 rounded-full object-cover">
+            <div>
+              <p class="font-semibold">{{ item.name }}</p>
+              <p class="text-xs text-clippeak-muted">{{ item.role }} {{ item.handle }}</p>
+            </div>
           </div>
-        </div>
 
-        <p class="text-sm text-white/90">"{{ item.quote }}"</p>
-      </article>
+          <p class="text-sm text-white/90">"{{ item.quote }}"</p>
+        </article>
+      </div>
+
+      <p class="mt-4 text-center text-xs text-clippeak-muted">Témoignages bêta testeurs</p>
     </div>
-
-    <p class="mt-3 text-xs text-clippeak-muted">Temoignages beta testeurs</p>
   </section>
 </template>

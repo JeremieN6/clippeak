@@ -30,3 +30,9 @@ body {
 .card-surface {
   @apply bg-clippeak-surface/65 border border-white/10 backdrop-blur-md rounded-2xl;
 }
+
+@layer utilities {
+  .text-clippeak-violetLight\/80 {
+    color: rgb(215 190 255);
+  }
+}

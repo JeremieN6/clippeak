@@ -6,6 +6,8 @@ import LandingFooter from '../components/landing/sections/LandingFooter.vue'
 const navLinks = [
   { href: '/', label: 'Accueil' },
   { href: '/#features', label: 'Benefices' },
+  { href: '/#how-it-works', label: 'Comment ça marche' },
+  { href: '/#offers', label: 'Offres' },
   { href: '/#testimonials', label: 'Temoignages' },
   { href: '/#faq', label: 'FAQ' }
 ]

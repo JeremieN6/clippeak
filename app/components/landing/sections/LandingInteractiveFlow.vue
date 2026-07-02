@@ -132,8 +132,8 @@ async function downloadZip() {
   const JSZip = (await import('jszip')).default
   const zip = new JSZip()
   zip.file(
-    'readme.txt',
-    "Clippeak est en cours de développement. Merci d'avoir testé ! Tes clips seront bientôt réels. Laisse-nous ton email ci-dessous pour être prévenu en avant-première."
+    'OUVRE-IMPORTANT.txt',
+    "Déjà merci d'avoir ouvert. Dans ce .zip tu trouveras une liste de clip pré sélectionné pour illustré jusqu'au bout le processus. Clippeak est en cours de développement. Merci d'avoir testé ! Tes clips seront bientôt réels. Laisse-nous ton email pour être prévenu en avant-première."
   )
 
   const blob = await zip.generateAsync({ type: 'blob' })
