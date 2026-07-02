@@ -1,4 +1,8 @@
 <script setup lang="ts">
+const emit = defineEmits<{
+  (e: 'submitted'): void
+}>()
+
 const feedbackSubmitting = ref(false)
 const feedbackSubmitted = ref(false)
 const feedbackError = ref('')
@@ -38,6 +42,7 @@ async function submitFeedback() {
     })
 
     feedbackSubmitted.value = true
+    emit('submitted')
   } catch {
     feedbackError.value = 'Impossible d envoyer le feedback pour le moment. Reessaie dans quelques instants.'
   } finally {
@@ -48,11 +53,11 @@ async function submitFeedback() {
 
 <template>
   <section class="rounded-3xl border border-clippeak-violet/20 bg-clippeak-surface/55 p-6 sm:p-8">
-    <h2 class="font-display text-3xl font-extrabold sm:text-4xl">Aide-nous a construire la suite</h2>
-    <p class="mt-2 text-clippeak-muted">2 minutes pour faconner l avenir de Clippeak</p>
+    <h2 class="font-display text-3xl font-extrabold sm:text-4xl">Aide-nous à construire la suite</h2>
+    <p class="mt-2 text-clippeak-muted">2 minutes pour façonner l'avenir de Clippeak</p>
 
     <div v-if="feedbackSubmitted" class="mt-6 rounded-xl border border-emerald-300/40 bg-emerald-400/10 p-4 text-emerald-300">
-      Merci ! On te previent des que Clippeak est pret. 🚀
+      Merci beaucoup ! On te previent dès que Clippeak est prêt. 🚀
     </div>
 
     <form v-else class="mt-6 space-y-6" @submit.prevent="submitFeedback">
@@ -66,7 +71,7 @@ async function submitFeedback() {
       </div>
 
       <div>
-        <p class="mb-2 text-sm font-semibold">Prefererais-tu recevoir le ZIP par mail ?</p>
+        <p class="mb-2 text-sm font-semibold">Préfererais-tu reçevoir le ZIP par mail ?</p>
         <div class="flex gap-2">
           <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.zipParMail === 'oui' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.zipParMail = 'oui'">Oui</button>
           <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.zipParMail === 'non' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.zipParMail = 'non'">Non</button>
@@ -74,16 +79,16 @@ async function submitFeedback() {
       </div>
 
       <div>
-        <p class="mb-2 text-sm font-semibold">Prefererais-tu un outil 100% automatise ? (le processus se lance seul apres ton live, pas besoin de recuperer l URL de la VOD a la main)</p>
+        <p class="mb-2 text-sm font-semibold">Préfererais-tu un outil 100% automatisé ? <span class="text-xs">(le processus se lance seul après ton live, pas besoin de récuperer l'URL de la VOD à la main)</span> </p>
         <div class="flex flex-wrap gap-2">
           <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.outilAutomatise === 'oui' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.outilAutomatise = 'oui'">Oui</button>
           <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.outilAutomatise === 'non' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.outilAutomatise = 'non'">Non</button>
-          <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.outilAutomatise === 'peut-etre' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.outilAutomatise = 'peut-etre'">Peut-etre</button>
+          <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.outilAutomatise === 'peut-etre' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.outilAutomatise = 'peut-etre'">Peut-être</button>
         </div>
       </div>
 
       <div>
-        <p class="mb-2 text-sm font-semibold">Sur quelle plateforme voudrais-tu recevoir tes clips ?</p>
+        <p class="mb-2 text-sm font-semibold">Sur quelle plateforme voudrais-tu reçevoir tes clips ?</p>
         <div class="flex flex-wrap gap-2">
           <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.plateformeReception === 'discord' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.plateformeReception = 'discord'">Discord</button>
           <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.plateformeReception === 'telegram' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.plateformeReception = 'telegram'">Telegram</button>
@@ -110,10 +115,10 @@ async function submitFeedback() {
       </div>
 
       <div>
-        <p class="mb-2 text-sm font-semibold">Que manque-t-il a cet outil pour que tu l utilises des sa sortie ?</p>
+        <p class="mb-2 text-sm font-semibold">Que manque-t-il a cet outil pour que tu l'utilises dès sa sortie ?</p>
         <div class="flex flex-wrap gap-2">
           <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.manqueType === 'rien' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.manqueType = 'rien'">Rien, je suis chaud !</button>
-          <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.manqueType === 'libre' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.manqueType = 'libre'">Champ libre texte</button>
+          <button type="button" class="rounded-xl border px-3 py-2 text-sm" :class="feedback.manqueType === 'libre' ? 'border-clippeak-violet bg-clippeak-violet/20' : 'border-white/20'" @click="feedback.manqueType = 'libre'">J'ai un truc à ajouter</button>
         </div>
         <textarea
           v-if="feedback.manqueType === 'libre'"
@@ -124,7 +129,7 @@ async function submitFeedback() {
       </div>
 
       <div>
-        <label class="mb-2 block text-sm font-semibold">Entre ton email pour acceder en avant-premiere</label>
+        <label class="mb-2 block text-sm font-semibold">Entre ton email pour accéder en avant-première</label>
         <input
           v-model="feedback.email"
           type="email"

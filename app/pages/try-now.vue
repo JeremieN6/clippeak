@@ -1,7 +1,21 @@
 <script setup lang="ts">
 import LandingNavbar from '../components/landing/sections/LandingNavbar.vue'
 import LandingInteractiveFlow from '../components/landing/sections/LandingInteractiveFlow.vue'
+import LandingFeedbackWaitlist from '../components/landing/sections/LandingFeedbackWaitlist.vue'
 import LandingFooter from '../components/landing/sections/LandingFooter.vue'
+
+const showFeedbackSection = ref(false)
+const feedbackSectionRef = ref<HTMLElement | null>(null)
+
+async function showFeedbackAfterCompletion() {
+  showFeedbackSection.value = true
+
+  await nextTick()
+  feedbackSectionRef.value?.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start'
+  })
+}
 
 const navLinks = [
   { href: '/', label: 'Accueil' },
@@ -30,7 +44,11 @@ const navLinks = [
       </div>
     </section>
 
-    <LandingInteractiveFlow />
+    <LandingInteractiveFlow @completed="showFeedbackAfterCompletion" />
+
+    <div v-if="showFeedbackSection" ref="feedbackSectionRef" class="mt-10">
+      <LandingFeedbackWaitlist />
+    </div>
 
     <div class="mt-12">
       <LandingFooter />

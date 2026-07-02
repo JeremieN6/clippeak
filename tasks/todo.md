@@ -17,3 +17,4 @@
 - [x] Creer API POST /api/feedback
 - [x] Creer espace admin protege par mot de passe (/admin) avec metriques + tableau
 - [x] Valider build et parcours principal (landing -> flow -> resultat -> feedback)
+- [x] Repositionner le CTA final du flow try-now sous le formulaire feedback avec scroll automatique en fin de traitement

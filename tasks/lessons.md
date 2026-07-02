@@ -24,3 +24,21 @@
 **Cause racine** : Priorite mise sur la livraison rapide au lieu d un alignement strict avec le brief et les contraintes UX explicites.
 **Solution** : Refactor complet en 1 composant par section, navbar avec ancres de navigation + CTA principal, et validation build/erreurs avant livraison.
 **Regle** : Pour toute landing detaillee, implementer la structure exacte du brief section par section des la premiere passe, puis verifier les erreurs IDE avant de presenter le resultat.
+
+### [2026-07-02] Parcours try-now incomplet apres saisie URL
+**Probleme** : La section feedback n etait pas affichee sur la page try-now, ce qui cassait le parcours attendu avant telechargement.
+**Cause racine** : Le composant waitlist n etait branche que sur la landing principale et pas sur la page dediee au flow.
+**Solution** : Ajout de la waitlist sur try-now, emission d un evenement de soumission et verrouillage du bouton de telechargement avec message utilisateur tant que le formulaire n est pas rempli.
+**Regle** : Sur toute page de flow dediee, verifier explicitement la presence des sections de conversion et les preconditions UX avant d activer les CTA de sortie.
+
+### [2026-07-02] Gating trop agressif sur try-now
+**Probleme** : Le bouton de telechargement a ete grise et bloque apres le flow, ce qui rendait le parcours moins fluide.
+**Cause racine** : J ai traite le formulaire comme une precondition obligatoire au lieu d un feedback facultatif a forte intention.
+**Solution** : Suppression du verrouillage du CTA, maintien du formulaire visible sous le resultat avec scroll automatique en fin de traitement.
+**Regle** : Ne pas transformer un formulaire de feedback en barriere de sortie sans demande explicite ; privilegier un parcours fluide et une conversion volontaire.
+
+### [2026-07-02] Emplacement du CTA final sur try-now
+**Probleme** : Le bouton de telechargement et sa carte ont ete remontes hors de la section de flow, ce qui cassait la logique visuelle voulue.
+**Cause racine** : J ai privilegie le positionnement sous le formulaire au lieu de conserver le resultat dans son conteneur d origine.
+**Solution** : Reintegrer la carte de resultat et le bouton de telechargement dans le composant du flow, tout en laissant le formulaire apparaître en dessous.
+**Regle** : Quand l utilisateur demande de deplacer un CTA, conserver son conteneur logique d origine sauf demande explicite de sortir aussi le resultat de cette section.

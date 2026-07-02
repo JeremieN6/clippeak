@@ -1,4 +1,8 @@
 <script setup lang="ts">
+const emit = defineEmits<{
+  (e: 'completed'): void
+}>()
+
 const processingPhase = ref<'idle' | 'running' | 'done'>('idle')
 const twitchUrl = ref('')
 const validationError = ref('')
@@ -111,6 +115,7 @@ async function startFakeProcessing() {
   activeStepIndex.value = -1
   elapsedMs.value = totalDurationMs
   resultClipsCount.value = detectedPeaks.value ?? Math.floor(Math.random() * 8) + 8
+  emit('completed')
 }
 
 function launchFlow() {
@@ -157,9 +162,9 @@ onBeforeUnmount(() => {
     <h2 class="font-display text-3xl font-extrabold sm:text-4xl">Essaye Clippeak sur ta dernière VOD</h2>
     <p class="mt-2 text-clippeak-muted">Colle l'URL de ta VOD Twitch ci-dessous. Aucun compte requis.</p>
 
-    <div class="mt-6 rounded-2xl border border-clippeak-violet/20 bg-clippeak-surface/55 p-5 sm:p-7">
+    <div class="mt-3 rounded-2xl border border-clippeak-violet/20 bg-clippeak-surface/55 p-3 sm:p-7">
       <form class="space-y-4" @submit.prevent="launchFlow">
-        <div class="flex flex-col gap-3 sm:flex-row">
+        <div class="flex flex-col gap-3 sm:flex-row mb-2">
           <input
             v-model="twitchUrl"
             type="url"
@@ -175,13 +180,18 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
+          <span class=" mt-4 text-xs text-clippeak-muted">Si t'as la flemme test en copiant-collant une de nos VOD : <strong><em>https://www.twitch.tv/videos/123456789</em></strong></span>
+        
+
         <p v-if="validationError" class="text-sm font-semibold text-red-400">{{ validationError }}</p>
         <p v-else-if="validationSuccess" class="text-sm font-semibold text-emerald-400">{{ validationSuccess }}</p>
       </form>
 
       <div v-if="processingPhase !== 'idle'" class="mt-6">
         <p class="text-sm text-white/80">
-          Ne ferme pas cet onglet pendant que Clippeak travaille. Tu seras notifié dès que tes clips sont prêts.
+          {{ processingPhase === 'done'
+            ? 'Traitement terminé. Tu peux télécharger tes clips ci-dessous, et le formulaire apparaît juste après si tu veux nous laisser ton retour.'
+            : 'Ne ferme pas cet onglet pendant que Clippeak travaille. Tu seras notifié dès que tes clips sont prêts.' }}
         </p>
 
         <div class="mt-4 flex items-center justify-between text-sm text-white/85">
@@ -226,7 +236,7 @@ onBeforeUnmount(() => {
         <p class="mt-2 text-white/85">{{ resultClipsCount }} clips détectés sur ta VOD</p>
         <button
           type="button"
-          class="mt-4 rounded-xl bg-clippeak-violet px-6 py-3 font-semibold text-white transition hover:bg-clippeak-violetLight"
+          class="mt-4 w-full rounded-xl bg-clippeak-violet px-6 py-3 font-semibold text-white transition hover:bg-clippeak-violetLight"
           @click="downloadZip"
         >
           Télécharger mes clips (.zip)
