@@ -48,3 +48,9 @@
 **Cause racine** : Une ancienne question binaire sur le ZIP par mail etait conservee en plus de la question plus complete sur la plateforme de reception.
 **Solution** : Suppression de la question redondante dans l UI, retrait du champ de l API et du schema Prisma, puis ajout d une migration pour supprimer la colonne correspondante en base.
 **Regle** : Eviter les champs doublons dans les formulaires ; conserver une seule question source de verite et aligner front, API et schema de donnees dans la meme correction.
+
+### [2026-07-02] Client Prisma non regenere apres migration
+**Probleme** : L API feedback renvoyait encore une erreur 500 avec une reference a `zipParMail` alors que la colonne avait deja ete supprimee de la base.
+**Cause racine** : Le client Prisma dans `node_modules` etait reste genere avec l ancien schema, donc le runtime demandait encore un champ obsolet.
+**Solution** : Regeneration du client Prisma apres avoir stoppe les processus Node du projet, puis retest d un insert reel reussi.
+**Regle** : Apres toute modification de schema Prisma, regenerer explicitement le client avant de valider le runtime local, surtout sur Windows ou les fichiers du moteur peuvent rester verrouilles.

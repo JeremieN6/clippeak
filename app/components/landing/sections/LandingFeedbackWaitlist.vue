@@ -42,7 +42,7 @@ async function submitFeedback() {
     feedbackSubmitted.value = true
     emit('submitted')
   } catch {
-    feedbackError.value = 'Impossible d envoyer le feedback pour le moment. Reessaie dans quelques instants.'
+    feedbackError.value = 'Impossible d\'envoyer le feedback pour le moment. Réessaie dans quelques instants.'
   } finally {
     feedbackSubmitting.value = false
   }

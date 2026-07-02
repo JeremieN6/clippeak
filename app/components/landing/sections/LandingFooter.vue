@@ -20,7 +20,7 @@
                         <li><a href="/#features" class="text-sm text-slate-400 transition hover:text-white">Pourquoi
                                 Clippeak</a></li>
                         <li><a href="/#how-it-works" class="text-sm text-slate-400 transition hover:text-white">Comment
-                                ca marche</a></li>
+                                ça marche</a></li>
                         <li><a href="/#offers" class="text-sm text-slate-400 transition hover:text-white">Tarifs</a>
                         </li>
                         <li><a href="/try-now" class="text-sm text-slate-400 transition hover:text-white">Essayer

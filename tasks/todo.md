@@ -5,7 +5,7 @@
 ---
 
 ## En cours
-- [ ] Appliquer la migration Prisma sur Neon des que la connectivite DB est retablie
+- [x] Appliquer la migration Prisma sur Neon des que la connectivite DB est retablie
 
 ## Fait
 - [x] Initialisation MCP memoire + structure projet

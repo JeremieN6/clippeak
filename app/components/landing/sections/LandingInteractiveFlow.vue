@@ -222,7 +222,7 @@ onBeforeUnmount(() => {
               </span>
             </div>
             <p v-if="index === 0 && stepState(index) !== 'pending'" class="mt-2 text-sm text-clippeak-muted">
-              Faux scan ultra-rapide : {{ analysisPct }}%
+              Scan ultra-rapide : {{ analysisPct }}%
             </p>
             <p v-if="index === 2 && detectedPeaks !== null && stepState(index) === 'done'" class="mt-2 text-sm text-emerald-300">
               {{ detectedPeaks }} pics trouvés
