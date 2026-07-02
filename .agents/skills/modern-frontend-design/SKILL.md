@@ -119,9 +119,21 @@ Prefer CSS variables or equivalent theme tokens when touching shared styling.
 Adjust the page so the layout reflects the product goal.
 
 For landing pages:
-- Build a strong hero with one dominant promise and one primary action
-- Alternate dense and spacious sections to create rhythm
-- Use proof, feature explanation, and FAQ sections with distinct visual roles
+Use this section order as the default skeleton for SaaS landing pages, adapting content per project:
+
+1. **Barre de navigation** — logo, menu, CTA principal
+2. **Hero section** — titre axé sur le bénéfice principal, sous-titre clair (PVU), CTA principal (et éventuellement une action secondaire)
+3. **Visuel** — aperçu produit (dashboard screenshot ou vidéo/motion design) juste sous le hero
+4. **Logos clients** *(optionnel)* — preuve sociale via logos connus. À ajouter seulement quand le projet a une traction suffisante (clients reconnus, early stage skip this section entièrement plutôt que de la remplir avec du faux contenu)
+5. **Section bénéfices** — ce que fait le produit et les avantages principaux, formulé en bénéfices (pas en features techniques)
+6. **Comment ça marche** — le process en 3 étapes, le plus clair possible
+7. **Présentation des offres** — mettre en avant le plan principal à vendre, en parlant valeur/bénéfices plutôt que juste le prix
+8. **Témoignages clients** — vrais témoignages avec visage, nom, fonction, vérifiables ; vidéo si possible
+9. **FAQ** — répondre aux objections en amont, avec un CTA de contact pour les questions restantes
+10. **CTA final** — bannière simple (titre fort + texte court + CTA) juste avant le footer, qui relance l'action principale. Cette section est importante : ne jamais la sauter, c'est le dernier point de conversion avant que l'utilisateur quitte la page
+11. **Footer** — logo, menu, mentions légales
+
+Not every section is mandatory for every project (e.g. skip témoignages if none exist yet), but the CTA final banner and hero should always be present.
 
 For authenticated app pages:
 - Make the primary task obvious in the first viewport

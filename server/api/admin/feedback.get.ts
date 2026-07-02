@@ -1,9 +1,41 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { prisma } from '../../utils/prisma'
 
+function readAdminPasswordFromDotEnvLocal() {
+  try {
+    const envLocalPath = resolve(process.cwd(), '.env.local')
+    if (!existsSync(envLocalPath)) return ''
+
+    const raw = readFileSync(envLocalPath, 'utf8')
+    const line = raw
+      .split(/\r?\n/)
+      .find((current) => current.trim().startsWith('ADMIN_PASSWORD='))
+
+    if (!line) return ''
+
+    const value = line.slice(line.indexOf('=') + 1).trim()
+
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      return value.slice(1, -1).trim()
+    }
+
+    return value
+  } catch {
+    return ''
+  }
+}
+
+const fallbackAdminPassword = readAdminPasswordFromDotEnvLocal()
+
 export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig(event)
   const query = getQuery(event)
-  const password = typeof query.password === 'string' ? query.password : ''
-  const expected = process.env.ADMIN_PASSWORD || ''
+  const password = typeof query.password === 'string' ? query.password.trim() : ''
+  const expected = (config.adminPassword || process.env.ADMIN_PASSWORD || fallbackAdminPassword || '').trim()
 
   if (!expected || password !== expected) {
     throw createError({ statusCode: 401, statusMessage: 'Acces refuse' })

@@ -26,15 +26,16 @@ const loading = ref(false)
 const error = ref('')
 const adminData = ref<AdminResponse | null>(null)
 
+const totalResponses = computed(() => adminData.value?.metrics.total ?? 0)
+
 async function loadFeedbacks() {
   loading.value = true
   error.value = ''
 
   try {
     const data = await $fetch<AdminResponse>('/api/admin/feedback', {
-      query: { password: password.value }
+      query: { password: password.value.trim() }
     })
-
     adminData.value = data
   } catch {
     error.value = 'Mot de passe invalide ou acces refuse.'
@@ -43,13 +44,13 @@ async function loadFeedbacks() {
   }
 }
 
-const platformEntries = computed(() =>
-  Object.entries(adminData.value?.metrics.plateformeRepartition || {})
-)
+const platformEntries = computed(() => Object.entries(adminData.value?.metrics.plateformeRepartition || {}))
+const profileEntries = computed(() => Object.entries(adminData.value?.metrics.profilRepartition || {}))
 
-const profileEntries = computed(() =>
-  Object.entries(adminData.value?.metrics.profilRepartition || {})
-)
+function percent(count: number) {
+  if (!totalResponses.value) return 0
+  return Math.round((count / totalResponses.value) * 100)
+}
 </script>
 
 <template>
@@ -95,6 +96,38 @@ const profileEntries = computed(() =>
         <article class="card-surface p-5">
           <p class="text-xs uppercase tracking-wider text-clippeak-muted">Profils</p>
           <p class="mt-2 text-sm text-white/85">{{ profileEntries.map(([key, value]) => `${key}: ${value}`).join(' | ') }}</p>
+        </article>
+      </div>
+
+      <div class="grid gap-4 lg:grid-cols-2">
+        <article class="card-surface p-5">
+          <h2 class="font-semibold">Repartition plateformes</h2>
+          <div class="mt-4 space-y-3">
+            <div v-for="[label, count] in platformEntries" :key="label" class="space-y-1">
+              <div class="flex items-center justify-between text-sm">
+                <span>{{ label }}</span>
+                <span class="text-clippeak-muted">{{ count }} ({{ percent(count) }}%)</span>
+              </div>
+              <div class="h-2 rounded-full bg-black/30">
+                <div class="h-2 rounded-full bg-clippeak-violet" :style="{ width: `${percent(count)}%` }"></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card-surface p-5">
+          <h2 class="font-semibold">Repartition profils</h2>
+          <div class="mt-4 space-y-3">
+            <div v-for="[label, count] in profileEntries" :key="label" class="space-y-1">
+              <div class="flex items-center justify-between text-sm">
+                <span>{{ label }}</span>
+                <span class="text-clippeak-muted">{{ count }} ({{ percent(count) }}%)</span>
+              </div>
+              <div class="h-2 rounded-full bg-black/30">
+                <div class="h-2 rounded-full bg-clippeak-violetLight" :style="{ width: `${percent(count)}%` }"></div>
+              </div>
+            </div>
+          </div>
         </article>
       </div>
 
