@@ -23,7 +23,7 @@ const props = defineProps<{
         </h1>
 
         <p class="mx-auto mt-5 max-w-3xl text-base text-clippeak-muted sm:text-lg">
-          Clippeak analyse ton chat Twitch, détecte les pics de réaction, et découpe ta VOD en clips prêts à publier sur TikTok et Instagram.
+          Clippeak analyse ton chat Twitch, détecte les pics de réaction, et découpe ta VOD en clips prêts à publier sur TikTok, Instagram et Youtube Short.
         </p>
 
         <a
