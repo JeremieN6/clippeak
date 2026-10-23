@@ -18,6 +18,17 @@ export interface TwitchVideo {
   durationSec: number
 }
 
+export interface TwitchClip {
+  id: string
+  url: string
+  title: string
+  viewCount: number
+  durationSec: number
+  gameId: string | null
+  createdAt: Date
+  creatorName: string
+}
+
 export interface TwitchLiveStream {
   id: string
   userId: string
@@ -146,7 +157,39 @@ export function createTwitchApi(
     return 'created'
   }
 
-  return { getToken, getUserByLogin, listArchives, getLiveStreams, subscribe }
+  // Clips les plus vus d'une chaine (Helix les renvoie tries par nombre de vues decroissant).
+  async function listClips(broadcasterId: string, first = 100): Promise<TwitchClip[]> {
+    const response = await helix(`/clips?broadcaster_id=${encodeURIComponent(broadcasterId)}&first=${Math.min(100, first)}`)
+    if (!response.ok) throw new TwitchApiError(`Liste des clips impossible (HTTP ${response.status})`, response.status)
+    const body = await response.json() as {
+      data?: Array<{ id: string, url: string, title: string, view_count: number, duration: number, game_id: string, created_at: string, creator_name: string }>
+    }
+    return (body.data ?? []).map(c => ({
+      id: c.id,
+      url: c.url,
+      title: c.title,
+      viewCount: c.view_count,
+      durationSec: c.duration,
+      gameId: c.game_id || null,
+      createdAt: new Date(c.created_at),
+      creatorName: c.creator_name
+    }))
+  }
+
+  async function getGameNames(gameIds: string[]): Promise<Map<string, string>> {
+    const names = new Map<string, string>()
+    const unique = [...new Set(gameIds.filter(Boolean))]
+    for (let i = 0; i < unique.length; i += 100) {
+      const query = unique.slice(i, i + 100).map(id => `id=${encodeURIComponent(id)}`).join('&')
+      const response = await helix(`/games?${query}`)
+      if (!response.ok) throw new TwitchApiError(`Liste des categories impossible (HTTP ${response.status})`, response.status)
+      const body = await response.json() as { data?: Array<{ id: string, name: string }> }
+      for (const game of body.data ?? []) names.set(game.id, game.name)
+    }
+    return names
+  }
+
+  return { getToken, getUserByLogin, listArchives, getLiveStreams, listClips, getGameNames, subscribe }
 }
 
 export type TwitchApi = ReturnType<typeof createTwitchApi>
