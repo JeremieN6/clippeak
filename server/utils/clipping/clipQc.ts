@@ -28,6 +28,8 @@ export interface QcExpectations {
 }
 
 export interface QcIssue {
+  // 'warning' : signale au relecteur sans bloquer le clip (ex. un nom qui ressemble a un nom du dictionnaire).
+  severity: 'error' | 'warning'
   code: 'resolution' | 'duration' | 'sync' | 'no_audio' | 'frozen_end' | 'leading_silence' | 'trailing_silence' | 'title' | 'name'
   message: string
 }
@@ -64,7 +66,7 @@ export function checkNames(texts: string[], names: string[]): QcIssue[] {
       const distance = levenshtein(norm, target.norm)
       if (distance > 0 && distance <= (target.norm.length >= 8 ? 2 : 1) && !seen.has(norm)) {
         seen.add(norm)
-        issues.push({ code: 'name', message: `"${word}" ressemble a "${target.raw}" : orthographe a verifier` })
+        issues.push({ severity: 'warning', code: 'name', message: `"${word}" ressemble a "${target.raw}" : orthographe a verifier` })
       }
     }
   }
@@ -77,24 +79,24 @@ export function evaluateQc(metrics: ClipMetrics, expect: QcExpectations): QcRepo
   const edge = expect.maxEdgeSilenceSec ?? 0.6
 
   if (metrics.width !== 1080 || metrics.height !== 1920) {
-    issues.push({ code: 'resolution', message: `Resolution ${metrics.width}x${metrics.height} au lieu de 1080x1920` })
+    issues.push({ severity: 'error', code: 'resolution', message: `Resolution ${metrics.width}x${metrics.height} au lieu de 1080x1920` })
   }
   if (metrics.videoSec < expect.minSec - 0.5 || metrics.videoSec > expect.maxSec + 1) {
-    issues.push({ code: 'duration', message: `Duree ${metrics.videoSec.toFixed(1)} s hors de [${expect.minSec}, ${expect.maxSec}] s` })
+    issues.push({ severity: 'error', code: 'duration', message: `Duree ${metrics.videoSec.toFixed(1)} s hors de [${expect.minSec}, ${expect.maxSec}] s` })
   }
   if (metrics.audioSec === null) {
-    issues.push({ code: 'no_audio', message: 'Aucune piste audio' })
+    issues.push({ severity: 'error', code: 'no_audio', message: 'Aucune piste audio' })
   } else if (Math.abs(metrics.audioSec - metrics.videoSec) > drift) {
-    issues.push({ code: 'sync', message: `Decalage son/image de ${Math.abs(metrics.audioSec - metrics.videoSec).toFixed(2)} s` })
+    issues.push({ severity: 'error', code: 'sync', message: `Decalage son/image de ${Math.abs(metrics.audioSec - metrics.videoSec).toFixed(2)} s` })
   }
   if (metrics.freezeAtEndSec !== null) {
-    issues.push({ code: 'frozen_end', message: `Image figee en fin de clip (des ${metrics.freezeAtEndSec.toFixed(1)} s)` })
+    issues.push({ severity: 'error', code: 'frozen_end', message: `Image figee en fin de clip (des ${metrics.freezeAtEndSec.toFixed(1)} s)` })
   }
   if (metrics.leadingSilenceSec > edge) {
-    issues.push({ code: 'leading_silence', message: `Silence de ${metrics.leadingSilenceSec.toFixed(1)} s au debut` })
+    issues.push({ severity: 'error', code: 'leading_silence', message: `Silence de ${metrics.leadingSilenceSec.toFixed(1)} s au debut` })
   }
   if (metrics.trailingSilenceSec > edge) {
-    issues.push({ code: 'trailing_silence', message: `Silence de ${metrics.trailingSilenceSec.toFixed(1)} s a la fin` })
+    issues.push({ severity: 'error', code: 'trailing_silence', message: `Silence de ${metrics.trailingSilenceSec.toFixed(1)} s a la fin` })
   }
 
   const lines = expect.title.split(/\s+/).reduce<string[]>((acc, word) => {
@@ -103,12 +105,12 @@ export function evaluateQc(metrics: ClipMetrics, expect: QcExpectations): QcRepo
     else acc.push(word)
     return acc
   }, [])
-  if (!expect.title.trim()) issues.push({ code: 'title', message: 'Titre vide' })
-  else if (lines.length > expect.titleMaxLines) issues.push({ code: 'title', message: `Titre sur ${lines.length} lignes (max ${expect.titleMaxLines})` })
-  else if (/[�]/.test(expect.title)) issues.push({ code: 'title', message: 'Titre avec des caracteres invalides' })
+  if (!expect.title.trim()) issues.push({ severity: 'error', code: 'title', message: 'Titre vide' })
+  else if (lines.length > expect.titleMaxLines) issues.push({ severity: 'error', code: 'title', message: `Titre sur ${lines.length} lignes (max ${expect.titleMaxLines})` })
+  else if (/[�]/.test(expect.title)) issues.push({ severity: 'error', code: 'title', message: 'Titre avec des caracteres invalides' })
 
   issues.push(...checkNames([expect.title, ...expect.texts], expect.names))
-  return { passed: issues.length === 0, issues, metrics }
+  return { passed: !issues.some(i => i.severity === 'error'), issues, metrics }
 }
 
 export function probeClip(path: string): Pick<ClipMetrics, 'width' | 'height' | 'videoSec' | 'audioSec'> {

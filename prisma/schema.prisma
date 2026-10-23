@@ -64,8 +64,11 @@ model Channel {
   autoClip    Boolean  @default(true) @map("auto_clip")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  settings StreamerSettings?
-  vods     Vod[]
+  settings       StreamerSettings?
+  style          StreamerStyle?
+  vods           Vod[]
+  referenceClips ReferenceClip[]
+  assets         StreamerAsset[]
 
   @@map("channels")
 }
@@ -116,6 +119,16 @@ model Moment {
   status    MomentStatus @default(candidate)
   createdAt DateTime     @default(now()) @map("created_at")
 
+  // Analyse (transcription autour du pic, note finale sur 10, accroche) - colonnes ajoutees par 202610241000_v2_clip_pipeline.
+  transcript Json?
+  beforePeak String?  @map("before_peak")
+  hook       String?
+  category   String?  @db.VarChar(60)
+  kind       String?  @db.VarChar(20)
+  aiScore    Float?   @map("ai_score")
+  rationale  String?
+  scorer     String?  @db.VarChar(20)
+
   vod  Vod       @relation(fields: [vodId], references: [id], onDelete: Cascade)
   jobs ClipJob[]
 
@@ -135,8 +148,65 @@ model ClipJob {
   createdAt  DateTime      @default(now()) @map("created_at")
   updatedAt  DateTime      @updatedAt @map("updated_at")
 
+  // Plan de coupe, controle qualite et validation humaine.
+  startSec      Float?    @map("start_sec")
+  endSec        Float?    @map("end_sec")
+  keepRanges    Json?     @map("keep_ranges")
+  hashtags      String?
+  qc            Json?
+  illustrations Json?
+  reviewNote    String?   @map("review_note")
+  reviewedAt    DateTime? @map("reviewed_at")
+  notifiedAt    DateTime? @map("notified_at")
+
   moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@map("clip_jobs")
+}
+
+// Direction artistique du streamer (titre, sous-titres, zoom, SFX, cadrage, avatar) : un JSON valide par zod cote serveur.
+model StreamerStyle {
+  id        String   @id @default(uuid()) @db.Uuid
+  channelId String   @unique @map("channel_id") @db.Uuid
+  config    Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@map("streamer_styles")
+}
+
+// Fichiers du streamer : photos de reconnaissance, avatar/GIF, SFX, polices, videos d'illustration (avec leur source).
+model StreamerAsset {
+  id        String   @id @default(uuid()) @db.Uuid
+  channelId String   @map("channel_id") @db.Uuid
+  kind      String   @db.VarChar(20)
+  filename  String   @db.VarChar(200)
+  path      String   @db.VarChar(500)
+  tags      String[] @default([])
+  source    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId, kind])
+  @@map("streamer_assets")
+}
+
+// Banque de clips de reference (API Twitch Clips) : vues, categorie, sujets.
+model ReferenceClip {
+  id           String   @id @default(uuid()) @db.Uuid
+  channelId    String   @map("channel_id") @db.Uuid
+  twitchClipId String   @unique @map("twitch_clip_id") @db.VarChar(100)
+  title        String   @db.VarChar(255)
+  viewCount    Int      @map("view_count")
+  durationSec  Float    @map("duration_sec")
+  category     String   @db.VarChar(100)
+  fetchedAt    DateTime @default(now()) @map("fetched_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId])
+  @@map("reference_clips")
 }

@@ -12,6 +12,12 @@ import { runFfmpeg } from './ffmpegRunner.ts'
 const good: ClipMetrics = { width: 1080, height: 1920, videoSec: 40, audioSec: 40.05, freezeAtEndSec: null, leadingSilenceSec: 0.1, trailingSilenceSec: 0.2 }
 const expect: QcExpectations = { minSec: 30, maxSec: 60, title: 'Un titre court et clair', titleMaxLines: 3, titleMaxCharsPerLine: 24, texts: ['salut a tous'], names: ['Yassencore'] }
 
+test('a name that looks misspelled is a warning: it does not block the clip', () => {
+  const report = evaluateQc(good, { ...expect, texts: ['Yassencor est la'] })
+  assert.equal(report.passed, true)
+  assert.deepEqual(report.issues.map(i => [i.severity, i.code]), [['warning', 'name']])
+})
+
 test('a clean clip passes every check', () => {
   const report = evaluateQc(good, expect)
   assert.equal(report.passed, true)
