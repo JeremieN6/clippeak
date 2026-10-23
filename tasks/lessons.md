@@ -96,3 +96,9 @@
 **Cause racine** : En zod 4, `.default(x)` court-circuite l'analyse ; il faut `.prefault({})` pour que l'objet par defaut soit analyse.
 **Solution** : `.prefault({})` sur les objets imbriques et `.default(null)` sur les champs nullables facultatifs.
 **Regle** : Tester le schema avec `parse({})` des qu'il comporte des objets imbriques.
+
+### [2026-10-24] Le controle qualite doit utiliser le meme calcul que le rendu
+**Probleme** : En lancant le worker sur une vraie VOD, un clip a ete refuse pour "titre sur 4 lignes" alors que le rendu dessinait 3 lignes ; un autre pour une duree montee de 18,3 s (minimum 20 s) alors que le plan croyait avoir fini.
+**Cause racine** : (1) le controle recalculait le decoupage du titre avec son propre algorithme, different de celui du rendu, et la troncature "..." depassait la largeur ; (2) le planificateur n'etendait que le debut du clip, jamais la fin, quand les silences retires faisaient passer la duree sous le minimum. Les tests unitaires utilisaient des cas trop propres.
+**Solution** : `countTitleLines` et `fitTitle` (assBuilder) servent au rendu, au titre par defaut ET au controle ; le planificateur prolonge la fin sur les phrases suivantes terminees (sans depasser la duree max).
+**Regle** : Un controle de conformite appelle la fonction du producteur, il ne la reimplemente pas. Tester toute chaine de traitement sur une vraie donnee avant de la declarer valide : les cas reels revelent des ecarts que les fixtures ne montrent pas.
