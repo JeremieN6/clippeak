@@ -19,6 +19,9 @@ export interface WorkerOptions {
   store: ClipQueueStore
   render: RenderFn
   shouldStop: () => boolean
+  // Appelee quand la file de rendu est vide (ex. analyse d'une VOD terminee) ; renvoie true si elle a travaille,
+  // auquel cas la boucle repart tout de suite au lieu de dormir.
+  idleTask?: () => Promise<boolean>
   pollMs?: number
   errorBackoffMs?: number
   sleep?: (ms: number) => Promise<void>
@@ -54,7 +57,15 @@ export async function runClipWorker(options: WorkerOptions): Promise<WorkerSumma
       continue
     }
     if (!job) {
-      await sleep(pollMs)
+      let worked = false
+      if (options.idleTask) {
+        try {
+          worked = await options.idleTask()
+        } catch (error) {
+          log('tache de fond en echec', error)
+        }
+      }
+      if (!worked) await sleep(pollMs)
       continue
     }
 

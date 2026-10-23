@@ -151,3 +151,33 @@ test('runFfmpeg explains a missing binary', async () => {
     (e: any) => e instanceof FfmpegError && /introuvable/.test(e.message)
   )
 })
+
+test('idle task runs when the queue is empty and skips the sleep when it did work', async () => {
+  const { store } = fakeStore([])
+  const calls: string[] = []
+  let ticks = 0
+  await runClipWorker({
+    store,
+    render: async () => ({ outputPath: 'x' }),
+    idleTask: async () => { calls.push('idle'); return calls.length < 3 },
+    sleep: async () => { calls.push('sleep') },
+    shouldStop: () => ++ticks > 4,
+    log: () => {}
+  })
+  assert.deepEqual(calls.slice(0, 4), ['idle', 'idle', 'idle', 'sleep'])
+})
+
+test('an idle task error is logged and the worker keeps polling', async () => {
+  const { store } = fakeStore([])
+  const logs: string[] = []
+  let ticks = 0
+  await runClipWorker({
+    store,
+    render: async () => ({ outputPath: 'x' }),
+    idleTask: async () => { throw new Error('boom') },
+    sleep: async () => {},
+    shouldStop: () => ++ticks > 2,
+    log: (m) => { logs.push(m) }
+  })
+  assert.ok(logs.some(l => /tache de fond/.test(l)))
+})
