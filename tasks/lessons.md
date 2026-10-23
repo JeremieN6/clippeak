@@ -102,3 +102,9 @@
 **Cause racine** : (1) le controle recalculait le decoupage du titre avec son propre algorithme, different de celui du rendu, et la troncature "..." depassait la largeur ; (2) le planificateur n'etendait que le debut du clip, jamais la fin, quand les silences retires faisaient passer la duree sous le minimum. Les tests unitaires utilisaient des cas trop propres.
 **Solution** : `countTitleLines` et `fitTitle` (assBuilder) servent au rendu, au titre par defaut ET au controle ; le planificateur prolonge la fin sur les phrases suivantes terminees (sans depasser la duree max).
 **Regle** : Un controle de conformite appelle la fonction du producteur, il ne la reimplemente pas. Tester toute chaine de traitement sur une vraie donnee avant de la declarer valide : les cas reels revelent des ecarts que les fixtures ne montrent pas.
+
+### [2026-10-24] Connexion base inactive pendant une longue tache
+**Probleme** : Pendant le test complet du worker, l'enregistrement des moments echouait avec "Can't reach database server" (P1001) apres ~4 min de transcription sans requete ; un clip etait aussi marque en echec pour la meme raison.
+**Cause racine** : Le worker enchaine de longues taches (Whisper, ffmpeg) entre deux acces a la base ; les connexions inactives sont coupees (et Neon se met en veille, reveil ~1 s), donc la premiere requete suivante echoue. Documente par Neon, mais absent du code.
+**Solution** : `dbRetry.ts` : reessais (1 s, 3 s, 8 s) uniquement pour les erreurs de connexion (P1001, P1002, P1008, P1017) sur tous les stores du worker ; une ecriture refusee (contrainte) n'est jamais rejouee.
+**Regle** : Tout processus de fond qui calcule longtemps entre deux acces base doit reessayer les erreurs de connexion transitoires. Distinguer un artefact de test (PGlite n'accepte qu'une session) d'un vrai risque avant de conclure : ici les deux existaient, seul le second justifiait un correctif.
