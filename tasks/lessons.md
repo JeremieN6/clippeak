@@ -66,3 +66,15 @@
 **Cause racine** : `npx` telecharge la derniere version si le paquet local est absent ; Node ne fait que retirer les types (strip-only), il ne transforme pas la syntaxe TypeScript.
 **Solution** : `npm ci --ignore-scripts` puis `./node_modules/.bin/prisma` ; attributs de classe declares explicitement.
 **Regle** : Utiliser les binaires locaux du projet ; dans le code teste par `node --test`, pas d'enum, de namespace ni de parameter properties.
+
+### [2026-10-23] Affichage de secrets en filtrant un .env avec sed
+**Probleme** : Pour lister les noms de variables de `.env.local`, un `sed` a masque seulement ce qui suit `=` ; les lignes d'une cle privee SSH multi-lignes (sans `=`) se sont affichees en clair. J'ai aussi lu `.env`, non demande.
+**Cause racine** : Filtre par remplacement sur toutes les lignes au lieu d'une extraction des seuls noms ; hypothese que chaque ligne est du type CLE=valeur.
+**Solution** : Le porteur regenere la cle. Depuis, extraction des noms avec `grep -oE '^[A-Z_]+'` et lecture d'une valeur precise par `grep -m1 '^NOM='` sans affichage.
+**Regle** : Pour lister des variables, n'extraire que les noms (`grep -oE`), jamais filtrer un fichier de secrets par masquage ; ne lire que le fichier demande.
+
+### [2026-10-23] Pagination par curseur du chat GraphQL Twitch
+**Probleme** : Le client chat, ecrit sans acces reseau, echouait des la page 2 avec "failed integrity check" ; sur une VOD en cours, les offsets 0 a 2 renvoient une liste vide.
+**Cause racine** : Endpoint non documente : le curseur exige un jeton Client-Integrity, que l'offset ne demande pas ; comportement des VODs en cours different des VODs terminees.
+**Solution** : Pagination par offset avec recouvrement et dedoublonnage, offset de depart >= 3 s, tests avec la forme reelle de reponse.
+**Regle** : Tout client d'un endpoint non officiel se teste contre le vrai service, sur une VOD terminee ET une VOD en cours, avant d'etre declare valide.
