@@ -46,6 +46,7 @@ Direction : passer de la simulation a un pipeline reel, inspire d'un workflow de
 - [x] Module `server/utils/clipping/chatPeaks.ts` : detection de pics de chat (debit robuste median/MAD + mots-cles definis par le streamer + messages en majuscules), score /10, pre-roll avant le pic. Tests : `npm test` (node:test, 7 tests).
 - [x] Source de donnees chat : GraphQL non officiel de Twitch (l'API officielle ne fournit pas le chat des VODs). Decision du 2026-10-23. Risque : endpoint non documente, peut changer -> isoler dans un seul client, fixtures de test.
 - [x] Schema Prisma V2 + migration `202610231200_v2_pipeline_foundation` (Channel, StreamerSettings, Vod, Moment, ClipJob), additive, NON appliquee sur Neon. Pas encore de modele utilisateur/auth : un Channel = un streamer.
+- [x] Client chat `server/utils/clipping/twitchChat.ts` : pagination par curseur, dedoublonnage, reprise a un offset (analyse incrementale pendant le live), erreurs typees (http/graphql/shape/limit). Sortie compatible `chatPeaks`. 6 tests sur reponses simulees. NON VERIFIE contre le vrai endpoint Twitch (bloque par le proxy du sandbox) : hash de requete et client-id repris des outils open source, a tester depuis le VPS. Les tests utilisent `node --test` : pas de "parameter properties" TypeScript (non supportees par le strip-types de Node).
 - [ ] Detection automatique de la VOD : EventSub Twitch (`stream.online` / `stream.offline`, callback HTTPS sur le VPS) + Get Videos (type archive) -> la VOD existe deja pendant le live. Necessite un client_id/secret Twitch (non fournis). Lien manuel = option de secours (`VodSource.manual`).
 - [ ] Objectif produit : le clipping demarre a la fin du stream, voire pendant. Prevoir l'analyse incrementale du chat.
 - [ ] Economie : detecter les pics via le chat d'abord, puis ne transcrire que ~60 s autour de chaque pic (pas la VOD entiere) ; transcription integrale seulement pour la voie "banque de clips" quand le chat est calme.
@@ -67,6 +68,8 @@ Direction : passer de la simulation a un pipeline reel, inspire d'un workflow de
 ---
 
 ## Decisions Prises
+> Les prises de position avec leur levier d'action sont dans `PRISE-DE-POSITION.md` (a relire avant de remettre une decision en cause).
+
 | Date | Decision | Raison |
 |------|----------|--------|
 | 2026-07-01 | Utiliser Prisma 6.15.0 au lieu de Prisma 7 | Prisma 7 change le workflow datasource/config et complexifie inutilement la V1 |
@@ -90,7 +93,7 @@ Direction : passer de la simulation a un pipeline reel, inspire d'un workflow de
 - **2026-07-02** : Ajout d'un workflow GitHub Actions de deploiement continu vers un VPS (SSH + pm2) sur push vers `main`.
 - **2026-07-06** : Integration du module `nuxt-posthog` pour le tracking analytics, avec un plugin dedie pour enregistrer le nom de l'app.
 - **2026-07-31** : Correction de la description dans `LandingHero` pour mentionner YouTube Shorts en plus de Twitch.
-- **2026-10-23** : Cadrage de la V2 a partir du brief du porteur (transcription d'un stream + captures). Ajout du module `chatPeaks` + tests + script `npm test`. Point technique releve : le chat des VODs n'est pas dans l'API Twitch officielle. Ajout du schema Prisma V2 (migration non appliquee). Les decisions GraphQL / VOD auto / VPS sont prises. Pour lancer les commandes Prisma localement : `npm ci --ignore-scripts` puis `./node_modules/.bin/prisma ...` (un `npx prisma` sans install recupere une version 7 incompatible). Fichiers `tmp_*.html` a la racine : residus de verification, non touches.
+- **2026-10-23** : Cadrage de la V2 a partir du brief du porteur (transcription d'un stream + captures). Ajout du module `chatPeaks` + tests + script `npm test`. Point technique releve : le chat des VODs n'est pas dans l'API Twitch officielle. Ajout du schema Prisma V2 (migration non appliquee). Les decisions GraphQL / VOD auto / VPS sont prises. Client Twitch : l'application est en cours de creation sur dev.twitch.tv (type Confidentiel) ; client_id/secret a mettre dans les variables d'environnement du VPS, jamais dans le depot ni dans une conversation. Pour lancer les commandes Prisma localement : `npm ci --ignore-scripts` puis `./node_modules/.bin/prisma ...` (un `npx prisma` sans install recupere une version 7 incompatible). Fichiers `tmp_*.html` a la racine : residus de verification, non touches.
 
 ---
 
