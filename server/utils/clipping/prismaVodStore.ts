@@ -18,6 +18,7 @@ export const prismaVodStore: VodStore = {
         url: vod.url,
         title: vod.title,
         startedAt: vod.startedAt,
+        endedAt: vod.endedAt ?? null,
         status: vod.status,
         source: vod.source
       }

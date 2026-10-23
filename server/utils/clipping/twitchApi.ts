@@ -15,6 +15,20 @@ export interface TwitchVideo {
   url: string
   title: string
   createdAt: Date
+  durationSec: number
+}
+
+export interface TwitchLiveStream {
+  id: string
+  userId: string
+  startedAt: Date
+}
+
+// Helix renvoie la duree sous la forme "1h2m3s", "4m24s" ou "30s".
+export function parseTwitchDuration(value: string | undefined): number {
+  const match = /^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/.exec(value ?? '')
+  if (!match) return 0
+  return Number(match[1] ?? 0) * 3600 + Number(match[2] ?? 0) * 60 + Number(match[3] ?? 0)
 }
 
 export class TwitchApiError extends Error {
@@ -84,15 +98,34 @@ export function createTwitchApi(
     const response = await helix(`/videos?user_id=${encodeURIComponent(userId)}&type=archive&first=${first}`)
     if (!response.ok) throw new TwitchApiError(`Liste des VODs impossible (HTTP ${response.status})`, response.status)
     const body = await response.json() as {
-      data?: Array<{ id: string, stream_id: string | null, url: string, title: string, created_at: string }>
+      data?: Array<{ id: string, stream_id: string | null, url: string, title: string, created_at: string, duration?: string }>
     }
     return (body.data ?? []).map(v => ({
       id: v.id,
       streamId: v.stream_id ?? null,
       url: v.url,
       title: v.title,
-      createdAt: new Date(v.created_at)
+      createdAt: new Date(v.created_at),
+      durationSec: parseTwitchDuration(v.duration)
     }))
+  }
+
+  // Chaines actuellement en direct, par lots de 100 (limite de Helix). Absente de la Map = hors ligne.
+  async function getLiveStreams(userIds: string[]): Promise<Map<string, TwitchLiveStream>> {
+    const live = new Map<string, TwitchLiveStream>()
+    for (let i = 0; i < userIds.length; i += 100) {
+      const query = userIds.slice(i, i + 100).map(id => `user_id=${encodeURIComponent(id)}`).join('&')
+      const response = await helix(`/streams?${query}&first=100`)
+      if (!response.ok) throw new TwitchApiError(`Liste des directs impossible (HTTP ${response.status})`, response.status)
+      const body = await response.json() as {
+        data?: Array<{ id: string, user_id: string, started_at: string, type?: string }>
+      }
+      for (const s of body.data ?? []) {
+        if (s.type && s.type !== 'live') continue
+        live.set(s.user_id, { id: s.id, userId: s.user_id, startedAt: new Date(s.started_at) })
+      }
+    }
+    return live
   }
 
   async function subscribe(type: 'stream.online' | 'stream.offline', userId: string, callback: string, secret: string): Promise<'created' | 'exists'> {
@@ -113,7 +146,7 @@ export function createTwitchApi(
     return 'created'
   }
 
-  return { getToken, getUserByLogin, listArchives, subscribe }
+  return { getToken, getUserByLogin, listArchives, getLiveStreams, subscribe }
 }
 
 export type TwitchApi = ReturnType<typeof createTwitchApi>

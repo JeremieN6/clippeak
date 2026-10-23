@@ -14,6 +14,7 @@ export interface VodRecord {
   startedAt: Date | null
   status: 'live' | 'ended'
   source: 'auto' | 'manual'
+  endedAt?: Date | null
 }
 
 export interface VodStore {
