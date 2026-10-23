@@ -41,6 +41,11 @@ Le produit reel de clipping n'existe pas encore : tout le "traitement" est simul
 **Decision** : mise en place d'un pipeline GitHub Actions qui deploie automatiquement sur `main` vers un VPS via SSH, gere par pm2.
 **Resultat** : chaque merge sur `main` se retrouve en production sans etape manuelle.
 
+### 2026-10-23 -- De la simulation au vrai produit
+**Contexte** : Clippeak etait une landing de validation. Un streamer suivi par le porteur a montre en direct qu'il avait construit lui-meme, avec une IA, un pipeline de clipping (VODs, pics de chat, montage vertical, DA personnelle) ; un second streamer present a dit etre interesse. L'idee avait ete envisagee des mois plus tot.
+**Decision** : considerer ce signal comme suffisant pour lancer la V2 sans attendre l'analyse des feedbacks de la landing ; construire le vrai pipeline par briques, en commencant par la detection des moments forts. Differenciation voulue : ce que le streamer a fait pour lui seul, propose clef en main et parametrable (mots-cles, style, duree) pour les autres.
+**Resultat** : en cours. Signal de demande anecdotique (deux streamers), non chiffre.
+
 ---
 
 ## Ce que la cible attend / a appris
@@ -57,5 +62,9 @@ Le produit reel de clipping n'existe pas encore : tout le "traitement" est simul
 
 ---
 
+- Les streamers connaissent leur communaute : ce qui fait reagir leur chat (mots, rythme) doit etre regle par eux, pas devine. Retour terrain a valider avec de vrais utilisateurs.
+
+---
+
 ## Derniere mise a jour
-2026-08-27 -- Creation initiale du fichier, reconstituee a partir de l'historique git (12 commits, 2026-07-01 au 2026-07-31) et de `tasks/lessons.md`, en remise a niveau conjointe avec CLAUDE.md.
+2026-10-23 -- Ajout du pivot V2 (simulation -> vrai pipeline). Creation initiale du fichier le 2026-08-27 a partir de l'historique git et de `tasks/lessons.md`.

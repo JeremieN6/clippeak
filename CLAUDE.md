@@ -41,6 +41,15 @@ Livrer Clippeak V1: landing page Nuxt interactive avec simulation complete du fl
 - [x] Pipeline de deploiement continu (GitHub Actions -> VPS via SSH -> pm2) sur push vers `main`
 - [x] Integration PostHog (nuxt-posthog) pour le tracking produit
 
+### V2 en cours -- vrai pipeline de clipping (demarree 2026-10-23)
+Direction : passer de la simulation a un pipeline reel, inspire d'un workflow de streamer (Claude + VODs Twitch + chat). Etapes cibles : 1 VODs via API Twitch (liens, pas de telechargement par le streamer) -> 2 moments forts (pics de chat + transcription) -> 3 coupe verticale 1080x1920, duree parametrable -> 4 streamer toujours cadre (reconnaissance par photos) -> 5 montage (DA parametrable en back-office) -> 6 illustrations (dossier de B-roll du streamer) -> 7 controle qualite + legende -> 8 production par lots de 4, validation humaine obligatoire, rien publie sans accord.
+- [x] Module `server/utils/clipping/chatPeaks.ts` : detection de pics de chat (debit robuste median/MAD + mots-cles definis par le streamer + messages en majuscules), score /10, pre-roll avant le pic. Tests : `npm test` (node:test, 7 tests).
+- [ ] Source de donnees chat : l'API Twitch officielle ne fournit PAS le chat des VODs ; prevoir l'endpoint GraphQL non officiel (type twitch-dl / TwitchDownloader) ou capture du chat en live. A trancher avant l'etape 1.
+- [ ] Audio seul des VODs (yt-dlp/streamlink, ~dizaines de Mo par heure) cote serveur, jamais cote streamer ; transcription (Whisper ou API) a choisir.
+- [ ] Modeles Prisma (Channel, Vod, Moment, ClipJob, StreamerSettings : mots-cles, DA, duree) -- pas encore ecrits.
+- [ ] Banque de clips de reference : stats via API Twitch Clips (vues) et YouTube Data API ; Meta/TikTok jugees inaccessibles via app approuvee -> hors perimetre V2.
+- [ ] Infra : le rendu video (ffmpeg, suivi du visage) ne tient pas dans le Nuxt/VPS actuel sans worker dedie ; decision d'architecture a prendre avant l'etape 3.
+
 ### Prochaines etapes :
 - [ ] Reconfirmer que la connectivite Neon reste stable en environnement de dev (un probleme P1001 avait ete rencontre le 2026-07-01 ; un insert reel a reussi le 2026-07-02, mais aucune note ulterieure ne reconfirme l'etat sur la duree)
 - [ ] Verifier que les secrets de deploiement (SSH_PRIVATE_KEY, VPS_HOST, VPS_USER) et les variables PostHog sont bien configures cote GitHub/VPS
@@ -62,6 +71,10 @@ Livrer Clippeak V1: landing page Nuxt interactive avec simulation complete du fl
 | 2026-07-02 | Suppression du champ `zip_par_mail` du schema Feedback | Redondant avec la question plus complete sur la plateforme de reception ; une seule question source de verite |
 | 2026-07-02 | Deploiement continu via GitHub Actions + SSH + pm2 vers un VPS (plutot qu'une plateforme managee type Vercel) | Choix d'infra pour garder le controle du serveur (`/srv/saas/clippeak`) |
 
+| 2026-10-23 | Lancer la V2 (vrai pipeline) sans analyser d'abord les feedbacks de la landing | Decision du porteur : signal terrain juge suffisant (voir STORY.md). Ne pas re-proposer d'analyser les retours avant de construire. |
+| 2026-10-23 | Premier module V2 = detection de pics de chat, pure et testable, sans dependance | Verifiable sans credentials Twitch ni infra ; mots-cles configurables car le streamer connait sa communaute |
+| 2026-10-23 | Chat calme => pas de clip issu du chat ; la banque de clips de reference doit alors prendre le relais | Le chat et la banque sont deux sources independantes, aucune n'est obligatoire seule |
+
 ---
 
 ## Notes de Session
@@ -72,6 +85,7 @@ Livrer Clippeak V1: landing page Nuxt interactive avec simulation complete du fl
 - **2026-07-02** : Ajout d'un workflow GitHub Actions de deploiement continu vers un VPS (SSH + pm2) sur push vers `main`.
 - **2026-07-06** : Integration du module `nuxt-posthog` pour le tracking analytics, avec un plugin dedie pour enregistrer le nom de l'app.
 - **2026-07-31** : Correction de la description dans `LandingHero` pour mentionner YouTube Shorts en plus de Twitch.
+- **2026-10-23** : Cadrage de la V2 a partir du brief du porteur (transcription d'un stream + captures). Ajout du module `chatPeaks` + tests + script `npm test`. Point technique releve : le chat des VODs n'est pas dans l'API Twitch officielle. Fichiers `tmp_*.html` a la racine : residus de verification, non touches.
 
 ---
 
