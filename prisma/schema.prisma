@@ -27,3 +27,116 @@ model Feedback {
 
   @@map("feedbacks")
 }
+
+enum VodStatus {
+  live
+  ended
+  analyzing
+  done
+  failed
+}
+
+enum VodSource {
+  auto
+  manual
+}
+
+enum MomentStatus {
+  candidate
+  validated
+  rejected
+}
+
+enum ClipJobStatus {
+  queued
+  rendering
+  review
+  approved
+  rejected
+  failed
+}
+
+model Channel {
+  id          String   @id @default(uuid()) @db.Uuid
+  twitchId    String   @unique @map("twitch_id") @db.VarChar(40)
+  login       String   @db.VarChar(60)
+  displayName String   @map("display_name") @db.VarChar(80)
+  autoClip    Boolean  @default(true) @map("auto_clip")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  settings StreamerSettings?
+  vods     Vod[]
+
+  @@map("channels")
+}
+
+model StreamerSettings {
+  id             String   @id @default(uuid()) @db.Uuid
+  channelId      String   @unique @map("channel_id") @db.Uuid
+  keywords       String[] @default(["mdr", "ptdr", "lol", "omg", "xd", "kekw"])
+  clipMinSec     Int      @default(30) @map("clip_min_sec")
+  clipMaxSec     Int      @default(60) @map("clip_max_sec")
+  subtitles      Boolean  @default(true)
+  accentColor    String   @default("#FFFFFF") @map("accent_color") @db.VarChar(9)
+  highlightColor String   @default("#FFD400") @map("highlight_color") @db.VarChar(9)
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@map("streamer_settings")
+}
+
+model Vod {
+  id          String    @id @default(uuid()) @db.Uuid
+  channelId   String    @map("channel_id") @db.Uuid
+  twitchVodId String    @unique @map("twitch_vod_id") @db.VarChar(40)
+  url         String    @db.VarChar(255)
+  title       String?   @db.VarChar(255)
+  status      VodStatus @default(live)
+  source      VodSource @default(auto)
+  startedAt   DateTime? @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  channel Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  moments Moment[]
+
+  @@index([channelId])
+  @@map("vods")
+}
+
+model Moment {
+  id        String       @id @default(uuid()) @db.Uuid
+  vodId     String       @map("vod_id") @db.Uuid
+  startSec  Float        @map("start_sec")
+  endSec    Float        @map("end_sec")
+  peakSec   Float        @map("peak_sec")
+  score     Float
+  signals   Json
+  status    MomentStatus @default(candidate)
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  vod  Vod       @relation(fields: [vodId], references: [id], onDelete: Cascade)
+  jobs ClipJob[]
+
+  @@index([vodId])
+  @@map("moments")
+}
+
+model ClipJob {
+  id         String        @id @default(uuid()) @db.Uuid
+  momentId   String        @map("moment_id") @db.Uuid
+  status     ClipJobStatus @default(queued)
+  batch      Int?
+  title      String?       @db.VarChar(255)
+  caption    String?
+  outputPath String?       @map("output_path") @db.VarChar(500)
+  error      String?
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt @map("updated_at")
+
+  moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("clip_jobs")
+}

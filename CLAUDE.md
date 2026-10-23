@@ -44,11 +44,14 @@ Livrer Clippeak V1: landing page Nuxt interactive avec simulation complete du fl
 ### V2 en cours -- vrai pipeline de clipping (demarree 2026-10-23)
 Direction : passer de la simulation a un pipeline reel, inspire d'un workflow de streamer (Claude + VODs Twitch + chat). Etapes cibles : 1 VODs via API Twitch (liens, pas de telechargement par le streamer) -> 2 moments forts (pics de chat + transcription) -> 3 coupe verticale 1080x1920, duree parametrable -> 4 streamer toujours cadre (reconnaissance par photos) -> 5 montage (DA parametrable en back-office) -> 6 illustrations (dossier de B-roll du streamer) -> 7 controle qualite + legende -> 8 production par lots de 4, validation humaine obligatoire, rien publie sans accord.
 - [x] Module `server/utils/clipping/chatPeaks.ts` : detection de pics de chat (debit robuste median/MAD + mots-cles definis par le streamer + messages en majuscules), score /10, pre-roll avant le pic. Tests : `npm test` (node:test, 7 tests).
-- [ ] Source de donnees chat : l'API Twitch officielle ne fournit PAS le chat des VODs ; prevoir l'endpoint GraphQL non officiel (type twitch-dl / TwitchDownloader) ou capture du chat en live. A trancher avant l'etape 1.
+- [x] Source de donnees chat : GraphQL non officiel de Twitch (l'API officielle ne fournit pas le chat des VODs). Decision du 2026-10-23. Risque : endpoint non documente, peut changer -> isoler dans un seul client, fixtures de test.
+- [x] Schema Prisma V2 + migration `202610231200_v2_pipeline_foundation` (Channel, StreamerSettings, Vod, Moment, ClipJob), additive, NON appliquee sur Neon. Pas encore de modele utilisateur/auth : un Channel = un streamer.
+- [ ] Detection automatique de la VOD : EventSub Twitch (`stream.online` / `stream.offline`, callback HTTPS sur le VPS) + Get Videos (type archive) -> la VOD existe deja pendant le live. Necessite un client_id/secret Twitch (non fournis). Lien manuel = option de secours (`VodSource.manual`).
+- [ ] Objectif produit : le clipping demarre a la fin du stream, voire pendant. Prevoir l'analyse incrementale du chat.
+- [ ] Economie : detecter les pics via le chat d'abord, puis ne transcrire que ~60 s autour de chaque pic (pas la VOD entiere) ; transcription integrale seulement pour la voie "banque de clips" quand le chat est calme.
 - [ ] Audio seul des VODs (yt-dlp/streamlink, ~dizaines de Mo par heure) cote serveur, jamais cote streamer ; transcription (Whisper ou API) a choisir.
-- [ ] Modeles Prisma (Channel, Vod, Moment, ClipJob, StreamerSettings : mots-cles, DA, duree) -- pas encore ecrits.
 - [ ] Banque de clips de reference : stats via API Twitch Clips (vues) et YouTube Data API ; Meta/TikTok jugees inaccessibles via app approuvee -> hors perimetre V2.
-- [ ] Infra : le rendu video (ffmpeg, suivi du visage) ne tient pas dans le Nuxt/VPS actuel sans worker dedie ; decision d'architecture a prendre avant l'etape 3.
+- [x] Infra : rendu sur le VPS existant (decision du porteur, pas d'alternative peu couteuse connue). Consequences : file d'attente avec un seul rendu a la fois, ffmpeg `nice` + preset rapide, process worker separe du serveur Nuxt (pm2) pour ne pas bloquer le site, lots de 4 clips. Revoir si la charge CPU gene le site.
 
 ### Prochaines etapes :
 - [ ] Reconfirmer que la connectivite Neon reste stable en environnement de dev (un probleme P1001 avait ete rencontre le 2026-07-01 ; un insert reel a reussi le 2026-07-02, mais aucune note ulterieure ne reconfirme l'etat sur la duree)
@@ -73,6 +76,8 @@ Direction : passer de la simulation a un pipeline reel, inspire d'un workflow de
 
 | 2026-10-23 | Lancer la V2 (vrai pipeline) sans analyser d'abord les feedbacks de la landing | Decision du porteur : signal terrain juge suffisant (voir STORY.md). Ne pas re-proposer d'analyser les retours avant de construire. |
 | 2026-10-23 | Premier module V2 = detection de pics de chat, pure et testable, sans dependance | Verifiable sans credentials Twitch ni infra ; mots-cles configurables car le streamer connait sa communaute |
+| 2026-10-23 | Chat via GraphQL Twitch ; lien de VOD manuel seulement en option ; recuperation automatique de la VOD, clipping a la fin du stream voire pendant | Le streamer ne doit rien faire ; objectif d'autonomie du bot |
+| 2026-10-23 | Rendu video sur le VPS existant | Seule option peu couteuse connue du porteur |
 | 2026-10-23 | Chat calme => pas de clip issu du chat ; la banque de clips de reference doit alors prendre le relais | Le chat et la banque sont deux sources independantes, aucune n'est obligatoire seule |
 
 ---
@@ -85,7 +90,7 @@ Direction : passer de la simulation a un pipeline reel, inspire d'un workflow de
 - **2026-07-02** : Ajout d'un workflow GitHub Actions de deploiement continu vers un VPS (SSH + pm2) sur push vers `main`.
 - **2026-07-06** : Integration du module `nuxt-posthog` pour le tracking analytics, avec un plugin dedie pour enregistrer le nom de l'app.
 - **2026-07-31** : Correction de la description dans `LandingHero` pour mentionner YouTube Shorts en plus de Twitch.
-- **2026-10-23** : Cadrage de la V2 a partir du brief du porteur (transcription d'un stream + captures). Ajout du module `chatPeaks` + tests + script `npm test`. Point technique releve : le chat des VODs n'est pas dans l'API Twitch officielle. Fichiers `tmp_*.html` a la racine : residus de verification, non touches.
+- **2026-10-23** : Cadrage de la V2 a partir du brief du porteur (transcription d'un stream + captures). Ajout du module `chatPeaks` + tests + script `npm test`. Point technique releve : le chat des VODs n'est pas dans l'API Twitch officielle. Ajout du schema Prisma V2 (migration non appliquee). Les decisions GraphQL / VOD auto / VPS sont prises. Pour lancer les commandes Prisma localement : `npm ci --ignore-scripts` puis `./node_modules/.bin/prisma ...` (un `npx prisma` sans install recupere une version 7 incompatible). Fichiers `tmp_*.html` a la racine : residus de verification, non touches.
 
 ---
 
