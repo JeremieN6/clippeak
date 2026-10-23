@@ -95,3 +95,15 @@ test('real ffmpeg: renderJob produces a clean vertical clip, passes QC and build
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('renderJob stops before rendering when there is not enough speech for the minimum length', async () => {
+  let rendered = false
+  const ctx = baseContext()
+  ctx.settings.clipMinSec = 60
+  ctx.settings.clipMaxSec = 90
+  await assert.rejects(
+    renderJob(ctx, { getVideoUrl: async () => 'x', runFfmpeg: async () => { rendered = true; return '' }, collectMetrics: async () => ({} as any), outputDir: tmpdir() }),
+    /Pas assez de parole/
+  )
+  assert.equal(rendered, false)
+})

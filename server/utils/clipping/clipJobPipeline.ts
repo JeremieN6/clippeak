@@ -86,6 +86,10 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
   if (!planned) throw new Error('Transcription vide : impossible de planifier la coupe')
   const plan = planned
   const durationFromRanges = plan.keepRanges.reduce((sum, r) => sum + (r.end - r.start), 0)
+  // Pas assez de parole pour atteindre la duree minimale : inutile de rendre un clip que le controle refuserait.
+  if (durationFromRanges < minSec - 0.5) {
+    throw new Error(`Pas assez de parole autour du pic : ${durationFromRanges.toFixed(1)} s montees pour un minimum de ${minSec} s (baisser la duree minimale ou choisir un autre moment)`)
+  }
 
   const timeline = buildTimeline(plan.keepRanges)
   const words: TimedWord[] = ctx.transcript
