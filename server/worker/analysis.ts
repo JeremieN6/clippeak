@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { readEnv } from '../utils/env'
 import { prisma } from '../utils/prisma'
 import { createPipelineStore } from '../utils/clipping/prismaPipelineStore'
+import { retrying } from '../utils/clipping/dbRetry'
 import { analyzeVod } from '../utils/clipping/vodAnalysis'
 import { detectChatPeaks } from '../utils/clipping/chatPeaks'
 import { fetchVodChat } from '../utils/clipping/twitchChat'
@@ -15,7 +16,7 @@ import { transcribePeak } from '../utils/clipping/peakTranscript'
 import { createClaudeScorer, heuristicScorer } from '../utils/clipping/momentScoring'
 import { buildReferenceProfile, rateAgainstReference } from '../utils/clipping/referenceClips'
 
-const store = createPipelineStore(prisma)
+const store = retrying(createPipelineStore(prisma), { onRetry: (error, attempt) => console.warn(`[worker] base injoignable (tentative ${attempt}), nouvel essai`) })
 
 // Analyse une VOD terminee : pics de chat -> transcription autour des pics -> note -> moments + clips en file.
 // Renvoie true si une VOD a ete traitee (le worker repart alors sans dormir).

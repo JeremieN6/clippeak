@@ -7,8 +7,8 @@ import { audioWindowArgs } from './audioWindow.ts'
 import { getVodAudioPlaylistUrl, parseAudioOnlyUrl, VodPlaylistError } from './vodPlaylist.ts'
 
 test('windowForPeak puts ~45 s before and ~15 s after the peak and never starts before 0', () => {
-  assert.deepEqual(windowForPeak({ startSec: 980, endSec: 1000, peakSec: 1035 }), { startSec: 990, durationSec: 60 })
-  assert.deepEqual(windowForPeak({ startSec: 0, endSec: 10, peakSec: 20 }), { startSec: 0, durationSec: 35 })
+  assert.deepEqual(windowForPeak({ startSec: 980, endSec: 1000, peakSec: 1035 }), { startSec: 990, durationSec: 65 })
+  assert.deepEqual(windowForPeak({ startSec: 0, endSec: 10, peakSec: 20 }), { startSec: 0, durationSec: 40 })
 })
 
 test('transcribePeak shifts segments to VOD time, extracts what is said before the peak and cleans up', async () => {
@@ -28,7 +28,7 @@ test('transcribePeak shifts segments to VOD time, extracts what is said before t
     }),
     removeFile: async (path) => { calls.push(`remove ${path}`) }
   })
-  assert.deepEqual(calls, ['extract 990 60 /tmp/w.wav', 'remove /tmp/w.wav'])
+  assert.deepEqual(calls, ['extract 990 65 /tmp/w.wav', 'remove /tmp/w.wav'])
   assert.equal(result.segments.length, 3)
   assert.equal(result.segments[0].start, 992)
   assert.equal(result.beforePeak, 'Elles ont une intelligence attends la suite')

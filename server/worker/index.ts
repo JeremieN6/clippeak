@@ -1,6 +1,7 @@
 import { prisma } from '../utils/prisma'
 import { runClipWorker } from '../utils/clipping/clipQueue'
 import { createPrismaClipQueueStore } from '../utils/clipping/prismaClipQueueStore'
+import { retrying } from '../utils/clipping/dbRetry'
 import { commandWorks, hasBlockingIssue, REQUIRED_SCHEMA, runPreflight } from '../utils/clipping/preflight'
 import { analysisStep } from './analysis'
 import { renderClip } from './render'
@@ -50,7 +51,7 @@ async function main() {
   await waitUntilReady(process.env.WHISPER_PYTHON || (process.platform === 'win32' ? 'python' : 'python3'))
   if (stopping) return
   const summary = await runClipWorker({
-    store: createPrismaClipQueueStore(prisma),
+    store: retrying(createPrismaClipQueueStore(prisma), { onRetry: (error, attempt) => console.warn(`[worker] base injoignable (tentative ${attempt}), nouvel essai`) }),
     render: renderClip,
     idleTask: analysisStep,
     pollMs,

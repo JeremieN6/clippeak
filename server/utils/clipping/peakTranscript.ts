@@ -24,7 +24,7 @@ export interface PeakTranscriptDeps {
 }
 
 // ~60 s autour du pic, davantage avant qu'apres : l'accroche se dit AVANT que le chat reagisse.
-export function windowForPeak(peak: PeakRef, beforeSec = 45, afterSec = 15): { startSec: number, durationSec: number } {
+export function windowForPeak(peak: PeakRef, beforeSec = 45, afterSec = 20): { startSec: number, durationSec: number } {
   const startSec = Math.max(0, Math.floor(peak.peakSec - beforeSec))
   return { startSec, durationSec: Math.ceil(peak.peakSec + afterSec - startSec) }
 }

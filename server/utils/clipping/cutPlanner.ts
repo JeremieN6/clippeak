@@ -32,21 +32,35 @@ export interface CutPlan {
 
 const SENTENCE_END = /[.!?…]$/
 
+// Fin de phrase : ponctuation finale OU pause d'au moins 0,5 s apres le mot (Whisper ponctue peu la parole de stream,
+// la pause est alors le seul repere d'une phrase terminee) OU dernier mot de la transcription.
+export function phraseEnds(words: TranscriptWord[]): Set<TranscriptWord> {
+  const ends = new Set<TranscriptWord>()
+  words.forEach((word, i) => {
+    const next = words[i + 1]
+    if (SENTENCE_END.test(word.text) || !next || next.start - word.end >= 0.5) ends.add(word)
+  })
+  return ends
+}
+
 function flattenWords(segments: TranscriptSegment[]): TranscriptWord[] {
   return segments.flatMap(s => s.words?.length ? s.words : [{ start: s.start, end: s.end, text: s.text }])
 }
 
-// Debuts de phrases (temps de VOD) : debut de segment Whisper, ou mot suivant une ponctuation finale.
+// Debuts de phrases (temps de VOD) : debut de segment Whisper, ou mot qui suit une fin de phrase
+// (ponctuation finale ou pause, voir phraseEnds).
 function sentenceStarts(segments: TranscriptSegment[]): number[] {
   const starts = new Set<number>()
+  const all = flattenWords(segments).filter(w => w.text)
+  const ends = phraseEnds(all)
+  all.forEach((word, i) => {
+    if (i > 0 && ends.has(all[i - 1])) starts.add(word.start)
+  })
   for (const segment of segments) {
-    const words = segment.words?.length ? segment.words : [{ start: segment.start, end: segment.end, text: segment.text }]
-    starts.add(words[0].start)
-    words.forEach((w, i) => {
-      if (i > 0 && SENTENCE_END.test(words[i - 1].text)) starts.add(w.start)
-    })
+    const first = segment.words?.length ? segment.words[0] : { start: segment.start }
+    starts.add(first.start)
   }
-  return [...starts].sort((a, b) => a - b)
+  return [...starts].sort((x, y) => x - y)
 }
 
 // Retire les silences internes : toute pause plus longue que maxPauseSec est reduite a keepPauseSec.
@@ -90,7 +104,8 @@ export function planCut(segments: TranscriptSegment[], peakSec: number, settings
   const spoken = words.filter(w => w.end <= peakSec + grace)
   const pool = spoken.length ? spoken : [words[0]]
   const lastWord = pool[pool.length - 1]
-  const closing = [...pool].reverse().find(w => SENTENCE_END.test(w.text) && w.end >= lastWord.end - 6) ?? lastWord
+  const ends = phraseEnds(words)
+  const closing = [...pool].reverse().find(w => ends.has(w) && w.end >= lastWord.end - 6) ?? lastWord
   const endSec = closing.end + tail
 
   // Debut : on recule de phrase en phrase jusqu'a ce que la duree MONTEE (silences retires) atteigne minSec,
@@ -110,7 +125,7 @@ export function planCut(segments: TranscriptSegment[], peakSec: number, settings
   let keepRanges = trimSilences(words, startSec, finalEnd, settings)
   let durationSec = keepRanges.reduce((sum, r) => sum + (r.end - r.start), 0)
   if (durationSec < settings.minSec) {
-    const later = words.filter(w => w.end > closing.end && SENTENCE_END.test(w.text))
+    const later = words.filter(w => w.end > closing.end && ends.has(w))
     for (const word of later) {
       const candidateEnd = word.end + tail
       if (candidateEnd - startSec > settings.maxSec) break

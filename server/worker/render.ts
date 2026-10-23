@@ -9,8 +9,9 @@ import { detectFraming, frameExtractor, runLocateScript } from '../utils/clippin
 import { join } from 'node:path'
 import type { ClipJobToRender } from '../utils/clipping/clipQueue'
 import { prisma } from '../utils/prisma'
+import { retrying } from '../utils/clipping/dbRetry'
 
-const store = createPipelineStore(prisma)
+const store = retrying(createPipelineStore(prisma), { onRetry: (error, attempt) => console.warn(`[worker] base injoignable (tentative ${attempt}), nouvel essai`) })
 
 // Rend un clip : charge le contexte (moment, DA, fichiers du streamer), lance le pipeline et enregistre le resultat.
 // Le worker marque le job "review" (via markReview) ou "failed" ; ici on enrichit la ligne avant de rendre la main.

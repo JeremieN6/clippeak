@@ -73,3 +73,22 @@ test('planCut extends the end on the next finished sentences when the trimmed le
   const capped = planCut(segs, 108, { minSec: 30, maxSec: 14 })!
   assert.ok(capped.endSec - capped.startSec <= 14.5)
 })
+
+test('planCut uses pauses as phrase boundaries when the transcript has no punctuation', () => {
+  const w = (text: string, start: number) => ({ text, start, end: start + 0.3 })
+  // groupes de mots separes par des pauses de 0,8 s, sans aucun point
+  const flat = [
+    w('alors', 100), w('hier', 100.4), w('au', 100.8), w('marche', 101.2),
+    w('et', 102.3), w('le', 102.7), w('mec', 103.1), w('dit', 103.5), w('rien', 103.9),
+    w('bref', 105), w('voila', 105.4), w('quoi', 105.8), w('donc', 107), w('fin', 107.4)
+  ]
+  const segs = [{ start: 100, end: 107.7, text: 'x', words: flat }]
+  // minimum atteint : la fin tombe sur une pause (apres "quoi"), pas au milieu d'un groupe
+  const plan = planCut(segs, 104.5, { minSec: 4, maxSec: 30 })!
+  assert.ok(/quoi$/.test(plan.lastWords))
+  assert.ok(plan.hook.startsWith('bref') || plan.hook.startsWith('et') || plan.hook.startsWith('alors'))
+  // minimum plus haut : prolongation sur le groupe suivant, termine lui aussi sur une pause
+  const longer = planCut(segs, 104.5, { minSec: 7, maxSec: 30 })!
+  assert.ok(longer.endSec > plan.endSec)
+  assert.ok(/fin$/.test(longer.lastWords))
+})
