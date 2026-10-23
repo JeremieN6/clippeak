@@ -84,3 +84,15 @@
 **Cause racine** : limite de 260 caracteres des chemins Windows ; incompatibilite de version PyAV ; pour une VOD, usher attend `nauth/nauthsig` et certaines VODs sont `vod_manifest_restricted`.
 **Solution** : venv dans un chemin court, WAV lu par le script lui-meme (numpy), parametres `nauth/nauthsig`, erreur `restricted` explicite.
 **Regle** : creer les venv Python dans un chemin court ; ne pas dependre du decodeur audio d'une bibliotheque quand ffmpeg produit deja le bon format ; tester un endpoint Twitch non officiel sur une VOD du porteur ET une VOD tierce.
+
+### [2026-10-24] Ecrire du code avec des gabarits via le shell
+**Probleme** : Un fichier TypeScript contenant des gabarits `${...}` et des antislashs, ecrit par un script `node -e` dans le shell, a ete corrompu (variables developpees par bash, expressions regulieres cassees).
+**Cause racine** : Plusieurs niveaux d'echappement (bash, JavaScript, regex) pour du code qui n'en a pas besoin.
+**Solution** : Reecriture avec l'outil d'ecriture de fichiers ; les scripts de correctif passent par un fichier `.cjs` et non par `node -e`.
+**Regle** : Jamais de code contenant `${}`, des antislashs ou des guillemets imbriques dans une commande shell : ecrire le fichier directement.
+
+### [2026-10-24] Zod 4 : valeurs par defaut des objets imbriques
+**Probleme** : `z.object({...}).default({})` ne remplissait pas les valeurs par defaut internes ; un champ nullable sans `.default(null)` etait requis.
+**Cause racine** : En zod 4, `.default(x)` court-circuite l'analyse ; il faut `.prefault({})` pour que l'objet par defaut soit analyse.
+**Solution** : `.prefault({})` sur les objets imbriques et `.default(null)` sur les champs nullables facultatifs.
+**Regle** : Tester le schema avec `parse({})` des qu'il comporte des objets imbriques.
