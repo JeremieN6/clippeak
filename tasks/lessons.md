@@ -78,3 +78,9 @@
 **Cause racine** : Endpoint non documente : le curseur exige un jeton Client-Integrity, que l'offset ne demande pas ; comportement des VODs en cours different des VODs terminees.
 **Solution** : Pagination par offset avec recouvrement et dedoublonnage, offset de depart >= 3 s, tests avec la forme reelle de reponse.
 **Regle** : Tout client d'un endpoint non officiel se teste contre le vrai service, sur une VOD terminee ET une VOD en cours, avant d'etre declare valide.
+
+### [2026-10-23] Environnement Python et playlists Twitch
+**Probleme** : `pip install faster-whisper` a echoue dans un venv du dossier temporaire (chemin Windows trop long, droits admin pour l'activer) ; l'appel de decodage PyAV de faster-whisper a plante (`metadata_errors`) ; la playlist usher repondait 403 avec les parametres `sig/token`.
+**Cause racine** : limite de 260 caracteres des chemins Windows ; incompatibilite de version PyAV ; pour une VOD, usher attend `nauth/nauthsig` et certaines VODs sont `vod_manifest_restricted`.
+**Solution** : venv dans un chemin court, WAV lu par le script lui-meme (numpy), parametres `nauth/nauthsig`, erreur `restricted` explicite.
+**Regle** : creer les venv Python dans un chemin court ; ne pas dependre du decodeur audio d'une bibliotheque quand ffmpeg produit deja le bon format ; tester un endpoint Twitch non officiel sur une VOD du porteur ET une VOD tierce.
