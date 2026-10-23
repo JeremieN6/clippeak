@@ -1,4 +1,4 @@
-﻿# Lessons Learned
+# Lessons Learned
 
 > Ce fichier est mis a jour apres CHAQUE correction faite par l utilisateur.
 > But : ne plus refaire les memes erreurs. Relu au debut de chaque session.
@@ -54,3 +54,15 @@
 **Cause racine** : Le client Prisma dans `node_modules` etait reste genere avec l ancien schema, donc le runtime demandait encore un champ obsolet.
 **Solution** : Regeneration du client Prisma apres avoir stoppe les processus Node du projet, puis retest d un insert reel reussi.
 **Regle** : Apres toute modification de schema Prisma, regenerer explicitement le client avant de valider le runtime local, surtout sur Windows ou les fichiers du moteur peuvent rester verrouilles.
+
+### [2026-10-23] Session cloud incapable de lire les fichiers locaux
+**Probleme** : L'agent a demande au porteur de verifier lui-meme les noms de variables de `.env.local`, qui est sur son PC, et n'a pas pu tester Twitch (reseau du conteneur bloque).
+**Cause racine** : Session lancee dans un conteneur cloud (copie du depot GitHub) : fichiers ignores par git et services externes bloques hors de portee.
+**Solution** : Toute la connaissance de la conversation est consignee dans `CLAUDE.md`, `BRIEF-V2.md`, `PRISE-DE-POSITION.md` ; les verifications reelles sont deleguees a une session locale.
+**Regle** : Avant de promettre une verification, determiner si la session peut atteindre la ressource (fichier local, reseau externe). Sinon le dire d'emblee et deleguer ; ne jamais presenter du code non execute contre le vrai service comme valide.
+
+### [2026-10-23] Outils Node/Prisma : versions et syntaxe
+**Probleme** : `npx prisma` sans installation a recupere une version 7 incompatible ; `node --test` a refuse les "parameter properties" TypeScript.
+**Cause racine** : `npx` telecharge la derniere version si le paquet local est absent ; Node ne fait que retirer les types (strip-only), il ne transforme pas la syntaxe TypeScript.
+**Solution** : `npm ci --ignore-scripts` puis `./node_modules/.bin/prisma` ; attributs de classe declares explicitement.
+**Regle** : Utiliser les binaires locaux du projet ; dans le code teste par `node --test`, pas d'enum, de namespace ni de parameter properties.

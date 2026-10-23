@@ -22,9 +22,9 @@ Livrer Clippeak V1: landing page Nuxt interactive avec simulation complete du fl
 ---
 
 ## Etat Actuel du Projet
-**Phase** : V1 fonctionnelle, deployee en continu sur `main` via CI/CD
-**Derniere session** : 2026-07-31
-**Progression globale** : ~95%
+**Phase** : V1 (landing + simulation) en production ; V2 (vrai pipeline de clipping) en construction
+**Derniere session** : 2026-10-23
+**Progression globale** : V1 ~95% ; V2 fondations posees (voir section V2)
 
 ### Ce qui est fait :
 - [x] Configuration MCP memoire
@@ -42,6 +42,7 @@ Livrer Clippeak V1: landing page Nuxt interactive avec simulation complete du fl
 - [x] Integration PostHog (nuxt-posthog) pour le tracking produit
 
 ### V2 en cours -- vrai pipeline de clipping (demarree 2026-10-23)
+Brief complet : `BRIEF-V2.md`. Prises de position et leviers : `PRISE-DE-POSITION.md`.
 Direction : passer de la simulation a un pipeline reel, inspire d'un workflow de streamer (Claude + VODs Twitch + chat). Etapes cibles : 1 VODs via API Twitch (liens, pas de telechargement par le streamer) -> 2 moments forts (pics de chat + transcription) -> 3 coupe verticale 1080x1920, duree parametrable -> 4 streamer toujours cadre (reconnaissance par photos) -> 5 montage (DA parametrable en back-office) -> 6 illustrations (dossier de B-roll du streamer) -> 7 controle qualite + legende -> 8 production par lots de 4, validation humaine obligatoire, rien publie sans accord.
 - [x] Module `server/utils/clipping/chatPeaks.ts` : detection de pics de chat (debit robuste median/MAD + mots-cles definis par le streamer + messages en majuscules), score /10, pre-roll avant le pic. Tests : `npm test` (node:test, 7 tests).
 - [x] Source de donnees chat : GraphQL non officiel de Twitch (l'API officielle ne fournit pas le chat des VODs). Decision du 2026-10-23. Risque : endpoint non documente, peut changer -> isoler dans un seul client, fixtures de test.
@@ -79,11 +80,11 @@ Direction : passer de la simulation a un pipeline reel, inspire d'un workflow de
 | 2026-07-02 | Le formulaire de feedback reste facultatif, sans verrouillage du CTA de telechargement | Un gating obligatoire cassait la fluidite du parcours try-now ; on privilegie une conversion volontaire a forte intention plutot qu'une barriere de sortie |
 | 2026-07-02 | Suppression du champ `zip_par_mail` du schema Feedback | Redondant avec la question plus complete sur la plateforme de reception ; une seule question source de verite |
 | 2026-07-02 | Deploiement continu via GitHub Actions + SSH + pm2 vers un VPS (plutot qu'une plateforme managee type Vercel) | Choix d'infra pour garder le controle du serveur (`/srv/saas/clippeak`) |
-
 | 2026-10-23 | Lancer la V2 (vrai pipeline) sans analyser d'abord les feedbacks de la landing | Decision du porteur : signal terrain juge suffisant (voir STORY.md). Ne pas re-proposer d'analyser les retours avant de construire. |
 | 2026-10-23 | Premier module V2 = detection de pics de chat, pure et testable, sans dependance | Verifiable sans credentials Twitch ni infra ; mots-cles configurables car le streamer connait sa communaute |
 | 2026-10-23 | Chat via GraphQL Twitch ; lien de VOD manuel seulement en option ; recuperation automatique de la VOD, clipping a la fin du stream voire pendant | Le streamer ne doit rien faire ; objectif d'autonomie du bot |
 | 2026-10-23 | Rendu video sur le VPS existant | Seule option peu couteuse connue du porteur |
+| 2026-10-23 | Une seule application Twitch Clippeak pour tous les streamers (jeton d'application, pas d'OAuth streamer en V2) | Voir `PRISE-DE-POSITION.md` |
 | 2026-10-23 | Chat calme => pas de clip issu du chat ; la banque de clips de reference doit alors prendre le relais | Le chat et la banque sont deux sources independantes, aucune n'est obligatoire seule |
 
 ---
@@ -96,12 +97,14 @@ Direction : passer de la simulation a un pipeline reel, inspire d'un workflow de
 - **2026-07-02** : Ajout d'un workflow GitHub Actions de deploiement continu vers un VPS (SSH + pm2) sur push vers `main`.
 - **2026-07-06** : Integration du module `nuxt-posthog` pour le tracking analytics, avec un plugin dedie pour enregistrer le nom de l'app.
 - **2026-07-31** : Correction de la description dans `LandingHero` pour mentionner YouTube Shorts en plus de Twitch.
-- **2026-10-23** : Cadrage de la V2 a partir du brief du porteur (transcription d'un stream + captures). Ajout du module `chatPeaks` + tests + script `npm test`. Point technique releve : le chat des VODs n'est pas dans l'API Twitch officielle. Ajout du schema Prisma V2 (migration non appliquee). Les decisions GraphQL / VOD auto / VPS sont prises. Client Twitch : l'application est en cours de creation sur dev.twitch.tv (type Confidentiel) ; client_id/secret a mettre dans les variables d'environnement du VPS, jamais dans le depot ni dans une conversation. Pour lancer les commandes Prisma localement : `npm ci --ignore-scripts` puis `./node_modules/.bin/prisma ...` (un `npx prisma` sans install recupere une version 7 incompatible). Fichiers `tmp_*.html` a la racine : residus de verification, non touches.
+- **2026-10-23** : Cadrage de la V2 a partir du brief du porteur (transcription d'un stream + captures). Ajout du module `chatPeaks` + tests + script `npm test`. Point technique releve : le chat des VODs n'est pas dans l'API Twitch officielle. Ajout du schema Prisma V2 (migration non appliquee). Les decisions GraphQL / VOD auto / VPS sont prises. Application Twitch `clippeak` creee (type Confidentiel) ; le porteur a place les cles dans `.env.local` SUR SON PC (`C:\Travail\Jeremiecode\Mes Projets Dev\Projets\ProjetPerso\Saas\clippeak`, Windows). Les noms de variables exacts n'ont pas ete verifies (fichier invisible depuis le cloud) : attendus `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `TWITCH_EVENTSUB_SECRET`, `TWITCH_EVENTSUB_CALLBACK_URL`. Jamais de valeur dans le depot ni dans une conversation. Pour la prod, les mettre aussi dans l'environnement du VPS. Pour lancer les commandes Prisma localement : `npm ci --ignore-scripts` puis `./node_modules/.bin/prisma ...` (un `npx prisma` sans install recupere une version 7 incompatible). Fichiers `tmp_*.html` a la racine : residus de verification, non touches.
+
+- **2026-10-23 (suite)** : Ajout du client chat GraphQL, de la detection automatique des VODs (EventSub), de `PRISE-DE-POSITION.md` et `BRIEF-V2.md`. 22 tests (`npm test`, Node >= 22.18). Branche `claude/update-project-memory-rxeoln` fusionnee dans `main` (deploiement automatique declenche). Cette session tournait dans un conteneur cloud : elle ne voit pas le PC du porteur ni `.env.local`, et son reseau bloque Twitch (HTTP 403 du proxy) -> RIEN du code Twitch n'a ete execute contre le vrai service. Prochaine session = LOCALE, sur le PC du porteur : verifier en reel (voir "A verifier en reel").
 
 ---
 
 ## Lecons Apprises
-Voir `tasks/lessons.md` pour le detail des corrections et patterns a eviter (5 entrees a ce jour : structure de landing non conforme au brief, feedback manquant sur try-now, gating trop agressif du CTA, emplacement du CTA final, champ redondant + regeneration du client Prisma apres migration).
+Voir `tasks/lessons.md` pour le detail des corrections et patterns a eviter (8 entrees a ce jour : voir le fichier).
 
 ---
 

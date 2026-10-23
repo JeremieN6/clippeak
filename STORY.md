@@ -15,7 +15,7 @@ Donner a voir, sans backend de production reel, ce a quoi ressemblerait un servi
 ## Statut actuel
 Clippeak est une landing page interactive complete et deployee en continu : un visiteur peut coller une URL Twitch, regarder une simulation de traitement (~58 secondes, avec etapes et estimation), telecharger un ZIP de demonstration, puis donner son avis via un formulaire de feedback. Un espace admin protege par mot de passe permet de consulter les retours collectes.
 
-Le produit reel de clipping n'existe pas encore : tout le "traitement" est simule cote front pour tester la promesse et le parcours avant d'investir dans le moteur automatise.
+Le produit reel de clipping n'existe pas encore : tout le "traitement" est simule cote front. Depuis octobre 2026, les fondations du vrai moteur sont en construction (detection des moments forts du chat, recuperation automatique des VODs), pas encore testees en conditions reelles ; le detail est dans `BRIEF-V2.md`.
 
 ---
 
