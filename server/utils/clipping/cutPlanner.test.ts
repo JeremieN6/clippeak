@@ -30,7 +30,7 @@ test('planCut starts on a sentence, ends just after the last word and reaches th
     ...speech(words(['Et', 'la', 'le', 'mec', 'me', 'dit', 'rien', 'du', 'tout', 'mdr.'], 104)),
     ...speech(words(['Bref', 'voila', 'quoi.'], 112))
   ]
-  const plan = planCut(segs, 108, { minSec: 12, maxSec: 40 })!
+  const plan = planCut(segs, 108, { minSec: 6, maxSec: 40 })!
   assert.ok(plan.startSec <= 100.01)
   assert.ok(plan.startSec >= 99.5)
   assert.ok(plan.endSec >= 108)
@@ -57,4 +57,19 @@ test('planCut works with segments that have no word timings', () => {
   const plan = planCut([{ start: 10, end: 14, text: 'Une phrase.' }, { start: 15, end: 20, text: 'Et la chute.' }], 18, { minSec: 5, maxSec: 30 })!
   assert.ok(plan.endSec >= 20)
   assert.ok(plan.startSec <= 10.01)
+})
+
+test('planCut extends the end on the next finished sentences when the trimmed length is under the minimum', () => {
+  const segs = [
+    ...speech(words(['Alors', 'hier', 'je', 'suis', 'alle', 'au', 'marche.'], 100)),
+    ...speech(words(['Et', 'la', 'le', 'mec', 'me', 'dit', 'rien', 'du', 'tout', 'mdr.'], 104)),
+    ...speech(words(['Bref', 'voila', 'quoi.'], 112))
+  ]
+  const plan = planCut(segs, 108, { minSec: 12, maxSec: 40 })!
+  assert.ok(plan.endSec > 113)
+  assert.ok(/quoi.$/.test(plan.lastWords))
+  assert.ok(plan.durationSec >= 12 || plan.endSec - plan.startSec <= 40)
+  // et ne depasse jamais la duree maximale
+  const capped = planCut(segs, 108, { minSec: 30, maxSec: 14 })!
+  assert.ok(capped.endSec - capped.startSec <= 14.5)
 })

@@ -104,14 +104,28 @@ export function planCut(segments: TranscriptSegment[], peakSec: number, settings
     const trimmed = trimSilences(words, startSec, endSec, settings).reduce((sum, r) => sum + (r.end - r.start), 0)
     if (trimmed >= settings.minSec) break
   }
-  const keepRanges = trimSilences(words, startSec, endSec, settings)
-  const durationSec = keepRanges.reduce((sum, r) => sum + (r.end - r.start), 0)
+  // Duree montee encore sous le minimum (peu de phrases avant le pic) : on prolonge sur les phrases suivantes,
+  // chacune terminee, sans depasser maxSec de duree brute.
+  let finalEnd = endSec
+  let keepRanges = trimSilences(words, startSec, finalEnd, settings)
+  let durationSec = keepRanges.reduce((sum, r) => sum + (r.end - r.start), 0)
+  if (durationSec < settings.minSec) {
+    const later = words.filter(w => w.end > closing.end && SENTENCE_END.test(w.text))
+    for (const word of later) {
+      const candidateEnd = word.end + tail
+      if (candidateEnd - startSec > settings.maxSec) break
+      finalEnd = candidateEnd
+      keepRanges = trimSilences(words, startSec, finalEnd, settings)
+      durationSec = keepRanges.reduce((sum, r) => sum + (r.end - r.start), 0)
+      if (durationSec >= settings.minSec) break
+    }
+  }
   const hookWords = words.filter(w => w.start >= startSec).slice(0, 12).map(w => w.text)
-  const lastWords = words.filter(w => w.end <= endSec).slice(-8).map(w => w.text)
+  const lastWords = words.filter(w => w.end <= finalEnd).slice(-8).map(w => w.text)
 
   return {
     startSec,
-    endSec,
+    endSec: finalEnd,
     keepRanges,
     durationSec,
     meetsMin: durationSec >= settings.minSec,

@@ -89,6 +89,19 @@ export function wrapTitle(title: string, maxLines = 3, maxCharsPerLine = 24): st
   return lines
 }
 
+// Nombre de lignes qu'occupera le titre (meme decoupage que wrapTitle, sans troncature).
+export function countTitleLines(title: string, maxCharsPerLine = 24): number {
+  return wrapTitle(title, Number.MAX_SAFE_INTEGER, maxCharsPerLine).length
+}
+
+// Plus long debut de texte (mots entiers) qui tient dans maxLines : jamais de 4e ligne, jamais de mot coupe.
+export function fitTitle(text: string, maxLines = 3, maxCharsPerLine = 24): string {
+  const words = text.replace(/\s+/g, ' ').trim().split(' ').filter(Boolean)
+  let kept = words.length
+  while (kept > 1 && countTitleLines(words.slice(0, kept).join(' '), maxCharsPerLine) > maxLines) kept--
+  return words.slice(0, kept).join(' ')
+}
+
 function assTime(seconds: number): string {
   const total = Math.max(0, seconds)
   const h = Math.floor(total / 3600)

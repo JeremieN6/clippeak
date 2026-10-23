@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import { planCut } from './cutPlanner.ts'
 import type { CutPlan, KeepRange } from './cutPlanner.ts'
 import { buildTimeline } from './timeline.ts'
-import { buildAss, wrapTitle } from './assBuilder.ts'
+import { buildAss, fitTitle } from './assBuilder.ts'
 import type { TimedWord } from './assBuilder.ts'
 import { buildRenderArgs } from './clipRender.ts'
 import { evaluateQc } from './clipQc.ts'
@@ -73,8 +73,7 @@ export class QcFailedError extends Error {
 // Titre par defaut : l'accroche du moment, ramenee a 3 lignes ; le streamer peut le modifier au moment de la validation.
 export function defaultTitle(hook: string | null, plan: { hook?: string } | null, maxLines = 3): string {
   const base = (hook || plan?.hook || '').replace(/\s+/g, ' ').trim()
-  const lines = wrapTitle(base.charAt(0).toUpperCase() + base.slice(1), maxLines, 24)
-  return lines.join(' ')
+  return fitTitle(base.charAt(0).toUpperCase() + base.slice(1), maxLines, 24)
 }
 
 // Prepare et rend un clip : plan de coupe, sous-titres, illustrations, rendu ffmpeg, controle qualite, legende.

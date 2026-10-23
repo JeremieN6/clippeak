@@ -79,3 +79,16 @@ test('scanIllustrationFolder indexes videos with filename tags, sidecar source a
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+import { countTitleLines, fitTitle } from './assBuilder.ts'
+
+test('fitTitle keeps whole words that fit in three lines and agrees with countTitleLines', () => {
+  const hook = "Pense un super jeu tu choisis des pseudo et ensuite on verra bien ce qui se passe franchement"
+  const fitted = fitTitle(hook, 3, 24)
+  assert.ok(countTitleLines(fitted, 24) <= 3)
+  assert.ok(hook.startsWith(fitted))
+  assert.ok(fitted.split(' ').length >= 8)
+  assert.equal(fitTitle('Court', 3, 24), 'Court')
+  assert.equal(fitTitle('', 3, 24), '')
+  assert.equal(countTitleLines('un deux trois quatre cinq six sept huit neuf dix onze douze', 12), 6)
+})

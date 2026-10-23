@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { runFfmpeg } from './ffmpegRunner.ts'
 import type { RunFfmpegOptions } from './ffmpegRunner.ts'
-import { normalizeWord } from './assBuilder.ts'
+import { countTitleLines, normalizeWord } from './assBuilder.ts'
 
 export interface ClipMetrics {
   width: number
@@ -99,14 +99,10 @@ export function evaluateQc(metrics: ClipMetrics, expect: QcExpectations): QcRepo
     issues.push({ severity: 'error', code: 'trailing_silence', message: `Silence de ${metrics.trailingSilenceSec.toFixed(1)} s a la fin` })
   }
 
-  const lines = expect.title.split(/\s+/).reduce<string[]>((acc, word) => {
-    const last = acc[acc.length - 1]
-    if (last !== undefined && `${last} ${word}`.length <= expect.titleMaxCharsPerLine) acc[acc.length - 1] = `${last} ${word}`
-    else acc.push(word)
-    return acc
-  }, [])
+  // Meme decoupage que le rendu (assBuilder) : le controle ne peut pas contredire ce qui est dessine.
+  const lineCount = countTitleLines(expect.title, expect.titleMaxCharsPerLine)
   if (!expect.title.trim()) issues.push({ severity: 'error', code: 'title', message: 'Titre vide' })
-  else if (lines.length > expect.titleMaxLines) issues.push({ severity: 'error', code: 'title', message: `Titre sur ${lines.length} lignes (max ${expect.titleMaxLines})` })
+  else if (lineCount > expect.titleMaxLines) issues.push({ severity: 'error', code: 'title', message: `Titre sur ${lineCount} lignes (max ${expect.titleMaxLines})` })
   else if (/[�]/.test(expect.title)) issues.push({ severity: 'error', code: 'title', message: 'Titre avec des caracteres invalides' })
 
   issues.push(...checkNames([expect.title, ...expect.texts], expect.names))
