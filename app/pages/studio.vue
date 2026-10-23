@@ -248,6 +248,8 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
           </fieldset>
           <fieldset class="space-y-3">
             <legend class="font-semibold">Cadrage du streamer</legend>
+            <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.framing.auto" type="checkbox"> Cadrage automatique (reconnaissance du visage avec vos photos)</label>
+            <p class="text-xs text-clippeak-muted">3 a 5 photos nettes suffisent (onglet Fichiers). Si vous n'etes pas reconnu dans le clip, le cadrage manuel ci-dessous est utilise et un avertissement s'affiche.</p>
             <label class="text-sm text-clippeak-muted">Position horizontale (0 gauche, 1 droite) <input v-model.number="detail.style.framing.centerX" type="number" step="0.05" min="0" max="1" :class="fieldClass"></label>
             <label class="text-sm text-clippeak-muted">Position verticale <input v-model.number="detail.style.framing.centerY" type="number" step="0.05" min="0" max="1" :class="fieldClass"></label>
             <label class="text-sm text-clippeak-muted">Zoom (1 = plan large, 2 = grand plan) <input v-model.number="detail.style.framing.zoom" type="number" step="0.1" min="1" max="3" :class="fieldClass"></label>

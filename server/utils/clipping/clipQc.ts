@@ -30,7 +30,7 @@ export interface QcExpectations {
 export interface QcIssue {
   // 'warning' : signale au relecteur sans bloquer le clip (ex. un nom qui ressemble a un nom du dictionnaire).
   severity: 'error' | 'warning'
-  code: 'resolution' | 'duration' | 'sync' | 'no_audio' | 'frozen_end' | 'leading_silence' | 'trailing_silence' | 'title' | 'name'
+  code: 'framing' | 'resolution' | 'duration' | 'sync' | 'no_audio' | 'frozen_end' | 'leading_silence' | 'trailing_silence' | 'title' | 'name'
   message: string
 }
 

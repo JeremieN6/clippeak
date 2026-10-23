@@ -5,6 +5,8 @@ import { dataDir } from '../utils/clipping/dataDir'
 import { collectClipMetrics } from '../utils/clipping/clipQc'
 import { runFfmpeg } from '../utils/clipping/ffmpegRunner'
 import { getVodVideoPlaylistUrl } from '../utils/clipping/vodPlaylist'
+import { detectFraming, frameExtractor, runLocateScript } from '../utils/clipping/framingDetect'
+import { join } from 'node:path'
 import type { ClipJobToRender } from '../utils/clipping/clipQueue'
 import { prisma } from '../utils/prisma'
 
@@ -17,6 +19,11 @@ export async function renderClip(job: ClipJobToRender): Promise<{ outputPath: st
   try {
     const result = await renderJob(ctx, {
       getVideoUrl: vodId => getVodVideoPlaylistUrl(vodId, 720),
+      detectFraming: input => detectFraming(input, {
+        extractFrame: frameExtractor(runFfmpeg),
+        locate: runLocateScript,
+        modelsDir: process.env.VISION_MODELS_DIR || join(dataDir(), 'models')
+      }),
       runFfmpeg,
       collectMetrics: collectClipMetrics,
       outputDir: outputDirectory(),

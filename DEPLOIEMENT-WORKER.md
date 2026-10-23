@@ -19,6 +19,10 @@ python3 -m venv .venv && .venv/bin/pip install faster-whisper
 # Telecharge le modele une fois (~480 Mo dans ~/.cache/huggingface) pour que le premier clip ne l'attende pas
 .venv/bin/python -c "from faster_whisper import WhisperModel; WhisperModel('small', device='cpu', compute_type='int8')"
 mkdir -p /srv/saas/clippeak-data
+
+# Cadrage automatique (facultatif) : OpenCV + 2 modeles (~38 Mo, empreintes SHA-256 verifiees)
+.venv/bin/pip install opencv-python-headless
+.venv/bin/python scripts/vision/download_models.py /srv/saas/clippeak-data/models
 ```
 Si le site est derriere nginx, autoriser les depots jusqu'a 60 Mo (`client_max_body_size 64m;`) pour les videos d'illustration.
 
@@ -30,6 +34,8 @@ WHISPER_THREADS=2            # le VPS a 2 coeurs partages avec le site
 RENDER_THREADS=2
 CLIPPEAK_DATA_DIR=/srv/saas/clippeak-data
 WORKER_POLL_SEC=20           # plus long = Neon se met plus souvent en veille
+VISION_PYTHON=/srv/saas/clippeak/.venv/bin/python   # defaut : WHISPER_PYTHON
+VISION_MODELS_DIR=/srv/saas/clippeak-data/models     # defaut : <CLIPPEAK_DATA_DIR>/models
 # ANTHROPIC_API_KEY=...      # facultatif : notation des moments par Claude (sinon note locale)
 # CLIPPEAK_LLM_MODEL=claude-sonnet-5-5
 ```

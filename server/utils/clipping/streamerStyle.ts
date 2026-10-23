@@ -40,6 +40,8 @@ export const styleSchema = z.object({
     assetId
   }).prefault({}),
   framing: z.object({
+    // Cadrage automatique par reconnaissance du visage (photos du streamer) ; le cadrage manuel sert de repli.
+    auto: z.boolean().default(false),
     centerX: fraction.default(0.5),
     centerY: fraction.default(0.5),
     zoom: z.number().min(1).max(3).default(1)

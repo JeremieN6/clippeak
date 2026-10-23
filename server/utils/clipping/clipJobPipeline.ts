@@ -16,6 +16,8 @@ import { resolveStyle } from './streamerStyle.ts'
 import type { StreamerStyleConfig, StyleAssets } from './streamerStyle.ts'
 import type { TranscriptSegment } from './whisperTranscribe.ts'
 import type { RunFfmpegOptions } from './ffmpegRunner.ts'
+import type { Framing } from './clipRender.ts'
+import type { DetectFramingInput } from './framingDetect.ts'
 
 export interface JobContext {
   jobId: string
@@ -32,6 +34,8 @@ export interface JobContext {
   style: StreamerStyleConfig
   assets: StyleAssets
   library: IllustrationItem[]
+  // Photos de reference du streamer (reconnaissance du visage pour le cadrage automatique).
+  photoPaths?: string[]
 }
 
 export interface JobResult {
@@ -46,6 +50,7 @@ export interface JobResult {
 
 export interface PipelineDeps {
   getVideoUrl: (vodTwitchId: string) => Promise<string>
+  detectFraming?: (input: DetectFramingInput) => Promise<Framing | null>
   runFfmpeg: (args: string[], options?: RunFfmpegOptions) => Promise<string>
   collectMetrics: (path: string, options?: RunFfmpegOptions) => Promise<ClipMetrics>
   outputDir: string
@@ -109,6 +114,17 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
     }))
 
     const videoUrl = await deps.getVideoUrl(ctx.vodTwitchId)
+
+    // Cadrage automatique : le streamer doit etre reconnu ; sinon on garde le cadrage manuel et on le signale.
+    let renderStyle = style.render
+    let framingWarning: string | null = null
+    if (ctx.style.framing.auto && (ctx.photoPaths?.length ?? 0) > 0 && deps.detectFraming) {
+      const detected = await deps.detectFraming({ videoUrl, startSec: plan.startSec, endSec: plan.endSec, photos: ctx.photoPaths ?? [] }).catch(() => null)
+      if (detected) renderStyle = { ...renderStyle, framing: detected }
+      else framingWarning = 'Streamer non reconnu dans le clip : cadrage manuel utilise (verifier que personne d\'autre n\'est au centre)'
+    } else if (ctx.style.framing.auto) {
+      framingWarning = 'Cadrage automatique actif mais aucune photo de reference : cadrage manuel utilise'
+    }
     const { args } = buildRenderArgs({
       input: videoUrl,
       sourceStartSec: plan.startSec,
@@ -119,7 +135,7 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
       assFile: 'clip.ass',
       fontsDir: deps.fontsDir,
       outPath,
-      style: style.render,
+      style: renderStyle,
       illustrations: illustrations.map(i => ({ path: i.path, start: i.start, end: i.end })),
       threads: deps.threads
     })
@@ -135,6 +151,7 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
       texts: words.map(w => w.text),
       names: [...ctx.style.names, ctx.channelName]
     })
+    if (framingWarning) qc.issues.push({ severity: 'warning', code: 'framing', message: framingWarning })
     if (!qc.passed) throw new QcFailedError(qc)
 
     const { caption, hashtags } = buildCaption({

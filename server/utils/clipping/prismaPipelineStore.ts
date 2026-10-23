@@ -49,6 +49,9 @@ export function createPipelineStore(db: Db) {
         durationSec: 4
       }))
 
+      const photoRows = await db.streamerAsset.findMany({ where: { channelId: channel.id, kind: 'photo' }, orderBy: { createdAt: 'desc' }, take: 8 })
+      const photoPaths = photoRows.map(row => safeResolve(dataDir(), row.path))
+
       const keepRanges = job.keepRanges as Array<{ start: number, end: number }> | null
       return {
         jobId: job.id,
@@ -76,7 +79,8 @@ export function createPipelineStore(db: Db) {
           overlayPath: overlay?.path,
           overlayAnimated: overlay ? overlay.filename.toLowerCase().endsWith('.gif') : false
         },
-        library
+        library,
+        photoPaths
       }
     },
 
