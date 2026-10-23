@@ -23,11 +23,12 @@ export interface RunFfmpegOptions {
   setPriorityFn?: (pid: number, priority: number) => void
 }
 
-const STDERR_TAIL_BYTES = 4_000
+const STDERR_TAIL_BYTES = 16_000
 
 // Lance ffmpeg en priorite basse (equivalent de `nice` : PRIORITY_LOW sur Linux, classe "idle" sur Windows)
 // pour ne pas ralentir le site Nuxt qui partage le CPU. Les arguments (preset, threads) sont choisis par l'appelant.
-export function runFfmpeg(args: string[], options: RunFfmpegOptions = {}): Promise<void> {
+// Renvoie la fin de stderr (utile aux filtres d'analyse : silencedetect, freezedetect).
+export function runFfmpeg(args: string[], options: RunFfmpegOptions = {}): Promise<string> {
   const spawnFn = options.spawnFn ?? nodeSpawn
   const applyPriority = options.setPriorityFn ?? setPriority
   const timeoutMs = options.timeoutMs ?? 15 * 60_000
@@ -64,7 +65,7 @@ export function runFfmpeg(args: string[], options: RunFfmpegOptions = {}): Promi
     child.on('close', (code) => {
       clearTimeout(timer)
       if (timedOut) return reject(new FfmpegError(`ffmpeg interrompu apres ${timeoutMs} ms`, code, tail))
-      if (code === 0) return resolve()
+      if (code === 0) return resolve(tail)
       reject(new FfmpegError(`ffmpeg a echoue (code ${code}) : ${tail.trim().split('\n').slice(-3).join(' | ')}`, code, tail))
     })
   })
