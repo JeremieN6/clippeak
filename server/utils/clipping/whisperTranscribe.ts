@@ -3,10 +3,17 @@ import { constants, setPriority } from 'node:os'
 import { resolve } from 'node:path'
 import type { ChildProcess, SpawnOptions } from 'node:child_process'
 
+export interface TranscriptWord {
+  start: number
+  end: number
+  text: string
+}
+
 export interface TranscriptSegment {
   start: number
   end: number
   text: string
+  words?: TranscriptWord[]
 }
 
 export interface TranscriptResult {
@@ -34,6 +41,22 @@ export interface WhisperOptions {
   setPriorityFn?: (pid: number, priority: number) => void
 }
 
+// Whisper decoupe parfois les elisions et la ponctuation en jetons separes (" l", "'existence", "-ce", ",") :
+// on recolle ces fragments au mot precedent pour que chaque mot affiche soit un vrai mot.
+export function mergeWordFragments(words: TranscriptWord[]): TranscriptWord[] {
+  const merged: TranscriptWord[] = []
+  for (const word of words) {
+    const previous = merged[merged.length - 1]
+    if (previous && /^('|’|-|[.,;:!?…]+$)/.test(word.text)) {
+      previous.text += word.text
+      previous.end = Math.max(previous.end, word.end)
+    } else {
+      merged.push({ ...word })
+    }
+  }
+  return merged
+}
+
 export function parseWhisperOutput(stdout: string): TranscriptResult {
   const line = stdout.split(/\r?\n/).reverse().find(l => l.trim().startsWith('{'))
   if (!line) throw new WhisperError('Sortie de transcription illisible', null)
@@ -45,7 +68,14 @@ export function parseWhisperOutput(stdout: string): TranscriptResult {
   }
   if (!Array.isArray(data.segments)) throw new WhisperError('Sortie de transcription sans segments', null)
   return {
-    segments: data.segments.map((s: any) => ({ start: Number(s.start), end: Number(s.end), text: String(s.text ?? '').trim() })),
+    segments: data.segments.map((s: any) => ({
+      start: Number(s.start),
+      end: Number(s.end),
+      text: String(s.text ?? '').trim(),
+      ...(Array.isArray(s.words)
+        ? { words: mergeWordFragments(s.words.map((w: any) => ({ start: Number(w.start), end: Number(w.end), text: String(w.text ?? '').trim() })).filter((w: TranscriptWord) => w.text)) }
+        : {})
+    })),
     audioSec: Number(data.audio_s ?? 0),
     transcribeSec: Number(data.transcribe_s ?? 0)
   }

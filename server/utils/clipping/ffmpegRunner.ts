@@ -18,6 +18,7 @@ export interface RunFfmpegOptions {
   binary?: string
   timeoutMs?: number
   lowPriority?: boolean
+  cwd?: string
   spawnFn?: (command: string, args: string[], options: SpawnOptions) => ChildProcess
   setPriorityFn?: (pid: number, priority: number) => void
 }
@@ -33,7 +34,8 @@ export function runFfmpeg(args: string[], options: RunFfmpegOptions = {}): Promi
 
   return new Promise((resolve, reject) => {
     const child = spawnFn(options.binary ?? 'ffmpeg', ['-nostdin', '-hide_banner', '-y', ...args], {
-      stdio: ['ignore', 'ignore', 'pipe']
+      stdio: ['ignore', 'ignore', 'pipe'],
+      cwd: options.cwd
     })
 
     if (options.lowPriority !== false && child.pid) {

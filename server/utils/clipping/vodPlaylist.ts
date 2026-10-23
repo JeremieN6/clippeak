@@ -23,9 +23,36 @@ export function parseAudioOnlyUrl(master: string): string | null {
   return lines.slice(mediaIndex).find(l => /^https?:\/\//.test(l.trim()))?.trim() ?? null
 }
 
-// URL de la playlist audio seule d'une VOD publique, utilisable directement par ffmpeg (-ss / -t).
+export interface VideoVariant {
+  name: string
+  height: number
+  url: string
+}
+
+// Variantes video d'une playlist maitresse (#EXT-X-STREAM-INF avec RESOLUTION) ; l'audio seul est ignore.
+export function parseVideoVariants(master: string): VideoVariant[] {
+  const lines = master.split(/\r?\n/)
+  const variants: VideoVariant[] = []
+  lines.forEach((line, i) => {
+    if (!line.startsWith('#EXT-X-STREAM-INF')) return
+    const resolution = /RESOLUTION=(\d+)x(\d+)/.exec(line)
+    const url = lines.slice(i + 1).find(l => /^https?:\/\//.test(l.trim()))?.trim()
+    if (!resolution || !url) return
+    const name = /VIDEO="([^"]+)"/.exec(line)?.[1] ?? `${resolution[2]}p`
+    variants.push({ name, height: Number(resolution[2]), url })
+  })
+  return variants
+}
+
+// Plus grande variante dont la hauteur ne depasse pas maxHeight (720 par defaut : suffisant pour un 1080x1920 recadre).
+export function pickVideoVariant(variants: VideoVariant[], maxHeight = 720): VideoVariant | null {
+  const fitting = variants.filter(v => v.height <= maxHeight).sort((a, b) => b.height - a.height)
+  return fitting[0] ?? [...variants].sort((a, b) => a.height - b.height)[0] ?? null
+}
+
+// Playlist maitresse HLS d'une VOD publique (jeton de lecture GraphQL puis usher).
 // Les VODs reservees aux abonnes ou restreintes repondent "vod_manifest_restricted" (voir PRISE-DE-POSITION : OAuth).
-export async function getVodAudioPlaylistUrl(videoId: string, fetchFn: typeof fetch = fetch): Promise<string> {
+export async function fetchVodMasterPlaylist(videoId: string, fetchFn: typeof fetch = fetch): Promise<string> {
   const tokenResponse = await fetchFn(GQL_URL, {
     method: 'POST',
     headers: { 'Client-ID': WEB_CLIENT_ID, 'Content-Type': 'application/json' },
@@ -42,12 +69,13 @@ export async function getVodAudioPlaylistUrl(videoId: string, fetchFn: typeof fe
     throw new VodPlaylistError('Jeton de lecture absent (VOD introuvable ou endpoint modifie ?)', 'token')
   }
 
-  const usherResponse = await fetchFn(`${USHER_URL}/${encodeURIComponent(videoId)}.m3u8?${new URLSearchParams({
+  const query = new URLSearchParams({
     nauth: token.value,
     nauthsig: token.signature,
     allow_source: 'true',
     allow_audio_only: 'true'
-  })}`)
+  })
+  const usherResponse = await fetchFn(`${USHER_URL}/${encodeURIComponent(videoId)}.m3u8?${query}`)
   const text = await usherResponse.text()
   if (!usherResponse.ok) {
     let code = ''
@@ -57,8 +85,19 @@ export async function getVodAudioPlaylistUrl(videoId: string, fetchFn: typeof fe
     }
     throw new VodPlaylistError(`HTTP ${usherResponse.status} sur la playlist ${code}`.trim(), 'http')
   }
+  return text
+}
 
-  const url = parseAudioOnlyUrl(text)
+// URL de la playlist audio seule d'une VOD publique, utilisable directement par ffmpeg (-ss / -t).
+export async function getVodAudioPlaylistUrl(videoId: string, fetchFn: typeof fetch = fetch): Promise<string> {
+  const url = parseAudioOnlyUrl(await fetchVodMasterPlaylist(videoId, fetchFn))
   if (!url) throw new VodPlaylistError('Variante audio seule absente de la playlist', 'shape')
   return url
+}
+
+// URL de la playlist video (<= maxHeight) d'une VOD publique.
+export async function getVodVideoPlaylistUrl(videoId: string, maxHeight = 720, fetchFn: typeof fetch = fetch): Promise<string> {
+  const variant = pickVideoVariant(parseVideoVariants(await fetchVodMasterPlaylist(videoId, fetchFn)), maxHeight)
+  if (!variant) throw new VodPlaylistError('Aucune variante video dans la playlist', 'shape')
+  return variant.url
 }

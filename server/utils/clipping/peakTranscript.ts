@@ -37,7 +37,12 @@ export async function transcribePeak(peak: PeakRef, deps: PeakTranscriptDeps): P
     const result = await deps.transcribe(wavPath)
     const segments = result.segments
       .filter(s => s.text.trim())
-      .map(s => ({ start: window.startSec + s.start, end: window.startSec + s.end, text: s.text.trim() }))
+      .map(s => ({
+        start: window.startSec + s.start,
+        end: window.startSec + s.end,
+        text: s.text.trim(),
+        words: s.words?.map(w => ({ start: window.startSec + w.start, end: window.startSec + w.end, text: w.text }))
+      }))
     const beforePeak = segments.filter(s => s.start < peak.peakSec).map(s => s.text).join(' ')
     return {
       windowStartSec: window.startSec,
