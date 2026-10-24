@@ -68,6 +68,7 @@ model Channel {
   style          StreamerStyle?
   vods           Vod[]
   referenceClips ReferenceClip[]
+  referenceItems ReferenceItem[]
   assets         StreamerAsset[]
 
   @@map("channels")
@@ -99,6 +100,8 @@ model Vod {
   source      VodSource @default(auto)
   startedAt   DateTime? @map("started_at")
   endedAt     DateTime? @map("ended_at")
+  // Avancement du balayage par ressemblance (secondes de VOD deja transcrites et comparees aux clips de reference).
+  scanSec     Float?    @map("scan_sec")
   createdAt   DateTime  @default(now()) @map("created_at")
 
   channel Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
@@ -209,4 +212,39 @@ model ReferenceClip {
 
   @@index([channelId])
   @@map("reference_clips")
+}
+
+// Clips de reference analyses par l'IA : videos deposees ou liens (YouTube Shorts, TikTok, Instagram). Transcription (Whisper)
+// et analyse (images cles + texte) servent de base a la detection de moments ressemblants dans les lives et les VODs.
+// Les statistiques sont facultatives (null = inconnues).
+model ReferenceItem {
+  id           String    @id @default(uuid()) @db.Uuid
+  channelId    String    @map("channel_id") @db.Uuid
+  parentId     String?   @map("parent_id") @db.Uuid
+  // clip | account (un compte est developpe en plusieurs clips)
+  kind         String    @default("clip") @db.VarChar(10)
+  // upload | youtube | tiktok | instagram
+  source       String    @db.VarChar(12)
+  url          String?   @db.VarChar(500)
+  filePath     String?   @map("file_path") @db.VarChar(500)
+  title        String?   @db.VarChar(255)
+  durationSec  Float?    @map("duration_sec")
+  viewCount    Float?    @map("view_count")
+  likeCount    Float?    @map("like_count")
+  commentCount Float?    @map("comment_count")
+  shareCount   Float?    @map("share_count")
+  // pending | processing | done | failed
+  status       String    @default("pending") @db.VarChar(12)
+  note         String?
+  error        String?
+  transcript   Json?
+  analysis     Json?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  analyzedAt   DateTime? @map("analyzed_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, url])
+  @@index([channelId, status])
+  @@map("reference_items")
 }

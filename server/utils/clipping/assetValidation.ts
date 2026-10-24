@@ -26,6 +26,19 @@ export function contentMatchesExtension(ext: string, buf: Buffer): boolean {
   }
 }
 
+export const REFERENCE_VIDEO_MAX_BYTES = 80 * 1024 * 1024
+export const REFERENCE_VIDEO_EXTENSIONS = ['.mp4', '.mov', '.webm']
+
+// Clip de reference depose par le streamer : video courte, extension et contenu verifies.
+export function validateReferenceVideo(filename: string, data: Buffer): UploadCheck {
+  const extension = extname(filename).toLowerCase()
+  if (!REFERENCE_VIDEO_EXTENSIONS.includes(extension)) return { ok: false, error: `Extension ${extension || '(aucune)'} non acceptee (${REFERENCE_VIDEO_EXTENSIONS.join(', ')})` }
+  if (!data.length) return { ok: false, error: 'Fichier vide' }
+  if (data.length > REFERENCE_VIDEO_MAX_BYTES) return { ok: false, error: `Fichier trop volumineux (max ${Math.round(REFERENCE_VIDEO_MAX_BYTES / 1024 / 1024)} Mo)` }
+  if (!contentMatchesExtension(extension, data)) return { ok: false, error: 'Le contenu ne correspond pas a l\'extension' }
+  return { ok: true, extension }
+}
+
 export interface UploadCheck {
   ok: boolean
   error?: string

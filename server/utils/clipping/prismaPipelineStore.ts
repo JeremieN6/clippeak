@@ -21,6 +21,16 @@ export interface VodToAnalyze {
   startedAt: Date | null
 }
 
+export interface ScanTarget {
+  id: string
+  twitchVodId: string
+  channelId: string
+  live: boolean
+  startedAt: Date
+  durationSec: number | null
+  scanSec: number
+}
+
 export interface BatchToNotify {
   batch: number
   clips: Array<{ id: string, title: string | null, caption: string | null, score: number | null, outputPath: string }>
@@ -154,6 +164,31 @@ export function createPipelineStore(db: Db) {
     },
 
     // Pics deja transformes en moments pour cette VOD (evite les doublons entre deux passages).
+    // VOD a balayer par ressemblance : le direct en cours d'abord, puis les VODs terminees dont le balayage n'est pas fini.
+    // Duree d'une VOD terminee = fin - debut du direct (inconnue => jamais balayee).
+    async vodsToScan(): Promise<ScanTarget[]> {
+      const rows = await db.vod.findMany({
+        // Les VODs terminees ne sont balayees que pendant 3 jours : pas de retour sur tout l'historique d'une chaine.
+        where: { OR: [{ status: 'live' }, { status: 'done', createdAt: { gte: new Date(Date.now() - 3 * 24 * 3600 * 1000) } }], startedAt: { not: null }, channel: { autoClip: true } },
+        orderBy: { createdAt: 'asc' },
+        include: { channel: { select: { displayName: true } } }
+      })
+      const targets = rows.map((row): ScanTarget => ({
+        id: row.id,
+        twitchVodId: row.twitchVodId,
+        channelId: row.channelId,
+        live: row.status === 'live',
+        startedAt: row.startedAt as Date,
+        durationSec: row.status === 'done' && row.endedAt ? Math.max(0, (row.endedAt.getTime() - (row.startedAt as Date).getTime()) / 1000) : null,
+        scanSec: row.scanSec ?? 0
+      }))
+      return targets.filter(t => t.live || (t.durationSec !== null && t.scanSec < t.durationSec - 10)).sort((a, b) => Number(b.live) - Number(a.live))
+    },
+
+    async setScanSec(vodId: string, scanSec: number) {
+      await db.vod.update({ where: { id: vodId }, data: { scanSec } })
+    },
+
     async existingPeaks(vodId: string): Promise<number[]> {
       const rows = await db.moment.findMany({ where: { vodId }, select: { peakSec: true } })
       return rows.map(r => r.peakSec)

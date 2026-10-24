@@ -37,6 +37,9 @@ mkdir -p /srv/saas/clippeak-data
 .venv/bin/pip install opencv-python-headless
 .venv/bin/python scripts/vision/download_models.py /srv/saas/clippeak-data/models
 ```
+# Clips de reference (liens YouTube / TikTok / Instagram) : yt-dlp dans le meme venv, mis a jour regulierement (les sites changent)
+# .venv/bin/pip install -U yt-dlp   puis YTDLP_BIN=/srv/saas/clippeak/.venv/bin/yt-dlp
+WORKER_SIMILARITY_SCAN=1     # 0 = ne pas balayer la parole des lives/VODs a la recherche de clips ressemblant aux references dans .env.local
 Si le site est derriere nginx, autoriser les depots jusqu'a 60 Mo (`client_max_body_size 64m;`) pour les videos d'illustration.
 
 ## 4. Variables (dans `.env.local` du VPS, jamais dans le depot)
@@ -49,6 +52,7 @@ CLIPPEAK_DATA_DIR=/srv/saas/clippeak-data
 WORKER_POLL_SEC=20           # plus long = Neon se met plus souvent en veille
 VISION_PYTHON=/srv/saas/clippeak/.venv/bin/python   # defaut : WHISPER_PYTHON
 VISION_MODELS_DIR=/srv/saas/clippeak-data/models     # defaut : <CLIPPEAK_DATA_DIR>/models
+YTDLP_BIN=/srv/saas/clippeak/.venv/bin/yt-dlp   # clips de reference par lien (defaut : yt-dlp du PATH)
 WORKER_LIVE_INTERVAL_SEC=300 # analyse pendant le live (0 = couper avec WORKER_LIVE_ANALYSIS=0)
 CLIPPEAK_PUBLIC_URL=https://clippeak.sassify.fr   # lien /studio dans les notifications
 # Notifications des lots (au moins un canal ; sinon les lots restent visibles dans /studio) :

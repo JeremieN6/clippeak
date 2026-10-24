@@ -132,3 +132,9 @@
 **Cause racine** : Le site Nuxt lit .env.local par un repli (`readEnv`), mais le worker lit WHISPER_*, CLIPPEAK_DATA_DIR, RENDER_THREADS... directement dans process.env, que pm2 ne remplit pas depuis .env.local. Le defaut est reste invisible parce que l'utilisateur dedie recoit ensuite ses variables par un fichier d'environnement.
 **Solution** : `loadEnvFile` charge dans process.env les seules variables autorisees du worker depuis .env.local (jamais la cle SSH, SMTP ni le mot de passe admin ; jamais d'ecrasement d'une variable deja definie), importe en premier par le point d'entree du worker.
 **Regle** : Une configuration doit etre lue par UNE seule voie dans tout le code, ou chargee explicitement au demarrage ; relire entierement les journaux d'erreurs d'un nouveau service, y compris les anciens fichiers, avant de le declarer sain.
+
+### [2026-10-25] Comprendre la demande avant de substituer une source plus facile
+**Probleme** : Le porteur voulait une banque de clips de reference importes (videos/liens de comptes) analysee par l'IA ; j'avais construit une banque issue de l'API Twitch Clips, plus simple a obtenir, qui ne correspondait pas au besoin.
+**Cause racine** : J'ai remplace l'exigence (clips d'autres plateformes) par la donnee accessible par API, et je n'ai pas verifie avec lui que ce remplacement convenait.
+**Solution** : Banque refaite : depot de videos + liens de comptes (yt-dlp), transcription + images cles analysees par Claude, statistiques facultatives, ressemblance avec les moments des lives.
+**Regle** : Quand la source demandee est difficile d'acces, le dire et proposer des options AVANT de remplacer ; ne jamais presenter un substitut comme la fonction demandee.
