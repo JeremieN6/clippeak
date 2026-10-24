@@ -114,3 +114,9 @@
 **Cause racine** : Je n'avais pas de visibilite sur l'etat du serveur et j'ai enchaine des etapes dependantes (installation, deploiement du code, mesure) sans les rendre explicites ni les controler.
 **Solution** : Commande complete et ordonnee : `git fetch` + extraction du script depuis la branche (sans toucher au code en production), controles `which`/`--version`, installation, telechargement du modele, puis mesure. `.venv` ajoute au `.gitignore`.
 **Regle** : Pour toute commande a executer sur une machine hors de portee, commencer par des controles d'etat (existence, versions), ne rien presupposer sur ce qui est deploye, et rendre chaque prerequis explicite dans la meme commande.
+
+### [2026-10-24] Fichier de configuration pm2 : le nom compte
+**Probleme** : `pm2 start ecosystem.worker.vps.cjs` a lance le fichier comme un script (processus fantome `ecosystem.worker.vps`) au lieu de lire la configuration ; le vrai worker etait deja arrete.
+**Cause racine** : pm2 ne reconnait un fichier de configuration que si son nom finit par `.config.js|cjs|mjs`.
+**Solution** : processus fantome supprime, fichier renomme `ecosystem.worker.vps.config.cjs`, worker relance sous l'utilisateur dedie (verifie : utilisateur `clippeak`, 0 redemarrage, les 15 autres applications intactes).
+**Regle** : Sur un serveur partage, nommer les fichiers de configuration selon la convention de l'outil, tester AVANT de supprimer l'ancien processus quand c'est possible, et verifier l'ensemble de `pm2 list` apres toute manipulation.
