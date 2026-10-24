@@ -96,3 +96,6 @@ Le worker execute ffmpeg et Python sur des contenus venus de Twitch : il ne tour
 - ecrit `ecosystem.worker.vps.config.cjs` (uid/gid `clippeak`, `--env-file`).
 
 Puis : `pm2 delete clippeak-worker; pm2 start ecosystem.worker.vps.config.cjs; pm2 save`. Le nom du fichier doit finir par `.config.cjs` : sinon pm2 le lance comme un script. Verification : `ps -o user= -p $(pm2 pid clippeak-worker)` doit afficher `clippeak`. Apres un changement de `.env.local`, relancer le script pour regenerer `worker.env`.
+
+## Deploiement automatique et worker
+Le workflow GitHub Actions supprime `.output` a chaque deploiement : il reconstruit maintenant aussi le worker (`npm run build:worker`) puis recharge `clippeak-worker` s'il existe. Sans cela, le bundle du worker disparaitrait apres chaque deploiement (le processus en cours continue, mais un redemarrage echouerait).
