@@ -86,4 +86,4 @@ cd /srv/saas/clippeak
 ffmpeg -nostdin -loglevel error -y -ss 1035 -t 60 -i "https://d3stzm2eumvgb4.cloudfront.net/f4470f0bf1ecec8eea54_yassencore_318080702052_1792583357/audio_only/index-dvr.m3u8" -vn -ac 1 -ar 16000 /tmp/bench.wav
 time WHISPER_THREADS=2 .venv/bin/python scripts/whisper/transcribe.py /tmp/bench.wav small | head -c 200
 ```
-Repere : ~11 s sur un PC recent a 2 threads (`small`). Au-dela de ~40 s, passer a `WHISPER_MODEL=base`.
+Repere : ~11 s sur un PC recent a 2 threads (`small`). **Mesure sur le VPS (2 coeurs) le 2026-10-24 : 13,9 s pour 60 s d'audio**, donc `small` convient. Au-dela de ~40 s, passer a `WHISPER_MODEL=base`.
