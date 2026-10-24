@@ -119,6 +119,33 @@ async function main() {
   assert.deepEqual(await store.referenceClips(channel.id), [{ id: 'c1', title: 'Super clip', viewCount: 1234, durationSec: 20, category: 'Fortnite' }])
   log('referenceClips')
 
+  // 8a. Analyse pendant le live : VODs en direct, pics deja traites, reprise a la fin du stream
+  const lives = await store.listLiveVods()
+  assert.deepEqual(lives.map(v => v.id), [live.id])
+  assert.ok(lives[0].keywords.includes('mdr'))
+  assert.deepEqual((await store.existingPeaks(vod.id)).sort((a, b) => a - b), [100, 300, 500, 700, 900, 1100])
+  await store.setVodStatus(vod.id, 'ended')
+  assert.equal((await store.claimVodToAnalyze())?.id, vod.id)
+  log('listLiveVods, existingPeaks, une VOD deja analysee pendant le live est reprise a la fin')
+
+  // 8b. Notification des lots : un lot n'est notifie que lorsque plus rien n'est en file ni en rendu, une seule fois
+  const all = await prisma.clipJob.findMany({ where: { batch: { in: [1, 2] } }, orderBy: [{ batch: 'asc' }, { createdAt: 'asc' }] })
+  for (const j of all) await prisma.clipJob.update({ where: { id: j.id }, data: { status: 'review', outputPath: `clips/${j.id}.mp4`, notifiedAt: null } })
+  const batch2 = all.filter(j => j.batch === 2)
+  await prisma.clipJob.update({ where: { id: batch2[0].id }, data: { status: 'rendering' } })
+  const ready1 = await store.findBatchesToNotify()
+  assert.deepEqual(ready1.map(b => b.batch), [1])
+  assert.equal(ready1[0].clips.length, 4)
+  assert.ok(ready1[0].clips.every(c => c.outputPath.startsWith('clips/') && typeof c.score === 'number'))
+  await store.markNotified(ready1[0].clips.map(c => c.id))
+  assert.deepEqual(await store.findBatchesToNotify(), [])
+  await prisma.clipJob.update({ where: { id: batch2[0].id }, data: { status: 'review' } })
+  const ready2 = await store.findBatchesToNotify()
+  assert.deepEqual(ready2.map(b => [b.batch, b.clips.length]), [[2, 2]])
+  await prisma.clipJob.update({ where: { id: batch2[1].id }, data: { status: 'failed' } })
+  assert.equal((await store.findBatchesToNotify())[0].clips.length, 1)
+  log('findBatchesToNotify / markNotified : lot pret seulement quand plus rien n\'est en cours, jamais deux fois')
+
   // 8. Preflight : sur une base migree, plus rien ne manque
   assert.deepEqual(await missingSchemaCheck(prisma), [])
   log('preflight : schema complet')

@@ -49,6 +49,12 @@ CLIPPEAK_DATA_DIR=/srv/saas/clippeak-data
 WORKER_POLL_SEC=20           # plus long = Neon se met plus souvent en veille
 VISION_PYTHON=/srv/saas/clippeak/.venv/bin/python   # defaut : WHISPER_PYTHON
 VISION_MODELS_DIR=/srv/saas/clippeak-data/models     # defaut : <CLIPPEAK_DATA_DIR>/models
+WORKER_LIVE_INTERVAL_SEC=300 # analyse pendant le live (0 = couper avec WORKER_LIVE_ANALYSIS=0)
+CLIPPEAK_PUBLIC_URL=https://clippeak.sassify.fr   # lien /studio dans les notifications
+# Notifications des lots (au moins un canal ; sinon les lots restent visibles dans /studio) :
+# DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...   # Parametres du salon > Integrations > Webhooks
+# TELEGRAM_BOT_TOKEN=...      # cree avec @BotFather
+# TELEGRAM_CHAT_ID=...        # identifiant de votre conversation avec le bot
 # ANTHROPIC_API_KEY=...      # facultatif : notation des moments par Claude (sinon note locale)
 # CLIPPEAK_LLM_MODEL=claude-sonnet-5-5
 ```

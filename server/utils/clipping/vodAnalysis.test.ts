@@ -88,3 +88,40 @@ test('analyzeVod skips a peak whose audio fails and drops notes below the minimu
   assert.deepEqual(errors, [100])
   assert.equal(result.reason, 'nothing_kept')
 })
+
+import { liveWindowStart, shouldRunLiveAnalysis } from './vodAnalysis.ts'
+
+test('analyzeVod skips peaks already turned into moments and peaks too close to now (live analysis)', async () => {
+  const peaks = [peak(100, 9), peak(400, 8), peak(700, 7), peak(1000, 9)]
+  const { deps: d, transcribed } = deps(peaks)
+  const result = await analyzeVod({ keywords: [], minScore: 0, minGapSec: 90, existingPeaks: [95, 705], maxPeakSec: 900 }, d)
+  assert.deepEqual(transcribed, [400])
+  assert.equal(result.moments.length, 1)
+})
+
+test('two successive live passes never produce the same moment twice', async () => {
+  const all = [peak(200, 9), peak(500, 8), peak(1200, 9)]
+  const seen: number[] = []
+  const pass = async (maxPeakSec: number) => {
+    const { deps: d } = deps(all)
+    const result = await analyzeVod({ keywords: [], minScore: 0, existingPeaks: [...seen], maxPeakSec }, d)
+    seen.push(...result.moments.map(m => m.peak.peakSec))
+    return result.moments.map(m => m.peak.peakSec).sort((a, b) => a - b)
+  }
+  assert.deepEqual(await pass(600), [200, 500])
+  assert.deepEqual(await pass(1300), [1200])
+  assert.deepEqual(await pass(2000), [])
+  assert.deepEqual([...seen].sort((a, b) => a - b), [200, 500, 1200])
+})
+
+test('live analysis is rate limited, waits for enough stream and re-reads only a recent chat window', () => {
+  const opts = { intervalSec: 300, minStreamSec: 600 }
+  const start = 1_000_000
+  assert.equal(shouldRunLiveAnalysis(undefined, start + 300_000, start, opts), false)
+  assert.equal(shouldRunLiveAnalysis(undefined, start + 700_000, start, opts), true)
+  assert.equal(shouldRunLiveAnalysis({ lastRunMs: start + 700_000 }, start + 900_000, start, opts), false)
+  assert.equal(shouldRunLiveAnalysis({ lastRunMs: start + 700_000 }, start + 1_000_000, start, opts), true)
+  assert.equal(shouldRunLiveAnalysis(undefined, start, null, opts), true)
+  assert.equal(liveWindowStart(5000, 1800), 3200)
+  assert.equal(liveWindowStart(100, 1800), 0)
+})

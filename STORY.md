@@ -70,6 +70,7 @@ Le produit reel de clipping n'existe pas encore : tout le "traitement" est simul
 
 ---
 
+- Notifications : sur les 3 feedbacks de la landing (export de la base le 2026-10-24, echantillon minuscule et probablement en partie des essais, a verifier), 2 choisissent Discord et 1 Telegram comme canal de reception, aucun le mail. Hypothese : commencer par Discord/Telegram.
 - Les streamers connaissent leur communaute : ce qui fait reagir leur chat (mots, rythme) doit etre regle par eux, pas devine. Retour terrain a valider avec de vrais utilisateurs.
 
 ---

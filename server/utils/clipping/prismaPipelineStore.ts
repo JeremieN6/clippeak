@@ -18,6 +18,12 @@ export interface VodToAnalyze {
   channelId: string
   channelName: string
   keywords: string[]
+  startedAt: Date | null
+}
+
+export interface BatchToNotify {
+  batch: number
+  clips: Array<{ id: string, title: string | null, caption: string | null, score: number | null, outputPath: string }>
 }
 
 export function createPipelineStore(db: Db) {
@@ -109,10 +115,11 @@ export function createPipelineStore(db: Db) {
       await db.clipJob.update({ where: { id: jobId }, data: { qc: qc as any } })
     },
 
-    // VOD terminee, sans moment encore : prise en charge atomique (ended -> analyzing).
+    // VOD terminee : prise en charge atomique (ended -> analyzing). Une VOD deja analysee pendant le live repasse ici
+    // pour le reste du stream ; les pics deja traites sont ecartes par existingPeaks.
     async claimVodToAnalyze(): Promise<VodToAnalyze | null> {
       const candidate = await db.vod.findFirst({
-        where: { status: 'ended', moments: { none: {} }, channel: { autoClip: true } },
+        where: { status: 'ended', channel: { autoClip: true } },
         orderBy: { createdAt: 'asc' },
         include: { channel: { include: { settings: true } } }
       })
@@ -124,8 +131,56 @@ export function createPipelineStore(db: Db) {
         twitchVodId: candidate.twitchVodId,
         channelId: candidate.channelId,
         channelName: candidate.channel.displayName,
-        keywords: candidate.channel.settings?.keywords ?? []
+        keywords: candidate.channel.settings?.keywords ?? [],
+        startedAt: candidate.startedAt
       }
+    },
+
+    // VODs dont le direct est en cours (analyse par tranches pendant le live) ; leur statut ne change pas.
+    async listLiveVods(): Promise<VodToAnalyze[]> {
+      const rows = await db.vod.findMany({
+        where: { status: 'live', channel: { autoClip: true } },
+        orderBy: { createdAt: 'asc' },
+        include: { channel: { include: { settings: true } } }
+      })
+      return rows.map(row => ({
+        id: row.id,
+        twitchVodId: row.twitchVodId,
+        channelId: row.channelId,
+        channelName: row.channel.displayName,
+        keywords: row.channel.settings?.keywords ?? [],
+        startedAt: row.startedAt
+      }))
+    },
+
+    // Pics deja transformes en moments pour cette VOD (evite les doublons entre deux passages).
+    async existingPeaks(vodId: string): Promise<number[]> {
+      const rows = await db.moment.findMany({ where: { vodId }, select: { peakSec: true } })
+      return rows.map(r => r.peakSec)
+    },
+
+    // Lots dont plus aucun clip n'est en file ou en rendu et dont au moins un clip est a valider, pas encore notifies.
+    async findBatchesToNotify(): Promise<BatchToNotify[]> {
+      const jobs = await db.clipJob.findMany({
+        where: { batch: { not: null }, status: { in: ['queued', 'rendering', 'review'] } },
+        orderBy: [{ batch: 'asc' }, { createdAt: 'asc' }],
+        include: { moment: { select: { aiScore: true } } }
+      })
+      const byBatch = new Map<number, typeof jobs>()
+      for (const job of jobs) byBatch.set(job.batch as number, [...(byBatch.get(job.batch as number) ?? []), job])
+      const result: BatchToNotify[] = []
+      for (const [batch, items] of byBatch) {
+        if (items.some(j => j.status === 'queued' || j.status === 'rendering')) continue
+        const ready = items.filter(j => j.status === 'review' && j.notifiedAt === null && j.outputPath)
+        if (!ready.length) continue
+        result.push({ batch, clips: ready.map(j => ({ id: j.id, title: j.title, caption: j.caption, score: j.moment.aiScore, outputPath: j.outputPath as string })) })
+      }
+      return result
+    },
+
+    async markNotified(jobIds: string[]) {
+      if (!jobIds.length) return
+      await db.clipJob.updateMany({ where: { id: { in: jobIds } }, data: { notifiedAt: new Date() } })
     },
 
     async setVodStatus(vodId: string, status: 'done' | 'failed' | 'ended') {

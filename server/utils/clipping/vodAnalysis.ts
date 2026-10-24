@@ -15,6 +15,11 @@ export interface AnalysisOptions {
   minScore?: number
   // Ecart minimal entre deux moments retenus (evite deux clips du meme passage).
   minGapSec?: number
+  // Pics (temps de VOD) deja traites par une analyse precedente (pendant le live) : on n'y revient pas.
+  existingPeaks?: number[]
+  // Analyse pendant le live : un pic n'est exploitable que si sa reaction est terminee et que l'audio de la fenetre
+  // (jusqu'a 20 s apres le pic) existe deja.
+  maxPeakSec?: number
 }
 
 export interface AnalysisDeps {
@@ -38,9 +43,12 @@ export async function analyzeVod(options: AnalysisOptions, deps: AnalysisDeps): 
   const maxMoments = options.maxMoments ?? 12
   const minScore = options.minScore ?? 5
   const minGap = options.minGapSec ?? 90
+  const existing = options.existingPeaks ?? []
 
   const messages = await deps.fetchChat()
   const peaks = deps.detectPeaks(messages, options.keywords)
+    .filter(p => options.maxPeakSec === undefined || p.peakSec <= options.maxPeakSec)
+    .filter(p => existing.every(e => Math.abs(e - p.peakSec) >= minGap))
   if (!peaks.length) return { moments: [], peaksFound: 0, reason: 'chat_calm' }
 
   const chosen: ChatPeak[] = []
@@ -62,4 +70,27 @@ export async function analyzeVod(options: AnalysisOptions, deps: AnalysisDeps): 
   }
   moments.sort((a, b) => b.score.score - a.score.score)
   return { moments, peaksFound: peaks.length, reason: moments.length ? 'ok' : 'nothing_kept' }
+}
+
+// Etat d'une VOD suivie pendant le live (en memoire du worker) et decision de relancer une analyse.
+export interface LiveState {
+  lastRunMs: number
+}
+
+export function shouldRunLiveAnalysis(
+  state: LiveState | undefined,
+  nowMs: number,
+  startedAtMs: number | null,
+  options: { intervalSec: number, minStreamSec: number }
+): boolean {
+  // Pas assez de direct pour qu'il y ait un chat exploitable.
+  if (startedAtMs !== null && nowMs - startedAtMs < options.minStreamSec * 1000) return false
+  if (!state) return true
+  return nowMs - state.lastRunMs >= options.intervalSec * 1000
+}
+
+// Fenetre de chat relue a chaque passage pendant le live : les dernieres `windowSec` secondes du direct
+// (le calcul de pics garde ainsi une base de comparaison recente sans relire des heures de chat).
+export function liveWindowStart(streamElapsedSec: number, windowSec: number): number {
+  return Math.max(0, Math.floor(streamElapsedSec - windowSec))
 }

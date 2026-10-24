@@ -3,7 +3,8 @@ import { runClipWorker } from '../utils/clipping/clipQueue'
 import { createPrismaClipQueueStore } from '../utils/clipping/prismaClipQueueStore'
 import { retrying } from '../utils/clipping/dbRetry'
 import { commandWorks, hasBlockingIssue, REQUIRED_SCHEMA, runPreflight } from '../utils/clipping/preflight'
-import { analysisStep } from './analysis'
+import { analysisStep, liveAnalysisStep } from './analysis'
+import { notifyStep } from './notify'
 import { renderClip } from './render'
 
 // Process pm2 separe du serveur Nuxt : un rendu video ne doit jamais bloquer le site.
@@ -53,7 +54,8 @@ async function main() {
   const summary = await runClipWorker({
     store: retrying(createPrismaClipQueueStore(prisma), { onRetry: (error, attempt) => console.warn(`[worker] base injoignable (tentative ${attempt}), nouvel essai`) }),
     render: renderClip,
-    idleTask: analysisStep,
+    // Quand la file de rendu est vide : VOD terminee, puis tranche de live, puis notification de lot.
+    idleTask: async () => (await analysisStep()) || (await liveAnalysisStep()) || (await notifyStep()),
     pollMs,
     shouldStop: () => stopping,
     log: (message, detail) => (detail === undefined ? console.info('[worker]', message) : console.error('[worker]', message, detail))
