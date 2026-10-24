@@ -4,9 +4,22 @@ Ordre a respecter : **1) migration, 2) deploiement du code, 3) dependances syste
 Le worker verifie lui-meme (preflight) que la migration est appliquee et que ffmpeg existe : sinon il attend et n'ecrit rien.
 
 ## 1. Migration Neon
-Appliquer `prisma/migrations/202610241000_v2_clip_pipeline/migration.sql` (console SQL Neon). Elle est **additive** :
-colonnes nullables sur `moments` et `clip_jobs`, trois nouvelles tables (`streamer_styles`, `streamer_assets`, `reference_clips`).
-Aucune donnee existante n'est modifiee ni supprimee.
+**Etat au 2026-10-24** : la baseline Prisma est faite sur Neon (table `_prisma_migrations` creee, les 3 premieres migrations marquees "appliquees" apres verification que le schema correspond : 3 feedbacks, 1 chaine, 1 VOD intacts). Il ne reste que `202610241000_v2_clip_pipeline`, additive : colonnes nullables sur `moments` et `clip_jobs`, trois nouvelles tables (`streamer_styles`, `streamer_assets`, `reference_clips`). Aucune donnee existante n'est modifiee ni supprimee.
+
+Pour l'appliquer, depuis le dossier du projet (PowerShell, la valeur de `DATABASE_URL` n'est pas affichee) :
+```powershell
+$env:DATABASE_URL = (Select-String -Path .env.local -Pattern '^DATABASE_URL=').Line.Split('=',2)[1].Trim('"',"'")
+.\node_modules\.bin\prisma migrate deploy
+.\node_modules\.bin\prisma migrate status    # doit afficher : Database schema is up to date
+```
+(Variante : coller le SQL dans la console Neon, puis `prisma migrate resolve --applied 202610241000_v2_clip_pipeline` pour que Prisma le sache.)
+
+Retour arriere si besoin (les colonnes et tables ajoutees sont vides tant que le worker n'a pas tourne) :
+```sql
+DROP TABLE IF EXISTS "public"."reference_clips", "public"."streamer_assets", "public"."streamer_styles";
+ALTER TABLE "public"."clip_jobs" DROP COLUMN IF EXISTS "start_sec", DROP COLUMN IF EXISTS "end_sec", DROP COLUMN IF EXISTS "keep_ranges", DROP COLUMN IF EXISTS "hashtags", DROP COLUMN IF EXISTS "qc", DROP COLUMN IF EXISTS "illustrations", DROP COLUMN IF EXISTS "review_note", DROP COLUMN IF EXISTS "reviewed_at", DROP COLUMN IF EXISTS "notified_at";
+ALTER TABLE "public"."moments" DROP COLUMN IF EXISTS "transcript", DROP COLUMN IF EXISTS "before_peak", DROP COLUMN IF EXISTS "hook", DROP COLUMN IF EXISTS "category", DROP COLUMN IF EXISTS "kind", DROP COLUMN IF EXISTS "ai_score", DROP COLUMN IF EXISTS "rationale", DROP COLUMN IF EXISTS "scorer";
+```
 
 ## 2. Code
 Merger les PR dans l'ordre (#1, #2, #3, puis celles de cette serie). Le workflow existant deploie le site ; il ne demarre pas le worker.
@@ -59,3 +72,12 @@ Apres chaque deploiement du site (`rm -rf .output` dans le workflow), relancer `
 - Whisper `small` sur 2 threads : ~11 s pour 60 s d'audio ; `base` : ~4 s.
 - Rendu d'un clip de 30 a 45 s : ~10 s avec 2 threads (hors telechargement HLS).
 - Tout tourne en priorite basse, un job a la fois.
+
+## Mesurer la vitesse reelle sur le VPS
+Apres l'etape 3, une mesure de 60 s d'audio public francophone (a copier-coller, puis a me renvoyer la ligne `transcribe_s`) :
+```bash
+cd /srv/saas/clippeak
+ffmpeg -nostdin -loglevel error -y -ss 1035 -t 60 -i "https://d3stzm2eumvgb4.cloudfront.net/f4470f0bf1ecec8eea54_yassencore_318080702052_1792583357/audio_only/index-dvr.m3u8" -vn -ac 1 -ar 16000 /tmp/bench.wav
+time WHISPER_THREADS=2 .venv/bin/python scripts/whisper/transcribe.py /tmp/bench.wav small | head -c 200
+```
+Repere : ~11 s sur un PC recent a 2 threads (`small`). Au-dela de ~40 s, passer a `WHISPER_MODEL=base`.
