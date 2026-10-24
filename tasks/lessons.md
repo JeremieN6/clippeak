@@ -66,3 +66,51 @@
 **Cause racine** : `npx` telecharge la derniere version si le paquet local est absent ; Node ne fait que retirer les types (strip-only), il ne transforme pas la syntaxe TypeScript.
 **Solution** : `npm ci --ignore-scripts` puis `./node_modules/.bin/prisma` ; attributs de classe declares explicitement.
 **Regle** : Utiliser les binaires locaux du projet ; dans le code teste par `node --test`, pas d'enum, de namespace ni de parameter properties.
+
+### [2026-10-23] Affichage de secrets en filtrant un .env avec sed
+**Probleme** : Pour lister les noms de variables de `.env.local`, un `sed` a masque seulement ce qui suit `=` ; les lignes d'une cle privee SSH multi-lignes (sans `=`) se sont affichees en clair. J'ai aussi lu `.env`, non demande.
+**Cause racine** : Filtre par remplacement sur toutes les lignes au lieu d'une extraction des seuls noms ; hypothese que chaque ligne est du type CLE=valeur.
+**Solution** : Le porteur regenere la cle. Depuis, extraction des noms avec `grep -oE '^[A-Z_]+'` et lecture d'une valeur precise par `grep -m1 '^NOM='` sans affichage.
+**Regle** : Pour lister des variables, n'extraire que les noms (`grep -oE`), jamais filtrer un fichier de secrets par masquage ; ne lire que le fichier demande.
+
+### [2026-10-23] Pagination par curseur du chat GraphQL Twitch
+**Probleme** : Le client chat, ecrit sans acces reseau, echouait des la page 2 avec "failed integrity check" ; sur une VOD en cours, les offsets 0 a 2 renvoient une liste vide.
+**Cause racine** : Endpoint non documente : le curseur exige un jeton Client-Integrity, que l'offset ne demande pas ; comportement des VODs en cours different des VODs terminees.
+**Solution** : Pagination par offset avec recouvrement et dedoublonnage, offset de depart >= 3 s, tests avec la forme reelle de reponse.
+**Regle** : Tout client d'un endpoint non officiel se teste contre le vrai service, sur une VOD terminee ET une VOD en cours, avant d'etre declare valide.
+
+### [2026-10-23] Environnement Python et playlists Twitch
+**Probleme** : `pip install faster-whisper` a echoue dans un venv du dossier temporaire (chemin Windows trop long, droits admin pour l'activer) ; l'appel de decodage PyAV de faster-whisper a plante (`metadata_errors`) ; la playlist usher repondait 403 avec les parametres `sig/token`.
+**Cause racine** : limite de 260 caracteres des chemins Windows ; incompatibilite de version PyAV ; pour une VOD, usher attend `nauth/nauthsig` et certaines VODs sont `vod_manifest_restricted`.
+**Solution** : venv dans un chemin court, WAV lu par le script lui-meme (numpy), parametres `nauth/nauthsig`, erreur `restricted` explicite.
+**Regle** : creer les venv Python dans un chemin court ; ne pas dependre du decodeur audio d'une bibliotheque quand ffmpeg produit deja le bon format ; tester un endpoint Twitch non officiel sur une VOD du porteur ET une VOD tierce.
+
+### [2026-10-24] Ecrire du code avec des gabarits via le shell
+**Probleme** : Un fichier TypeScript contenant des gabarits `${...}` et des antislashs, ecrit par un script `node -e` dans le shell, a ete corrompu (variables developpees par bash, expressions regulieres cassees).
+**Cause racine** : Plusieurs niveaux d'echappement (bash, JavaScript, regex) pour du code qui n'en a pas besoin.
+**Solution** : Reecriture avec l'outil d'ecriture de fichiers ; les scripts de correctif passent par un fichier `.cjs` et non par `node -e`.
+**Regle** : Jamais de code contenant `${}`, des antislashs ou des guillemets imbriques dans une commande shell : ecrire le fichier directement.
+
+### [2026-10-24] Zod 4 : valeurs par defaut des objets imbriques
+**Probleme** : `z.object({...}).default({})` ne remplissait pas les valeurs par defaut internes ; un champ nullable sans `.default(null)` etait requis.
+**Cause racine** : En zod 4, `.default(x)` court-circuite l'analyse ; il faut `.prefault({})` pour que l'objet par defaut soit analyse.
+**Solution** : `.prefault({})` sur les objets imbriques et `.default(null)` sur les champs nullables facultatifs.
+**Regle** : Tester le schema avec `parse({})` des qu'il comporte des objets imbriques.
+
+### [2026-10-24] Le controle qualite doit utiliser le meme calcul que le rendu
+**Probleme** : En lancant le worker sur une vraie VOD, un clip a ete refuse pour "titre sur 4 lignes" alors que le rendu dessinait 3 lignes ; un autre pour une duree montee de 18,3 s (minimum 20 s) alors que le plan croyait avoir fini.
+**Cause racine** : (1) le controle recalculait le decoupage du titre avec son propre algorithme, different de celui du rendu, et la troncature "..." depassait la largeur ; (2) le planificateur n'etendait que le debut du clip, jamais la fin, quand les silences retires faisaient passer la duree sous le minimum. Les tests unitaires utilisaient des cas trop propres.
+**Solution** : `countTitleLines` et `fitTitle` (assBuilder) servent au rendu, au titre par defaut ET au controle ; le planificateur prolonge la fin sur les phrases suivantes terminees (sans depasser la duree max).
+**Regle** : Un controle de conformite appelle la fonction du producteur, il ne la reimplemente pas. Tester toute chaine de traitement sur une vraie donnee avant de la declarer valide : les cas reels revelent des ecarts que les fixtures ne montrent pas.
+
+### [2026-10-24] Connexion base inactive pendant une longue tache
+**Probleme** : Pendant le test complet du worker, l'enregistrement des moments echouait avec "Can't reach database server" (P1001) apres ~4 min de transcription sans requete ; un clip etait aussi marque en echec pour la meme raison.
+**Cause racine** : Le worker enchaine de longues taches (Whisper, ffmpeg) entre deux acces a la base ; les connexions inactives sont coupees (et Neon se met en veille, reveil ~1 s), donc la premiere requete suivante echoue. Documente par Neon, mais absent du code.
+**Solution** : `dbRetry.ts` : reessais (1 s, 3 s, 8 s) uniquement pour les erreurs de connexion (P1001, P1002, P1008, P1017) sur tous les stores du worker ; une ecriture refusee (contrainte) n'est jamais rejouee.
+**Regle** : Tout processus de fond qui calcule longtemps entre deux acces base doit reessayer les erreurs de connexion transitoires. Distinguer un artefact de test (PGlite n'accepte qu'une session) d'un vrai risque avant de conclure : ici les deux existaient, seul le second justifiait un correctif.
+
+### [2026-10-24] Commande destinee a une machine que je ne vois pas : verifier ses prerequis
+**Probleme** : La commande de mesure donnee pour le VPS echouait (`.venv/bin/python: No such file`) : elle supposait que l'environnement Python et le script `transcribe.py` etaient deja presents, alors que le VPS etait encore sur l'ancien `main`.
+**Cause racine** : Je n'avais pas de visibilite sur l'etat du serveur et j'ai enchaine des etapes dependantes (installation, deploiement du code, mesure) sans les rendre explicites ni les controler.
+**Solution** : Commande complete et ordonnee : `git fetch` + extraction du script depuis la branche (sans toucher au code en production), controles `which`/`--version`, installation, telechargement du modele, puis mesure. `.venv` ajoute au `.gitignore`.
+**Regle** : Pour toute commande a executer sur une machine hors de portee, commencer par des controles d'etat (existence, versions), ne rien presupposer sur ce qui est deploye, et rendre chaque prerequis explicite dans la meme commande.

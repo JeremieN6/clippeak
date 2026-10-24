@@ -4,12 +4,14 @@
   "private": true,
   "scripts": {
     "build": "nuxt build",
+    "build:worker": "esbuild server/worker/index.ts --bundle --platform=node --format=cjs --target=node20 --external:@prisma/client --outfile=.output/worker/index.cjs",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "prisma generate && nuxt prepare",
     "prisma:generate": "prisma generate",
-    "test": "node --test \"server/utils/clipping/*.test.ts\""
+    "test": "node --test \"server/utils/clipping/*.test.ts\"",
+    "test:integration": "node scripts/integration/db-it.mjs && node scripts/integration/api-it.mjs ."
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",
@@ -22,6 +24,7 @@
   },
   "devDependencies": {
     "@nuxtjs/tailwindcss": "^6.14.0",
+    "esbuild": "0.28.1",
     "prisma": "^6.15.0"
   }
 }

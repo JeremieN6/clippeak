@@ -48,6 +48,14 @@ Le produit reel de clipping n'existe pas encore : tout le "traitement" est simul
 
 ---
 
+### 2026-10-24 -- Le pipeline de clips existe, verifie en local
+**Contexte** : apres la validation technique de Twitch (VOD en direct, chat, EventSub), le porteur a demande de terminer toute la chaine du brief : coupe, rendu vertical, DA, illustrations, controle, lots de 4, back-office.
+**Decisions du porteur** : (1) transcription par Whisper local, gratuit, plutot qu'une API payante a la minute ; (2) cadrage automatique du streamer par reconnaissance du visage a partir de ses photos ; (3) rien n'est publie ni paye : approuver un clip ne fait que le marquer, la publication reste au streamer.
+**Apprentissages terrain** : les VODs reservees aux abonnes ou protegees sont inaccessibles sans connexion du streamer (levier OAuth deja prevu) ; une chaine non affiliee comme celle du porteur n'expose parfois que l'audio de ses VODs ; le VPS n'a que 2 coeurs, mais la mesure sur place donne Whisper `small` a ~14 s par minute d'audio (~4x le temps reel), sans cout par minute : une VOD de 3 h devrait etre traitee en une dizaine de minutes (estimation, a confirmer sur le premier vrai passage). Le chat reagit APRES la chute : la coupe se cale sur la derniere phrase terminee avant le pic.
+**Resultat** : pipeline complet ecrit et verifie en local (vraies VODs publiques, vrai Twitch, ffmpeg, Whisper, base jetable). PAS deploye : migration non appliquee, worker non demarre ; la landing publique reste une simulation. Aucun retour d'utilisateur reel sur la qualite des clips : a obtenir avec un premier streamer test avant toute communication.
+
+---
+
 ## Ce que la cible attend / a appris
 - A ce stade, aucune donnee de feedback reelle issue d'utilisateurs externes n'a ete analysee dans ce document -- l'espace admin existe pour cela, mais aucun chiffre (taux de completion, volume de retours, satisfaction) n'a encore ete releve et documente ici. Toute statistique citee ailleurs sur ce projet doit etre verifiee directement dans l'espace admin avant d'etre reutilisee.
 - Le parcours a ete concu en partant du principe que forcer une action (feedback obligatoire pour telecharger) degrade la qualite du signal recueilli -- c'est une hypothese de design assumee, pas encore validee par des donnees d'usage reelles.
@@ -62,9 +70,10 @@ Le produit reel de clipping n'existe pas encore : tout le "traitement" est simul
 
 ---
 
+- Notifications : sur les 3 feedbacks de la landing (export de la base le 2026-10-24, echantillon minuscule et probablement en partie des essais, a verifier), 2 choisissent Discord et 1 Telegram comme canal de reception, aucun le mail. Hypothese : commencer par Discord/Telegram.
 - Les streamers connaissent leur communaute : ce qui fait reagir leur chat (mots, rythme) doit etre regle par eux, pas devine. Retour terrain a valider avec de vrais utilisateurs.
 
 ---
 
 ## Derniere mise a jour
-2026-10-23 -- Ajout du pivot V2 (simulation -> vrai pipeline). Creation initiale du fichier le 2026-08-27 a partir de l'historique git et de `tasks/lessons.md`.
+2026-10-24 -- Ajout du bilan du pipeline de clips (verifie en local, non deploye). Pivot V2 du 2026-10-23 conserve. Creation initiale du fichier le 2026-08-27 a partir de l'historique git et de `tasks/lessons.md`.

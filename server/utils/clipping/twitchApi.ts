@@ -15,6 +15,31 @@ export interface TwitchVideo {
   url: string
   title: string
   createdAt: Date
+  durationSec: number
+}
+
+export interface TwitchClip {
+  id: string
+  url: string
+  title: string
+  viewCount: number
+  durationSec: number
+  gameId: string | null
+  createdAt: Date
+  creatorName: string
+}
+
+export interface TwitchLiveStream {
+  id: string
+  userId: string
+  startedAt: Date
+}
+
+// Helix renvoie la duree sous la forme "1h2m3s", "4m24s" ou "30s".
+export function parseTwitchDuration(value: string | undefined): number {
+  const match = /^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/.exec(value ?? '')
+  if (!match) return 0
+  return Number(match[1] ?? 0) * 3600 + Number(match[2] ?? 0) * 60 + Number(match[3] ?? 0)
 }
 
 export class TwitchApiError extends Error {
@@ -84,15 +109,34 @@ export function createTwitchApi(
     const response = await helix(`/videos?user_id=${encodeURIComponent(userId)}&type=archive&first=${first}`)
     if (!response.ok) throw new TwitchApiError(`Liste des VODs impossible (HTTP ${response.status})`, response.status)
     const body = await response.json() as {
-      data?: Array<{ id: string, stream_id: string | null, url: string, title: string, created_at: string }>
+      data?: Array<{ id: string, stream_id: string | null, url: string, title: string, created_at: string, duration?: string }>
     }
     return (body.data ?? []).map(v => ({
       id: v.id,
       streamId: v.stream_id ?? null,
       url: v.url,
       title: v.title,
-      createdAt: new Date(v.created_at)
+      createdAt: new Date(v.created_at),
+      durationSec: parseTwitchDuration(v.duration)
     }))
+  }
+
+  // Chaines actuellement en direct, par lots de 100 (limite de Helix). Absente de la Map = hors ligne.
+  async function getLiveStreams(userIds: string[]): Promise<Map<string, TwitchLiveStream>> {
+    const live = new Map<string, TwitchLiveStream>()
+    for (let i = 0; i < userIds.length; i += 100) {
+      const query = userIds.slice(i, i + 100).map(id => `user_id=${encodeURIComponent(id)}`).join('&')
+      const response = await helix(`/streams?${query}&first=100`)
+      if (!response.ok) throw new TwitchApiError(`Liste des directs impossible (HTTP ${response.status})`, response.status)
+      const body = await response.json() as {
+        data?: Array<{ id: string, user_id: string, started_at: string, type?: string }>
+      }
+      for (const s of body.data ?? []) {
+        if (s.type && s.type !== 'live') continue
+        live.set(s.user_id, { id: s.id, userId: s.user_id, startedAt: new Date(s.started_at) })
+      }
+    }
+    return live
   }
 
   async function subscribe(type: 'stream.online' | 'stream.offline', userId: string, callback: string, secret: string): Promise<'created' | 'exists'> {
@@ -113,7 +157,39 @@ export function createTwitchApi(
     return 'created'
   }
 
-  return { getToken, getUserByLogin, listArchives, subscribe }
+  // Clips les plus vus d'une chaine (Helix les renvoie tries par nombre de vues decroissant).
+  async function listClips(broadcasterId: string, first = 100): Promise<TwitchClip[]> {
+    const response = await helix(`/clips?broadcaster_id=${encodeURIComponent(broadcasterId)}&first=${Math.min(100, first)}`)
+    if (!response.ok) throw new TwitchApiError(`Liste des clips impossible (HTTP ${response.status})`, response.status)
+    const body = await response.json() as {
+      data?: Array<{ id: string, url: string, title: string, view_count: number, duration: number, game_id: string, created_at: string, creator_name: string }>
+    }
+    return (body.data ?? []).map(c => ({
+      id: c.id,
+      url: c.url,
+      title: c.title,
+      viewCount: c.view_count,
+      durationSec: c.duration,
+      gameId: c.game_id || null,
+      createdAt: new Date(c.created_at),
+      creatorName: c.creator_name
+    }))
+  }
+
+  async function getGameNames(gameIds: string[]): Promise<Map<string, string>> {
+    const names = new Map<string, string>()
+    const unique = [...new Set(gameIds.filter(Boolean))]
+    for (let i = 0; i < unique.length; i += 100) {
+      const query = unique.slice(i, i + 100).map(id => `id=${encodeURIComponent(id)}`).join('&')
+      const response = await helix(`/games?${query}`)
+      if (!response.ok) throw new TwitchApiError(`Liste des categories impossible (HTTP ${response.status})`, response.status)
+      const body = await response.json() as { data?: Array<{ id: string, name: string }> }
+      for (const game of body.data ?? []) names.set(game.id, game.name)
+    }
+    return names
+  }
+
+  return { getToken, getUserByLogin, listArchives, getLiveStreams, listClips, getGameNames, subscribe }
 }
 
 export type TwitchApi = ReturnType<typeof createTwitchApi>
