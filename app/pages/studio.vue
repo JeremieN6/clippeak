@@ -16,7 +16,7 @@ const connected = ref(false)
 const error = ref('')
 const notice = ref('')
 const busy = ref(false)
-const tab = ref<'clips' | 'da' | 'reglages' | 'fichiers' | 'reference'>('clips')
+const tab = ref<'reference' | 'clips' | 'da' | 'reglages' | 'fichiers'>('reference')
 
 const channels = ref<Channel[]>([])
 const channelId = ref('')
@@ -69,6 +69,7 @@ async function loadChannel() {
   detail.value = await api(`/api/studio/channels/${channelId.value}`)
   keywordsText.value = (detail.value.settings?.keywords ?? []).join(', ')
   namesText.value = (detail.value.style.names ?? []).join(', ')
+  await loadBank()
 }
 
 async function loadClips() {
@@ -129,11 +130,42 @@ const removeAsset = (id: string) => run(async () => {
   await loadChannel()
 }, 'Fichier supprime.')
 
-const refreshReference = () => run(async () => {
-  const result = await api<{ clips: number }>(`/api/studio/channels/${channelId.value}/reference`, { method: 'POST' })
-  await loadChannel()
-  notice.value = `${result.clips} clips de reference importes.`
+
+const bank = ref<any>(null)
+const refUrls = ref('')
+const refInput = ref<HTMLInputElement | null>(null)
+const statLabels = [['viewCount', 'Vues'], ['likeCount', 'Likes'], ['commentCount', 'Commentaires'], ['shareCount', 'Partages']] as const
+const statusLabel: Record<string, string> = { pending: 'En attente', processing: 'Analyse en cours', done: 'Analyse', failed: 'Echec' }
+
+async function loadBank() {
+  if (!channelId.value) return
+  bank.value = await api(`/api/studio/channels/${channelId.value}/references`)
+}
+
+const addReferences = () => run(async () => {
+  const form = new FormData()
+  for (const file of Array.from(refInput.value?.files ?? [])) form.append('files', file)
+  form.append('urls', refUrls.value)
+  const r = await api<any>(`/api/studio/channels/${channelId.value}/references`, { method: 'POST', body: form })
+  if (refInput.value) refInput.value.value = ''
+  refUrls.value = ''
+  await loadBank()
+  const problems = [...r.rejectedLinks.map((u: string) => `lien refuse : ${u}`), ...r.refusedFiles]
+  notice.value = `${r.addedFiles} fichier(s) et ${r.addedLinks} lien(s) ajoute(s)${r.duplicateLinks ? ` (${r.duplicateLinks} deja present(s))` : ''}. L'analyse demarre au prochain passage du worker.`
+  if (problems.length) error.value = problems.join(' · ')
 })
+
+const saveStat = (item: any, field: string, raw: string) => run(async () => {
+  const value = raw.trim() === '' ? null : Number(raw.replace(/\s/g, '').replace(',', '.'))
+  if (value !== null && !Number.isFinite(value)) throw new Error('Nombre invalide')
+  await api(`/api/studio/references/${item.id}`, { method: 'PATCH', body: { [field]: value } })
+  await loadBank()
+})
+
+const removeReference = (id: string) => run(async () => {
+  await api(`/api/studio/references/${id}`, { method: 'DELETE' })
+  await loadBank()
+}, 'Element supprime.')
 
 const assetsOf = (kind: string) => (detail.value?.assets ?? []).filter((a: any) => a.kind === kind)
 const fieldClass = 'h-11 w-full rounded-xl border border-white/15 bg-black/35 px-3 text-sm outline-none focus:border-clippeak-violet'
@@ -162,7 +194,7 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
           <option v-for="c in channels" :key="c.id" :value="c.id">{{ c.displayName }}</option>
         </select>
         <nav class="flex flex-wrap gap-2" aria-label="Sections">
-          <button v-for="t in [['clips', 'Lots a valider'], ['da', 'Direction artistique'], ['reglages', 'Mots-cles et durees'], ['fichiers', 'Fichiers'], ['reference', 'Banque de reference']]" :key="t[0]"
+          <button v-for="t in [['reference', '1. Clips de reference'], ['clips', 'Lots a valider'], ['da', 'Direction artistique'], ['reglages', 'Mots-cles et durees'], ['fichiers', 'Fichiers']]" :key="t[0]"
                   type="button" :class="[ghostClass, tab === t[0] ? 'border-clippeak-violet bg-clippeak-violet/20' : '']" @click="tab = t[0] as any">
             {{ t[1] }}
           </button>
@@ -325,26 +357,74 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
         </ul>
       </section>
 
-      <!-- Banque de reference -->
-      <section v-if="tab === 'reference' && detail" class="card-surface mt-6 space-y-4 p-6">
-        <p class="text-sm text-clippeak-muted">
-          Clips les plus vus de la chaine (API Twitch Clips) : leurs sujets et categories ajustent la note des nouveaux moments.
-          Les statistiques Meta et TikTok ne sont pas disponibles.
-        </p>
-        <button type="button" :class="buttonClass" :disabled="busy" @click="refreshReference">Importer les clips de reference</button>
-        <p class="text-sm">{{ detail.reference.clipCount }} clips · mediane {{ detail.reference.medianViews }} vues</p>
-        <div class="grid gap-4 sm:grid-cols-2">
-          <div>
-            <h3 class="font-semibold">Sujets qui performent</h3>
-            <p class="mt-1 text-sm text-clippeak-muted">{{ detail.reference.topics.map((t: any) => t.word).join(', ') || '-' }}</p>
+      <!-- Banque de reference : base de tout le reste -->
+      <section v-if="tab === 'reference'" class="mt-6 space-y-6">
+        <div class="card-surface space-y-4 p-6">
+          <h2 class="font-display text-xl font-bold">Clips de reference</h2>
+          <p class="text-sm text-clippeak-muted">
+            Deposez des clips qui ont bien marche (videos) ou collez des liens : clips YouTube Shorts / TikTok / Instagram, ou un compte entier
+            (les derniers clips sont alors recuperes). Clippeak transcrit chaque clip, en regarde des images cles et en tire ce qui le fait marcher.
+            Pendant un live ou sur une VOD, tout moment qui ressemble a ces clips est propose en clip. Les statistiques sont facultatives.
+          </p>
+          <form class="space-y-3" @submit.prevent="addReferences">
+            <input ref="refInput" type="file" multiple accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm" aria-label="Videos de reference" class="text-sm">
+            <textarea v-model="refUrls" rows="4" aria-label="Liens" placeholder="Un lien par ligne : clip ou compte YouTube / TikTok / Instagram (20 maximum a la fois)" class="w-full rounded-xl border border-white/15 bg-black/35 p-3 text-sm outline-none focus:border-clippeak-violet" />
+            <button type="submit" :class="buttonClass" :disabled="busy">Ajouter a la banque</button>
+          </form>
+        </div>
+
+        <div v-if="bank" class="card-surface space-y-4 p-6">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <h3 class="font-semibold">Ce que Clippeak a retenu</h3>
+            <button type="button" :class="ghostClass" :disabled="busy" @click="run(loadBank)">Actualiser{{ bank.pending ? ` (${bank.pending} en cours)` : '' }}</button>
           </div>
-          <div>
-            <h3 class="font-semibold">Categories</h3>
-            <ul class="mt-1 text-sm text-clippeak-muted">
-              <li v-for="c in detail.reference.categories" :key="c.name">{{ c.name }} : {{ c.avgViews }} vues en moyenne ({{ c.clips }})</li>
-            </ul>
+          <p class="text-sm">{{ bank.profile.analyzedCount }} clip(s) analyse(s) sur {{ bank.profile.clipCount }} · {{ bank.profile.withStats }} avec statistiques</p>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <h4 class="text-sm font-semibold">Sujets</h4>
+              <p class="mt-1 text-sm text-clippeak-muted">{{ bank.profile.topics.map((t: any) => t.word).join(', ') || '-' }}</p>
+            </div>
+            <div>
+              <h4 class="text-sm font-semibold">Formats et emotions</h4>
+              <p class="mt-1 text-sm text-clippeak-muted">
+                {{ bank.profile.formats.map((f: any) => `${f.name} (${f.count})`).join(', ') || '-' }} ·
+                {{ bank.profile.emotions.map((f: any) => `${f.name} (${f.count})`).join(', ') || '-' }}
+              </p>
+            </div>
+          </div>
+          <div v-if="bank.profile.hooks.length">
+            <h4 class="text-sm font-semibold">Accroches</h4>
+            <ul class="mt-1 list-disc pl-5 text-sm text-clippeak-muted"><li v-for="h in bank.profile.hooks" :key="h.id">{{ h.hook }}</li></ul>
           </div>
         </div>
+
+        <ul v-if="bank" class="space-y-3">
+          <li v-for="item in bank.items" :key="item.id" class="card-surface space-y-2 p-4 text-sm">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span>
+                <strong>{{ item.kind === 'account' ? 'Compte' : 'Clip' }}</strong> · {{ item.source }} · {{ item.title || item.url || 'sans titre' }}
+                <span class="text-clippeak-muted">· {{ statusLabel[item.status] ?? item.status }}</span>
+              </span>
+              <button type="button" :class="ghostClass" :disabled="busy" @click="removeReference(item.id)">Supprimer</button>
+            </div>
+            <p v-if="item.error" class="text-red-400">{{ item.error }}</p>
+            <p v-if="item.note" class="text-clippeak-muted">{{ item.note }}</p>
+            <template v-if="item.analysis">
+              <p>{{ item.analysis.summary }}</p>
+              <p class="text-clippeak-muted">
+                {{ item.analysis.format }} · {{ item.analysis.emotion }} · {{ item.analysis.category }} — {{ item.analysis.whyItWorks }}
+                <span v-if="item.analysis.analyzer === 'local'">(analyse simplifiee, sans l'IA)</span>
+              </p>
+            </template>
+            <div v-if="item.kind === 'clip'" class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <label v-for="s in statLabels" :key="s[0]" class="text-xs text-clippeak-muted">
+                {{ s[1] }} (facultatif)
+                <input :value="item[s[0]] ?? ''" inputmode="numeric" :class="fieldClass" @change="saveStat(item, s[0], ($event.target as HTMLInputElement).value)">
+              </label>
+            </div>
+          </li>
+          <li v-if="!bank.items.length" class="text-sm text-clippeak-muted">Aucun clip de reference pour l'instant.</li>
+        </ul>
       </section>
     </template>
   </main>

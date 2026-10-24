@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { prisma } from '../../server/utils/prisma'
 import { createPipelineStore } from '../../server/utils/clipping/prismaPipelineStore'
 import { createPrismaClipQueueStore } from '../../server/utils/clipping/prismaClipQueueStore'
+import { createPrismaReferenceStore, loadAnalyzedReferences, transcriptText } from '../../server/utils/clipping/prismaReferenceStore'
 import { dataDir } from '../../server/utils/clipping/dataDir'
 import { REQUIRED_SCHEMA } from '../../server/utils/clipping/preflight'
 
@@ -145,6 +146,33 @@ async function main() {
   await prisma.clipJob.update({ where: { id: batch2[1].id }, data: { status: 'failed' } })
   assert.equal((await store.findBatchesToNotify())[0].clips.length, 1)
   log('findBatchesToNotify / markNotified : lot pret seulement quand plus rien n\'est en cours, jamais deux fois')
+
+  // 7b. Banque de reference : prise atomique (comptes d'abord), clips d'un compte, resultat, reprise
+  const refs = createPrismaReferenceStore(prisma as any)
+  const account = await prisma.referenceItem.create({ data: { channelId: channel.id, kind: 'account', source: 'youtube', url: 'https://www.youtube.com/@a/shorts' } })
+  const clipA = await prisma.referenceItem.create({ data: { channelId: channel.id, kind: 'clip', source: 'upload', filePath: 'reference/a.mp4', title: 'a' } })
+  const refFirst = await refs.claimNext()
+  assert.equal(refFirst?.id, account.id)
+  assert.equal(await refs.finishAccount(refFirst!, ['https://www.youtube.com/shorts/AAAAAAAAAA', 'https://www.youtube.com/shorts/BBBBBBBBBB']), 2)
+  assert.equal(await refs.finishAccount(refFirst!, ['https://www.youtube.com/shorts/AAAAAAAAAA']), 0)
+  assert.equal((await prisma.referenceItem.findUniqueOrThrow({ where: { id: account.id } })).status, 'done')
+  assert.equal(await prisma.referenceItem.count({ where: { parentId: account.id } }), 2)
+  const refSecond = await refs.claimNext()
+  assert.equal(refSecond?.id, clipA.id)
+  await prisma.referenceItem.update({ where: { id: clipA.id }, data: { viewCount: 5000 } })
+  await refs.saveDone(clipA.id, { title: 'a', durationSec: 20, viewCount: null, likeCount: null, commentCount: null, shareCount: null, filePath: 'reference/a.mp4', transcript: 'bonjour le marche', analysis: { summary: 's', topic: 't', category: 'humour', hook: 'h', format: 'recit', emotion: 'rire', whyItWorks: 'w', keywords: ['marche'], analyzer: 'claude' } })
+  const refDone = await prisma.referenceItem.findUniqueOrThrow({ where: { id: clipA.id } })
+  assert.equal(refDone.status, 'done')
+  assert.equal(refDone.viewCount, 5000)
+  assert.equal(transcriptText(refDone.transcript), 'bonjour le marche')
+  const refThird = await refs.claimNext()
+  assert.ok(refThird && refThird.id !== clipA.id)
+  assert.equal(await refs.requeueInterrupted(), 1)
+  await refs.saveFailed(refThird!.id, 'Video unavailable')
+  assert.equal((await prisma.referenceItem.findUniqueOrThrow({ where: { id: refThird!.id } })).status, 'failed')
+  const analysed = await loadAnalyzedReferences(prisma as any, channel.id)
+  assert.deepEqual(analysed.map(i => i.id), [clipA.id])
+  log('banque de reference : prise atomique, comptes expanses sans doublon, stats manuelles conservees, reprise')
 
   // 8. Preflight : sur une base migree, plus rien ne manque
   assert.deepEqual(await missingSchemaCheck(prisma), [])
