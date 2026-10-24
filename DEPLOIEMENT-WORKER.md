@@ -87,3 +87,15 @@ ffmpeg -nostdin -loglevel error -y -ss 1035 -t 60 -i "https://d3stzm2eumvgb4.clo
 time WHISPER_THREADS=2 .venv/bin/python scripts/whisper/transcribe.py /tmp/bench.wav small | head -c 200
 ```
 Repere : ~11 s sur un PC recent a 2 threads (`small`). **Mesure sur le VPS (2 coeurs) le 2026-10-24 : 13,9 s pour 60 s d'audio**, donc `small` convient. Au-dela de ~40 s, passer a `WHISPER_MODEL=base`.
+
+## Worker sous un utilisateur dedie (fait le 2026-10-24)
+Le worker execute ffmpeg et Python sur des contenus venus de Twitch : il ne tourne pas en root. `scripts/ops/prepare-worker-user.sh` (a lancer en root, idempotent) :
+- cree l'utilisateur systeme `clippeak` (sans shell de connexion) ;
+- lui donne le dossier de donnees et une copie du cache du modele Whisper (il n'a pas acces a `/root`) ;
+- ecrit `/etc/clippeak/worker.env` (`root:clippeak`, 640) avec UNIQUEMENT les variables du worker : jamais la cle SSH de deploiement, SMTP ni le mot de passe admin ;
+- ecrit `ecosystem.worker.vps.config.cjs` (uid/gid `clippeak`, `--env-file`).
+
+Puis : `pm2 delete clippeak-worker; pm2 start ecosystem.worker.vps.config.cjs; pm2 save`. Le nom du fichier doit finir par `.config.cjs` : sinon pm2 le lance comme un script. Verification : `ps -o user= -p $(pm2 pid clippeak-worker)` doit afficher `clippeak`. Apres un changement de `.env.local`, relancer le script pour regenerer `worker.env`.
+
+## Deploiement automatique et worker
+Le workflow GitHub Actions supprime `.output` a chaque deploiement : il reconstruit maintenant aussi le worker (`npm run build:worker`) puis recharge `clippeak-worker` s'il existe. Sans cela, le bundle du worker disparaitrait apres chaque deploiement (le processus en cours continue, mais un redemarrage echouerait).

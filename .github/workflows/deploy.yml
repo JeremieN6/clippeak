@@ -38,9 +38,15 @@ jobs:
           npm ci
           rm -rf .output
           npm run build
+          # Le build supprime .output : le bundle du worker doit etre reconstruit.
+          npm run build:worker
           if pm2 describe clippeak > /dev/null 2>&1; then
             pm2 reload clippeak --update-env
           else
             pm2 start ecosystem.config.cjs
+          fi
+          # Worker de clips (utilisateur dedie) : recharge seulement s'il existe deja.
+          if pm2 describe clippeak-worker > /dev/null 2>&1; then
+            pm2 reload clippeak-worker
           fi
           EOF
