@@ -1,3 +1,5 @@
+// Doit rester le premier import : il charge les reglages de .env.local avant que le reste du code ne lise process.env.
+import './loadEnvLocal'
 import { prisma } from '../utils/prisma'
 import { runClipWorker } from '../utils/clipping/clipQueue'
 import { createPrismaClipQueueStore } from '../utils/clipping/prismaClipQueueStore'
