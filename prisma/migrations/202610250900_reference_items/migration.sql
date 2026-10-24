@@ -33,3 +33,5 @@ CREATE UNIQUE INDEX "reference_items_channel_id_url_key" ON "public"."reference_
 -- AddForeignKey
 ALTER TABLE "public"."reference_items" ADD CONSTRAINT "reference_items_channel_id_fkey" FOREIGN KEY ("channel_id") REFERENCES "public"."channels"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+-- AlterTable
+ALTER TABLE "public"."vods" ADD COLUMN "scan_sec" DOUBLE PRECISION;

@@ -20,7 +20,8 @@ export const REQUIRED_SCHEMA = [
   { table: 'streamer_styles', column: 'config' },
   { table: 'streamer_assets', column: 'path' },
   { table: 'reference_clips', column: 'view_count' },
-  { table: 'reference_items', column: 'analysis' }
+  { table: 'reference_items', column: 'analysis' },
+  { table: 'vods', column: 'scan_sec' }
 ]
 
 export function commandWorks(command: string, args: string[]): boolean {

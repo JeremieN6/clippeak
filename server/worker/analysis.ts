@@ -29,7 +29,13 @@ const LIVE_WINDOW_SEC = 30 * 60
 const LIVE_SAFETY_SEC = 90
 
 // Corpus de ressemblance des clips de reference d'un streamer (transcription non vide uniquement) ; null si la banque est vide.
-async function loadReferenceBank(channelId: string) {
+// Note par l'API Claude si une cle est configuree, sinon note locale.
+export function createScorer() {
+  const apiKey = readEnv('ANTHROPIC_API_KEY')
+  return apiKey ? createClaudeScorer({ apiKey, model: readEnv('CLIPPEAK_LLM_MODEL') || undefined }) : heuristicScorer
+}
+
+export async function loadReferenceBank(channelId: string) {
   let items: Awaited<ReturnType<typeof loadAnalyzedReferences>>
   try {
     items = (await loadAnalyzedReferences(prisma, channelId)).filter(item => item.transcript.trim())
@@ -49,8 +55,7 @@ async function loadReferenceBank(channelId: string) {
 async function runAnalysis(vod: VodToAnalyze, live: boolean) {
   const audioUrl = await getVodAudioPlaylistUrl(vod.twitchVodId)
   const profile = buildReferenceProfile(await store.referenceClips(vod.channelId))
-  const apiKey = readEnv('ANTHROPIC_API_KEY')
-  const scorer = apiKey ? createClaudeScorer({ apiKey, model: readEnv('CLIPPEAK_LLM_MODEL') || undefined }) : heuristicScorer
+  const scorer = createScorer()
   const existingPeaks = await store.existingPeaks(vod.id)
   const bank = await loadReferenceBank(vod.channelId)
 

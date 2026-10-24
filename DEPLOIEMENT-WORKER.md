@@ -38,7 +38,8 @@ mkdir -p /srv/saas/clippeak-data
 .venv/bin/python scripts/vision/download_models.py /srv/saas/clippeak-data/models
 ```
 # Clips de reference (liens YouTube / TikTok / Instagram) : yt-dlp dans le meme venv, mis a jour regulierement (les sites changent)
-# .venv/bin/pip install -U yt-dlp   puis YTDLP_BIN=/srv/saas/clippeak/.venv/bin/yt-dlp dans .env.local
+# .venv/bin/pip install -U yt-dlp   puis YTDLP_BIN=/srv/saas/clippeak/.venv/bin/yt-dlp
+WORKER_SIMILARITY_SCAN=1     # 0 = ne pas balayer la parole des lives/VODs a la recherche de clips ressemblant aux references dans .env.local
 Si le site est derriere nginx, autoriser les depots jusqu'a 60 Mo (`client_max_body_size 64m;`) pour les videos d'illustration.
 
 ## 4. Variables (dans `.env.local` du VPS, jamais dans le depot)
