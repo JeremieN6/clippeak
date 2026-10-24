@@ -108,3 +108,9 @@
 **Cause racine** : Le worker enchaine de longues taches (Whisper, ffmpeg) entre deux acces a la base ; les connexions inactives sont coupees (et Neon se met en veille, reveil ~1 s), donc la premiere requete suivante echoue. Documente par Neon, mais absent du code.
 **Solution** : `dbRetry.ts` : reessais (1 s, 3 s, 8 s) uniquement pour les erreurs de connexion (P1001, P1002, P1008, P1017) sur tous les stores du worker ; une ecriture refusee (contrainte) n'est jamais rejouee.
 **Regle** : Tout processus de fond qui calcule longtemps entre deux acces base doit reessayer les erreurs de connexion transitoires. Distinguer un artefact de test (PGlite n'accepte qu'une session) d'un vrai risque avant de conclure : ici les deux existaient, seul le second justifiait un correctif.
+
+### [2026-10-24] Commande destinee a une machine que je ne vois pas : verifier ses prerequis
+**Probleme** : La commande de mesure donnee pour le VPS echouait (`.venv/bin/python: No such file`) : elle supposait que l'environnement Python et le script `transcribe.py` etaient deja presents, alors que le VPS etait encore sur l'ancien `main`.
+**Cause racine** : Je n'avais pas de visibilite sur l'etat du serveur et j'ai enchaine des etapes dependantes (installation, deploiement du code, mesure) sans les rendre explicites ni les controler.
+**Solution** : Commande complete et ordonnee : `git fetch` + extraction du script depuis la branche (sans toucher au code en production), controles `which`/`--version`, installation, telechargement du modele, puis mesure. `.venv` ajoute au `.gitignore`.
+**Regle** : Pour toute commande a executer sur une machine hors de portee, commencer par des controles d'etat (existence, versions), ne rien presupposer sur ce qui est deploye, et rendre chaque prerequis explicite dans la meme commande.
