@@ -8,7 +8,7 @@ interface Clip {
   id: string, batch: number | null, status: string, title: string | null, caption: string | null, hashtags: string | null
   error: string | null, qc: { passed: boolean, issues: Array<{ severity: string, message: string }> } | null
   illustrations: Array<{ path: string, source: string }> | null, reviewNote: string | null, score: number | null
-  kind: string | null, category: string | null, hook: string | null, channel: string, videoUrl: string | null
+  kind: string | null, category: string | null, hook: string | null, rationale: string | null, scorer: string | null, channel: string, videoUrl: string | null
 }
 
 const password = ref('')
@@ -226,6 +226,7 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
               </div>
               <p class="text-sm font-semibold">{{ clip.title || clip.hook || 'Sans titre' }}</p>
               <p class="text-xs text-clippeak-muted">Note {{ clip.score ?? '-' }}/10 · {{ clip.kind || '-' }} · {{ clip.category || '-' }}</p>
+              <p v-if="clip.rationale" class="rounded-lg bg-white/5 p-2 text-xs"><strong>Pourquoi cette note :</strong> {{ clip.rationale }}<span v-if="clip.scorer" class="text-clippeak-muted"> ({{ clip.scorer === 'claude' ? 'notee par IA' : 'note locale' }})</span></p>
               <ul v-if="clip.qc?.issues?.length" class="space-y-1 text-xs">
                 <li v-for="(issue, i) in clip.qc.issues" :key="i" :class="issue.severity === 'error' ? 'text-red-400' : 'text-amber-300'">{{ issue.message }}</li>
               </ul>
