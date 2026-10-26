@@ -1,7 +1,7 @@
 import { relative } from 'node:path'
 import type { PrismaClient } from '@prisma/client'
 import { clipsDir, dataDir, safeResolve } from './dataDir'
-import { parseStyle } from './streamerStyle'
+import { parseStyle, referencedSoundAssets } from './streamerStyle'
 import { assignBatches } from './batching'
 import { tagsFromFilename } from './illustrations'
 import type { JobContext, JobResult } from './clipJobPipeline'
@@ -55,7 +55,12 @@ export function createPipelineStore(db: Db) {
       const style = parseStyle(channel.style?.config)
       const settings = channel.settings
 
-      const sfx = await assetPath(channel.id, style.sfx.assetId, ['sfx'])
+      // Seuls les SFX de CE streamer sont resolus ; un identifiant d'un autre streamer est ignore.
+      const sfxPaths: Record<string, string> = {}
+      for (const assetId of referencedSoundAssets(style)) {
+        const sfx = await assetPath(channel.id, assetId, ['sfx'])
+        if (sfx) sfxPaths[assetId] = sfx.path
+      }
       const overlay = await assetPath(channel.id, style.overlay.assetId, ['avatar'])
       const illustrationRows = await db.streamerAsset.findMany({ where: { channelId: channel.id, kind: 'illustration' } })
       const library: IllustrationItem[] = illustrationRows.map(row => ({
@@ -91,7 +96,7 @@ export function createPipelineStore(db: Db) {
         },
         style,
         assets: {
-          sfxPath: sfx?.path,
+          sfxPaths,
           overlayPath: overlay?.path,
           overlayAnimated: overlay ? overlay.filename.toLowerCase().endsWith('.gif') : false
         },

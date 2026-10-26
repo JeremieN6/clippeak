@@ -1,4 +1,6 @@
 import type { KeepRange } from './cutPlanner.ts'
+import { BUILTIN_SYNTH } from './sounds.ts'
+import type { BuiltinSound } from './sounds.ts'
 
 export const OUT_WIDTH = 1080
 export const OUT_HEIGHT = 1920
@@ -30,10 +32,19 @@ export interface IllustrationSpec {
   end: number
 }
 
+// Bruitage integre (synthetise) ou fichier du streamer.
+export type SoundRef = { builtin: BuiltinSound } | { path: string }
+
+export interface SfxRules {
+  intro?: SoundRef
+  illustration?: SoundRef
+  avatar?: SoundRef
+}
+
 export interface RenderStyleOptions {
   bandHeight: number
   zoomIntro: { enabled: boolean, amount: number, durationSec: number }
-  sfx: { enabled: boolean, path?: string, volume: number }
+  sfx: { enabled: boolean, volume: number, rules: SfxRules }
   framing: Framing
   overlay?: OverlaySpec
 }
@@ -41,7 +52,7 @@ export interface RenderStyleOptions {
 export const DEFAULT_RENDER_STYLE: RenderStyleOptions = {
   bandHeight: 300,
   zoomIntro: { enabled: true, amount: 0.12, durationSec: 0.6 },
-  sfx: { enabled: true, volume: 0.6 },
+  sfx: { enabled: true, volume: 0.6, rules: { intro: { builtin: 'wind' } } },
   framing: { centerX: 0.5, centerY: 0.5, zoom: 1 }
 }
 
@@ -81,6 +92,25 @@ export function cropRect(sourceWidth: number, sourceHeight: number, framing: Fra
 
 function betweenExpr(windows: Array<{ start: number, end: number }>): string {
   return windows.map(w => `between(t,${num(w.start)},${num(w.end)})`).join('+')
+}
+
+export interface SfxEvent {
+  // Instant (secondes de clip) et bruitage.
+  at: number
+  sound: SoundRef
+}
+
+const MAX_SFX_EVENTS = 6
+
+// Bruitages a jouer : un par situation active (debut du clip, chaque illustration, apparition de l'avatar).
+export function sfxEvents(spec: RenderSpec): SfxEvent[] {
+  const { sfx, overlay } = spec.style
+  if (!sfx.enabled) return []
+  const events: SfxEvent[] = []
+  if (sfx.rules.intro) events.push({ at: 0, sound: sfx.rules.intro })
+  if (sfx.rules.illustration) for (const ill of spec.illustrations ?? []) events.push({ at: ill.start, sound: sfx.rules.illustration })
+  if (sfx.rules.avatar && overlay) events.push({ at: overlay.windows[0]?.start ?? 0, sound: sfx.rules.avatar })
+  return events.slice(0, MAX_SFX_EVENTS)
 }
 
 // Construit la commande ffmpeg complete (arguments + graphe de filtres) pour un clip vertical 1080x1920 :
@@ -167,19 +197,25 @@ export function buildRenderArgs(spec: RenderSpec): { args: string[], filterCompl
     current = 'vo'
   }
 
-  // --- Audio : bruit de vent a l'ouverture (fichier du streamer, sinon synthetise), melange a la voix.
+  // --- Audio : bruitages (vent, whoosh, pop... ou fichiers du streamer) aux instants choisis, melanges a la voix.
   let audioOut = 'ac'
-  if (style.sfx.enabled) {
-    if (style.sfx.path) {
-      const idx = nextInput++
-      inputs.push({ kind: 'sfx', index: idx })
-      args.push('-i', style.sfx.path)
-      filters.push(`[${idx}:a]volume=${num(style.sfx.volume)}[sfx]`)
-    } else {
-      filters.push(`anoisesrc=d=0.9:c=pink:a=0.5,lowpass=f=1400,afade=t=in:d=0.25,afade=t=out:st=0.5:d=0.4,volume=${num(style.sfx.volume)}[sfx]`)
-    }
-    // amix divise chaque entree par le nombre d'entrees : volume=2 compense, alimiter evite l'ecretage.
-    filters.push('[ac][sfx]amix=inputs=2:duration=first:dropout_transition=0,volume=2,alimiter=limit=0.95[am]')
+  const events = sfxEvents(spec)
+  if (events.length) {
+    events.forEach((event, i) => {
+      const delay = Math.max(0, Math.round(event.at * 1000))
+      const tail = `adelay=${delay}:all=1,volume=${num(style.sfx.volume)}[sfx${i}]`
+      if ('path' in event.sound) {
+        const idx = nextInput++
+        inputs.push({ kind: 'sfx', index: idx })
+        args.push('-i', event.sound.path)
+        filters.push(`[${idx}:a]atrim=duration=4,asetpts=PTS-STARTPTS,${tail}`)
+      } else {
+        filters.push(`${BUILTIN_SYNTH[event.sound.builtin]},${tail}`)
+      }
+    })
+    // amix divise chaque entree par le nombre d'entrees : volume=N compense, alimiter evite l'ecretage.
+    const labels = events.map((_, i) => `[sfx${i}]`).join('')
+    filters.push(`[ac]${labels}amix=inputs=${events.length + 1}:duration=first:dropout_transition=0,volume=${events.length + 1},alimiter=limit=0.95[am]`)
     audioOut = 'am'
   }
 

@@ -1,6 +1,6 @@
 import { prisma } from '../../../../utils/prisma'
 import { parseId, requireStudioAdmin } from '../../../../utils/studioAuth'
-import { styleSchema } from '../../../../utils/clipping/streamerStyle'
+import { referencedSoundAssets, styleSchema } from '../../../../utils/clipping/streamerStyle'
 
 export default defineEventHandler(async (event) => {
   requireStudioAdmin(event)
@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   if (!channel) throw createError({ statusCode: 404, statusMessage: 'Streamer introuvable' })
 
   // Un fichier reference (SFX, avatar) doit appartenir a ce streamer.
-  for (const assetId of [parsed.data.sfx.assetId, parsed.data.overlay.assetId]) {
+  for (const assetId of [...referencedSoundAssets(parsed.data), parsed.data.overlay.assetId]) {
     if (assetId && !(await prisma.streamerAsset.findFirst({ where: { id: assetId, channelId: id }, select: { id: true } }))) {
       throw createError({ statusCode: 400, statusMessage: 'Fichier inconnu pour ce streamer' })
     }

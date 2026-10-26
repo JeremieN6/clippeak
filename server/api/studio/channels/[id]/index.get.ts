@@ -1,6 +1,7 @@
 import { prisma } from '../../../../utils/prisma'
 import { parseId, requireStudioAdmin } from '../../../../utils/studioAuth'
 import { parseStyle } from '../../../../utils/clipping/streamerStyle'
+import { BUILTIN_SOUNDS, SOUND_SITUATIONS } from '../../../../utils/clipping/sounds'
 import { buildReferenceProfile } from '../../../../utils/clipping/referenceClips'
 
 // Reglages, DA, fichiers (sans chemins serveur) et resume de la banque de reference d'un streamer.
@@ -27,6 +28,8 @@ export default defineEventHandler(async (event) => {
       highlightColor: channel.settings.highlightColor
     },
     style: parseStyle(channel.style?.config),
+    // Bruitages proposes dans la DA : sons integres et situations ou ils peuvent etre joues.
+    sounds: { builtin: BUILTIN_SOUNDS, situations: SOUND_SITUATIONS },
     assets: channel.assets.map(a => ({ id: a.id, kind: a.kind, filename: a.filename, tags: a.tags, source: a.source, createdAt: a.createdAt })),
     reference: { clipCount: profile.clipCount, medianViews: profile.medianViews, topics: profile.topics.slice(0, 12), categories: profile.categories.slice(0, 8) }
   }

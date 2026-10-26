@@ -73,9 +73,9 @@ async function main() {
   const sfx = await prisma.streamerAsset.create({ data: { channelId: channel.id, kind: 'sfx', filename: 'vent.wav', path: `assets/${channel.id}/vent.wav` } })
   const logo = await prisma.streamerAsset.create({ data: { channelId: channel.id, kind: 'avatar', filename: 'logo.gif', path: `assets/${channel.id}/logo.gif` } })
   await prisma.streamerAsset.create({ data: { channelId: channel.id, kind: 'illustration', filename: 'marche-legumes.mp4', path: `assets/${channel.id}/m.mp4`, tags: ['marche'], source: 'Auteur X' } })
-  await prisma.streamerStyle.create({ data: { channelId: channel.id, config: { sfx: { assetId: sfx.id }, overlay: { enabled: true, assetId: logo.id, appear: 'intro' }, names: ['YassEncore'] } } })
+  await prisma.streamerStyle.create({ data: { channelId: channel.id, config: { sfx: { intro: { enabled: true, sound: `asset:${sfx.id}` }, illustration: { enabled: true, sound: `asset:${sfx.id}` } }, overlay: { enabled: true, assetId: logo.id, appear: 'intro' }, names: ['YassEncore'] } } })
   const ctx2 = await store.loadJobContext(first!.id)
-  assert.ok(ctx2.assets.sfxPath?.startsWith(dataDir()))
+  assert.ok(ctx2.assets.sfxPaths?.[sfx.id]?.startsWith(dataDir()))
   assert.equal(ctx2.assets.overlayAnimated, true)
   assert.equal(ctx2.library.length, 1)
   assert.deepEqual(ctx2.library[0].tags, ['marche'])
@@ -84,8 +84,8 @@ async function main() {
   // un fichier d'un AUTRE streamer n'est jamais resolu
   const other = await prisma.channel.create({ data: { twitchId: '1', login: 'autre', displayName: 'Autre' } })
   const foreign = await prisma.streamerAsset.create({ data: { channelId: other.id, kind: 'sfx', filename: 'x.wav', path: `assets/${other.id}/x.wav` } })
-  await prisma.streamerStyle.update({ where: { channelId: channel.id }, data: { config: { sfx: { assetId: foreign.id } } } })
-  assert.equal((await store.loadJobContext(first!.id)).assets.sfxPath, undefined)
+  await prisma.streamerStyle.update({ where: { channelId: channel.id }, data: { config: { sfx: { intro: { enabled: true, sound: `asset:${foreign.id}` } } } } })
+  assert.equal((await store.loadJobContext(first!.id)).assets.sfxPaths?.[foreign.id], undefined)
   log('loadJobContext : fichiers du streamer resolus, fichier d\'un autre streamer refuse')
 
   // 5. Resultat du rendu + echec QC

@@ -167,6 +167,89 @@ const removeReference = (id: string) => run(async () => {
   await loadBank()
 }, 'Element supprime.')
 
+// Apercu en direct de la direction artistique : memes positions et proportions que le rendu 1080x1920, a l'echelle 1/4.
+const PREVIEW_W = 270
+const PREVIEW_H = 480
+const PREVIEW_SCALE = PREVIEW_W / 1080
+const previewIllustration = ref(false)
+const introScale = ref(1)
+const introAnimating = ref(false)
+const subtitleSample = ['on a tout', 'vu']
+
+const sceneStyle = computed(() => {
+  const f = detail.value?.style.framing
+  if (!f) return {}
+  // Meme calcul que le rendu : la source 16:9 est agrandie par le zoom, puis recadree sur le point choisi sans sortir de l'image.
+  const h = PREVIEW_H * Math.max(1, f.zoom)
+  const w = (h * 16) / 9
+  const left = Math.min(0, Math.max(PREVIEW_W - w, PREVIEW_W / 2 - f.centerX * w))
+  const top = Math.min(0, Math.max(PREVIEW_H - h, PREVIEW_H / 2 - f.centerY * h))
+  return { position: 'absolute', width: `${w}px`, height: `${h}px`, left: `${left}px`, top: `${top}px`, background: 'linear-gradient(135deg,#312e81,#0f172a 55%,#064e3b)' }
+})
+
+const figureStyle = {
+  position: 'absolute', left: '50%', top: '28%', height: '56%', aspectRatio: '0.8', transform: 'translateX(-50%)',
+  borderRadius: '45% 45% 8% 8%', background: 'linear-gradient(#fbbf24 0 34%, #475569 34%)', opacity: '0.9'
+}
+
+const introStyle = computed(() => ({
+  position: 'absolute', inset: '0', transformOrigin: 'center', transform: `scale(${introScale.value})`,
+  transition: introAnimating.value ? `transform ${detail.value?.style.zoomIntro.durationSec ?? 0.6}s ease-out` : 'none'
+}))
+
+function replayIntro() {
+  introAnimating.value = false
+  introScale.value = 1 + (detail.value?.style.zoomIntro.amount ?? 0)
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    introAnimating.value = true
+    introScale.value = 1
+  }))
+}
+
+const illustrationStyle = {
+  position: 'absolute', left: '0', width: '100%', top: `${300 * PREVIEW_SCALE}px`, height: `${800 * PREVIEW_SCALE}px`,
+  background: 'repeating-linear-gradient(45deg,#334155,#334155 10px,#1e293b 10px,#1e293b 20px)', color: '#e2e8f0',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px'
+}
+
+const bandStyle = {
+  position: 'absolute', left: '0', top: '0', width: '100%', height: `${300 * PREVIEW_SCALE}px`, background: '#000',
+  display: 'flex', alignItems: 'center', justifyContent: 'center'
+}
+
+const titleTextStyle = computed(() => {
+  const t = detail.value?.style.title
+  if (!t) return {}
+  return {
+    fontFamily: `"${t.fontName}", sans-serif`, fontWeight: '700', fontSize: `${t.fontSize * PREVIEW_SCALE}px`, lineHeight: '1.15',
+    color: detail.value?.settings?.accentColor || t.color || '#fff', textAlign: 'center',
+    // Le rendu coupe a 24 caracteres par ligne et au nombre de lignes choisi.
+    maxWidth: `${Math.min(PREVIEW_W - 12, 24 * 0.52 * t.fontSize * PREVIEW_SCALE)}px`,
+    display: '-webkit-box', WebkitLineClamp: String(t.maxLines), WebkitBoxOrient: 'vertical', overflow: 'hidden'
+  }
+})
+
+const subtitleBoxStyle = { position: 'absolute', left: '0', width: '100%', bottom: `${420 * PREVIEW_SCALE}px`, textAlign: 'center' }
+
+const subtitleTextStyle = computed(() => {
+  const s = detail.value?.style.subtitles
+  if (!s) return {}
+  return {
+    fontFamily: `"${s.fontName}", sans-serif`, fontWeight: '800', fontSize: `${s.fontSize * PREVIEW_SCALE}px`, color: s.color,
+    textTransform: s.uppercase ? 'uppercase' : 'none', textShadow: '1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000'
+  }
+})
+
+const avatarStyle = computed(() => {
+  const o = detail.value?.style.overlay
+  if (!o) return {}
+  return {
+    position: 'absolute', left: `${o.x * PREVIEW_SCALE}px`, top: `${o.y * PREVIEW_SCALE}px`, width: `${o.width * PREVIEW_SCALE}px`, height: `${o.width * PREVIEW_SCALE}px`,
+    border: '1px dashed #fff', background: 'rgba(255,255,255,.2)', color: '#fff', fontSize: '10px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center'
+  }
+})
+
 const assetsOf = (kind: string) => (detail.value?.assets ?? []).filter((a: any) => a.kind === kind)
 const fieldClass = 'h-11 w-full rounded-xl border border-white/15 bg-black/35 px-3 text-sm outline-none focus:border-clippeak-violet'
 const buttonClass = 'rounded-xl bg-clippeak-violet px-5 py-2.5 text-sm font-semibold transition hover:bg-clippeak-violetLight disabled:opacity-60'
@@ -250,70 +333,148 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
         </div>
       </section>
 
-      <!-- Direction artistique -->
-      <section v-if="tab === 'da' && detail" class="card-surface mt-6 space-y-6 p-6">
-        <div class="grid gap-4 sm:grid-cols-2">
+      <!-- Direction artistique : reglages a gauche, apercu en direct a droite -->
+      <section v-if="tab === 'da' && detail" class="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div class="card-surface space-y-6 p-6">
           <fieldset class="space-y-3">
             <legend class="font-semibold">Titre (bande noire en haut)</legend>
             <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.title.enabled" type="checkbox"> Afficher le titre</label>
-            <input v-model="detail.style.title.fontName" aria-label="Police du titre" placeholder="Police (ex : Lato)" :class="fieldClass">
-            <input v-model.number="detail.style.title.fontSize" type="number" min="30" max="120" aria-label="Taille du titre" :class="fieldClass">
-            <label class="text-sm text-clippeak-muted">Lignes maximum <input v-model.number="detail.style.title.maxLines" type="number" min="1" max="3" :class="fieldClass"></label>
+            <template v-if="detail.style.title.enabled">
+              <input v-model="detail.style.title.fontName" aria-label="Police du titre" placeholder="Police (ex : Lato)" :class="fieldClass">
+              <label class="text-sm text-clippeak-muted">Taille {{ detail.style.title.fontSize }}
+                <input v-model.number="detail.style.title.fontSize" type="range" min="30" max="120" class="w-full">
+              </label>
+              <label class="text-sm text-clippeak-muted">Lignes maximum <input v-model.number="detail.style.title.maxLines" type="number" min="1" max="3" :class="fieldClass"></label>
+            </template>
           </fieldset>
+
           <fieldset class="space-y-3">
             <legend class="font-semibold">Sous-titres mot par mot</legend>
             <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.subtitles.enabled" type="checkbox"> Afficher les sous-titres</label>
-            <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.subtitles.uppercase" type="checkbox"> Majuscules</label>
-            <input v-model="detail.style.subtitles.fontName" aria-label="Police des sous-titres" :class="fieldClass">
-            <input v-model.number="detail.style.subtitles.fontSize" type="number" min="40" max="160" aria-label="Taille des sous-titres" :class="fieldClass">
+            <template v-if="detail.style.subtitles.enabled">
+              <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.subtitles.uppercase" type="checkbox"> Majuscules</label>
+              <input v-model="detail.style.subtitles.fontName" aria-label="Police des sous-titres" :class="fieldClass">
+              <label class="text-sm text-clippeak-muted">Taille {{ detail.style.subtitles.fontSize }}
+                <input v-model.number="detail.style.subtitles.fontSize" type="range" min="40" max="160" class="w-full">
+              </label>
+            </template>
           </fieldset>
+
           <fieldset class="space-y-3">
-            <legend class="font-semibold">Zoom et son d'ouverture</legend>
-            <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.zoomIntro.enabled" type="checkbox"> Zoom au debut</label>
-            <label class="text-sm text-clippeak-muted">Amplitude (0 a 0,4) <input v-model.number="detail.style.zoomIntro.amount" type="number" step="0.01" min="0" max="0.4" :class="fieldClass"></label>
-            <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.sfx.enabled" type="checkbox"> Bruit de vent / SFX</label>
-            <label class="text-sm text-clippeak-muted">Fichier SFX
-              <select v-model="detail.style.sfx.assetId" :class="fieldClass">
-                <option :value="null">Bruit de vent par defaut</option>
-                <option v-for="a in assetsOf('sfx')" :key="a.id" :value="a.id">{{ a.filename }}</option>
-              </select>
-            </label>
+            <legend class="font-semibold">Zoom d'ouverture</legend>
+            <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.zoomIntro.enabled" type="checkbox"> Zoom au debut du clip</label>
+            <template v-if="detail.style.zoomIntro.enabled">
+              <label class="text-sm text-clippeak-muted">Amplitude {{ detail.style.zoomIntro.amount }}
+                <input v-model.number="detail.style.zoomIntro.amount" type="range" step="0.01" min="0" max="0.4" class="w-full">
+              </label>
+            </template>
           </fieldset>
+
+          <fieldset class="space-y-3">
+            <legend class="font-semibold">Bruitages</legend>
+            <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.sfx.enabled" type="checkbox"> Ajouter des bruitages</label>
+            <template v-if="detail.style.sfx.enabled">
+              <label class="text-sm text-clippeak-muted">Volume {{ detail.style.sfx.volume }}
+                <input v-model.number="detail.style.sfx.volume" type="range" step="0.05" min="0" max="1" class="w-full">
+              </label>
+              <div v-for="situation in detail.sounds.situations" :key="situation.id" class="space-y-2 rounded-xl border border-white/10 p-3">
+                <label class="flex items-center gap-2 text-sm">
+                  <input v-model="detail.style.sfx[situation.id].enabled" type="checkbox"> {{ situation.label }}
+                </label>
+                <select v-if="detail.style.sfx[situation.id].enabled" v-model="detail.style.sfx[situation.id].sound" :aria-label="`Bruitage : ${situation.label}`" :class="fieldClass">
+                  <optgroup label="Sons integres">
+                    <option v-for="s in detail.sounds.builtin" :key="s.id" :value="s.id">{{ s.label }}</option>
+                  </optgroup>
+                  <optgroup v-if="assetsOf('sfx').length" label="Vos fichiers (onglet Fichiers)">
+                    <option v-for="a in assetsOf('sfx')" :key="a.id" :value="`asset:${a.id}`">{{ a.filename }}</option>
+                  </optgroup>
+                </select>
+              </div>
+              <p class="text-xs text-clippeak-muted">Chaque situation a son propre son. Les sons ne s'entendent pas dans l'apercu : ils sont ajoutes au rendu du clip.</p>
+            </template>
+          </fieldset>
+
           <fieldset class="space-y-3">
             <legend class="font-semibold">Cadrage du streamer</legend>
             <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.framing.auto" type="checkbox"> Cadrage automatique (reconnaissance du visage avec vos photos)</label>
-            <p class="text-xs text-clippeak-muted">3 a 5 photos nettes suffisent (onglet Fichiers). Si vous n'etes pas reconnu dans le clip, le cadrage manuel ci-dessous est utilise et un avertissement s'affiche.</p>
-            <label class="text-sm text-clippeak-muted">Position horizontale (0 gauche, 1 droite) <input v-model.number="detail.style.framing.centerX" type="number" step="0.05" min="0" max="1" :class="fieldClass"></label>
-            <label class="text-sm text-clippeak-muted">Position verticale <input v-model.number="detail.style.framing.centerY" type="number" step="0.05" min="0" max="1" :class="fieldClass"></label>
-            <label class="text-sm text-clippeak-muted">Zoom (1 = plan large, 2 = grand plan) <input v-model.number="detail.style.framing.zoom" type="number" step="0.1" min="1" max="3" :class="fieldClass"></label>
+            <p v-if="detail.style.framing.auto" class="text-xs text-clippeak-muted">3 a 5 photos nettes suffisent (onglet Fichiers). Si vous n'etes pas reconnu dans le clip, le cadrage manuel ci-dessous est utilise et un avertissement apparait dans le controle qualite.</p>
+            <label class="text-sm text-clippeak-muted">{{ detail.style.framing.auto ? 'Repli : position' : 'Position' }} horizontale {{ detail.style.framing.centerX }}
+              <input v-model.number="detail.style.framing.centerX" type="range" step="0.05" min="0" max="1" class="w-full">
+            </label>
+            <label class="text-sm text-clippeak-muted">Position verticale {{ detail.style.framing.centerY }}
+              <input v-model.number="detail.style.framing.centerY" type="range" step="0.05" min="0" max="1" class="w-full">
+            </label>
+            <label class="text-sm text-clippeak-muted">Zoom {{ detail.style.framing.zoom }} (1 = plan large, 3 = gros plan)
+              <input v-model.number="detail.style.framing.zoom" type="range" step="0.1" min="1" max="3" class="w-full">
+            </label>
           </fieldset>
+
           <fieldset class="space-y-3">
             <legend class="font-semibold">Avatar / GIF</legend>
             <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.overlay.enabled" type="checkbox"> Afficher l'avatar</label>
-            <select v-model="detail.style.overlay.assetId" aria-label="Fichier avatar" :class="fieldClass">
-              <option :value="null">Aucun fichier</option>
-              <option v-for="a in assetsOf('avatar')" :key="a.id" :value="a.id">{{ a.filename }}</option>
-            </select>
-            <select v-model="detail.style.overlay.appear" aria-label="Apparition" :class="fieldClass">
-              <option value="always">Tout le clip</option>
-              <option value="intro">3 premieres secondes</option>
-              <option value="outro">3 dernieres secondes</option>
-            </select>
-            <div class="grid grid-cols-3 gap-2">
-              <input v-model.number="detail.style.overlay.x" type="number" aria-label="Position x" :class="fieldClass">
-              <input v-model.number="detail.style.overlay.y" type="number" aria-label="Position y" :class="fieldClass">
-              <input v-model.number="detail.style.overlay.width" type="number" aria-label="Largeur" :class="fieldClass">
-            </div>
+            <template v-if="detail.style.overlay.enabled">
+              <select v-model="detail.style.overlay.assetId" aria-label="Fichier avatar" :class="fieldClass">
+                <option :value="null">Aucun fichier</option>
+                <option v-for="a in assetsOf('avatar')" :key="a.id" :value="a.id">{{ a.filename }}</option>
+              </select>
+              <select v-model="detail.style.overlay.appear" aria-label="Apparition" :class="fieldClass">
+                <option value="always">Tout le clip</option>
+                <option value="intro">3 premieres secondes</option>
+                <option value="outro">3 dernieres secondes</option>
+              </select>
+              <label class="text-sm text-clippeak-muted">Position horizontale {{ detail.style.overlay.x }}
+                <input v-model.number="detail.style.overlay.x" type="range" step="10" min="0" max="1080" class="w-full">
+              </label>
+              <label class="text-sm text-clippeak-muted">Position verticale {{ detail.style.overlay.y }}
+                <input v-model.number="detail.style.overlay.y" type="range" step="10" min="0" max="1920" class="w-full">
+              </label>
+              <label class="text-sm text-clippeak-muted">Largeur {{ detail.style.overlay.width }}
+                <input v-model.number="detail.style.overlay.width" type="range" step="10" min="40" max="600" class="w-full">
+              </label>
+            </template>
           </fieldset>
-          <fieldset class="space-y-3 sm:col-span-2">
+
+          <fieldset class="space-y-3">
             <legend class="font-semibold">Illustrations et noms propres</legend>
             <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.illustrations.enabled" type="checkbox"> Illustrations en ecran scinde (depuis vos videos deposees)</label>
+            <label v-if="detail.style.illustrations.enabled" class="text-sm text-clippeak-muted">Illustrations par clip (maximum) {{ detail.style.illustrations.maxPerClip }}
+              <input v-model.number="detail.style.illustrations.maxPerClip" type="range" min="0" max="4" class="w-full">
+            </label>
             <label class="text-sm text-clippeak-muted">Noms a ecrire exactement (separes par des virgules)
               <input v-model="namesText" placeholder="Yassencore, Thanos" :class="fieldClass">
             </label>
           </fieldset>
+
+          <button type="button" :class="buttonClass" :disabled="busy" @click="saveStyle">Enregistrer la direction artistique</button>
         </div>
-        <button type="button" :class="buttonClass" :disabled="busy" @click="saveStyle">Enregistrer la direction artistique</button>
+
+        <!-- Apercu en direct : memes positions et proportions que le rendu 1080x1920, a l'echelle 1/4 -->
+        <aside class="lg:sticky lg:top-6 lg:self-start">
+          <div class="card-surface space-y-3 p-4">
+            <h3 class="font-semibold">Apercu en direct</h3>
+            <div class="mx-auto overflow-hidden rounded-xl bg-black" :style="{ width: PREVIEW_W + 'px', height: PREVIEW_H + 'px', position: 'relative' }" aria-label="Apercu du rendu">
+              <div :style="introStyle">
+                <div :style="sceneStyle">
+                  <div :style="figureStyle" />
+                </div>
+              </div>
+              <div v-if="previewIllustration" :style="illustrationStyle">Illustration</div>
+              <div v-if="detail.style.title.enabled" :style="bandStyle">
+                <span :style="titleTextStyle">Il a vraiment dit ca en direct devant tout le monde</span>
+              </div>
+              <div v-else :style="{ position: 'absolute', left: 0, top: 0, width: '100%', height: 300 * PREVIEW_SCALE + 'px', background: '#000' }" />
+              <div v-if="detail.style.subtitles.enabled" :style="subtitleBoxStyle">
+                <span :style="subtitleTextStyle">{{ subtitleSample[0] }} <span :style="{ color: detail.settings?.highlightColor || '#FFD400' }">{{ subtitleSample[1] }}</span></span>
+              </div>
+              <div v-if="detail.style.overlay.enabled" :style="avatarStyle">Avatar</div>
+            </div>
+            <label class="flex items-center gap-2 text-sm"><input v-model="previewIllustration" type="checkbox"> Montrer une illustration</label>
+            <button v-if="detail.style.zoomIntro.enabled" type="button" :class="ghostClass" @click="replayIntro">Rejouer le zoom d'ouverture</button>
+            <p class="text-xs text-clippeak-muted">
+              Apercu fidele pour les positions, tailles, couleurs et lignes ; l'image est un decor type (le rendu utilise votre video) et les polices peuvent differer legerement.
+            </p>
+          </div>
+        </aside>
       </section>
 
       <!-- Reglages -->
