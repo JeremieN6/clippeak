@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { buildTimeline } from './timeline.ts'
 import { buildAss, hexToAss, normalizeWord, wrapTitle } from './assBuilder.ts'
-import { buildRenderArgs, cropRect, DEFAULT_RENDER_STYLE } from './clipRender.ts'
+import { buildRenderArgs, cropRect, DEFAULT_RENDER_STYLE, sfxEvents } from './clipRender.ts'
+import { BUILTIN_SOUNDS } from './sounds.ts'
 import { mergeWordFragments } from './whisperTranscribe.ts'
 import { planCut } from './cutPlanner.ts'
 import { runFfmpeg } from './ffmpegRunner.ts'
@@ -112,7 +113,7 @@ test('buildRenderArgs adds the split-screen illustration and the avatar overlay 
     input: 'v.mp4', sourceStartSec: 0, sourceDurationSec: 30, sourceWidth: 1280, sourceHeight: 720,
     keepRanges: [{ start: 0, end: 30 }], assFile: 'c.ass', outPath: 'o.mp4',
     illustrations: [{ path: 'b.mp4', start: 5, end: 9 }],
-    style: { ...DEFAULT_RENDER_STYLE, sfx: { enabled: false, volume: 0.5 }, zoomIntro: { enabled: false, amount: 0, durationSec: 0 },
+    style: { ...DEFAULT_RENDER_STYLE, sfx: { enabled: false, volume: 0.5, rules: {} }, zoomIntro: { enabled: false, amount: 0, durationSec: 0 },
       overlay: { path: 'logo.gif', x: 800, y: 1500, width: 200, animated: true, windows: [{ start: 2, end: 4 }, { start: 20, end: 22 }] } }
   })
   assert.match(filterComplex, /overlay=0:300:enable='between\(t,5,9\)'/)
@@ -162,7 +163,7 @@ test('real ffmpeg renders split-screen illustration, animated avatar and a custo
       input: 'src.mp4', sourceStartSec: 0, sourceDurationSec: 10, sourceWidth: 1280, sourceHeight: 720,
       keepRanges: [{ start: 0, end: 10 }], assFile: 'clip.ass', outPath: 'out.mp4',
       illustrations: [{ path: 'broll.mp4', start: 3, end: 6 }],
-      style: { ...DEFAULT_RENDER_STYLE, sfx: { enabled: true, path: 'whoosh.wav', volume: 0.6 },
+      style: { ...DEFAULT_RENDER_STYLE, sfx: { enabled: true, volume: 0.6, rules: { intro: { path: 'whoosh.wav' }, illustration: { builtin: 'pop' }, avatar: { builtin: 'ding' } } },
         overlay: { path: 'logo.gif', x: 850, y: 1600, width: 160, animated: true, windows: [{ start: 1, end: 2 }, { start: 7, end: 9 }] } }
     })
     await runFfmpeg(args, { cwd: dir, lowPriority: false, timeoutMs: 120_000 })
@@ -170,6 +171,40 @@ test('real ffmpeg renders split-screen illustration, animated avatar and a custo
     const streams = JSON.parse(probe.stdout).streams
     assert.equal(streams.find((s: any) => s.codec_type === 'video').height, 1920)
     assert.ok(Math.abs(Number(streams.find((s: any) => s.codec_type === 'video').duration) - 10) < 0.2)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('sfxEvents plays one sound per active situation at the right instants', () => {
+  const base = { input: 'v.mp4', sourceStartSec: 0, sourceDurationSec: 30, sourceWidth: 1280, sourceHeight: 720, keepRanges: [{ start: 0, end: 30 }], assFile: 'c.ass', outPath: 'o.mp4' }
+  const overlay = { path: 'logo.gif', x: 0, y: 0, width: 100, animated: false, windows: [{ start: 12, end: 15 }] }
+  const events = sfxEvents({ ...base, illustrations: [{ path: 'a.mp4', start: 5, end: 9 }, { path: 'b.mp4', start: 20, end: 24 }],
+    style: { ...DEFAULT_RENDER_STYLE, overlay, sfx: { enabled: true, volume: 0.5, rules: { intro: { builtin: 'wind' }, illustration: { builtin: 'whoosh' }, avatar: { builtin: 'pop' } } } } })
+  assert.deepEqual(events.map(e => e.at), [0, 5, 20, 12])
+  assert.deepEqual(sfxEvents({ ...base, style: { ...DEFAULT_RENDER_STYLE, sfx: { enabled: false, volume: 0.5, rules: { intro: { builtin: 'wind' } } } } }), [])
+  assert.deepEqual(sfxEvents({ ...base, style: { ...DEFAULT_RENDER_STYLE, sfx: { enabled: true, volume: 0.5, rules: { avatar: { builtin: 'pop' } } } } }), [])
+  const graph = buildRenderArgs({ ...base, illustrations: [{ path: 'a.mp4', start: 5, end: 9 }], style: { ...DEFAULT_RENDER_STYLE, sfx: { enabled: true, volume: 0.5, rules: { intro: { builtin: 'wind' }, illustration: { builtin: 'ding' } } } } }).filterComplex
+  assert.match(graph, /adelay=5000:all=1/)
+  assert.match(graph, /amix=inputs=3/)
+})
+
+test('real ffmpeg synthesises every built-in sound and mixes them with the voice', { skip: !hasFfmpeg }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cw-sfx-'))
+  try {
+    const gen = (args: string[]) => runFfmpeg(args, { lowPriority: false })
+    await gen(['-f', 'lavfi', '-i', 'testsrc=size=640x360:rate=30:duration=4', '-f', 'lavfi', '-i', 'sine=frequency=220:duration=4', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', join(dir, 'src.mp4')])
+    writeFileSync(join(dir, 'clip.ass'), buildAss({ title: 'Sons', durationSec: 4, words: [] }))
+    for (const builtin of BUILTIN_SOUNDS.map(b => b.id)) {
+      const { args } = buildRenderArgs({
+        input: 'src.mp4', sourceStartSec: 0, sourceDurationSec: 4, sourceWidth: 640, sourceHeight: 360,
+        keepRanges: [{ start: 0, end: 4 }], assFile: 'clip.ass', outPath: builtin + '.mp4',
+        style: { ...DEFAULT_RENDER_STYLE, zoomIntro: { enabled: false, amount: 0, durationSec: 0 }, sfx: { enabled: true, volume: 0.6, rules: { intro: { builtin }, avatar: undefined } } }
+      })
+      await runFfmpeg(args, { cwd: dir, lowPriority: false, timeoutMs: 120_000 })
+      const probe = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_type', '-of', 'json', join(dir, builtin + '.mp4')], { encoding: 'utf8' })
+      assert.ok(JSON.parse(probe.stdout).streams.some((s: any) => s.codec_type === 'audio'), builtin)
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

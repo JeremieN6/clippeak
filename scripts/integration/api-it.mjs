@@ -106,13 +106,13 @@ try {
   const sfx = await upload('sfx', 'vent.wav', Buffer.concat([Buffer.from('RIFF\0\0\0\0WAVEfmt '), Buffer.alloc(40)]))
   assert.equal(sfx.status, 200)
   const putStyle = (style) => call(`/api/studio/channels/${channelId}/style`, { method: 'PUT', body: style })
-  const goodStyle = { ...detail.json.style, sfx: { enabled: true, volume: 0.5, assetId: sfx.json.id }, names: ['YassEncore'] }
+  const goodStyle = { ...detail.json.style, sfx: { enabled: true, volume: 0.5, intro: { enabled: true, sound: `asset:${sfx.json.id}` }, illustration: { enabled: true, sound: 'whoosh' } }, names: ['YassEncore'] }
   assert.equal((await putStyle(goodStyle)).status, 200)
-  assert.equal((await call(`/api/studio/channels/${channelId}`)).json.style.sfx.assetId, sfx.json.id)
+  assert.equal((await call(`/api/studio/channels/${channelId}`)).json.style.sfx.intro.sound, `asset:${sfx.json.id}`)
   assert.equal((await putStyle({ ...goodStyle, title: { ...goodStyle.title, color: 'noir' } })).status, 400)
   assert.equal((await putStyle({ ...goodStyle, framing: { centerX: 3, centerY: 0.5, zoom: 1 } })).status, 400)
   const [{ id: foreignId }] = await q(`INSERT INTO streamer_assets (id, channel_id, kind, filename, path) VALUES (gen_random_uuid(), $1, 'sfx', 'x.wav', 'assets/x/x.wav') RETURNING id`, [otherId])
-  assert.equal((await putStyle({ ...goodStyle, sfx: { ...goodStyle.sfx, assetId: foreignId } })).status, 400)
+  assert.equal((await putStyle({ ...goodStyle, sfx: { ...goodStyle.sfx, intro: { enabled: true, sound: `asset:${foreignId}` } } })).status, 400)
   ok('direction artistique : enregistree, couleur / cadrage invalides refuses, fichier d\'un autre streamer refuse')
 
   assert.equal((await call(`/api/studio/assets/${up.json.id}`, { method: 'DELETE' })).status, 200)
