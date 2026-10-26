@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { parseStyle, referencedSoundAssets, resolveStyle, styleSchema } from './streamerStyle.ts'
+import { titleLayout } from './assBuilder.ts'
 
 const ID = '11111111-1111-4111-8111-111111111111'
 const settings = { accentColor: '#FFFFFF', highlightColor: '#FFD400', subtitles: true, keywords: [] }
@@ -33,4 +34,16 @@ test('unknown sounds are refused', () => {
   assert.equal(styleSchema.safeParse({ sfx: { intro: { enabled: true, sound: 'rm -rf' } } }).success, false)
   assert.equal(styleSchema.safeParse({ sfx: { intro: { enabled: true, sound: 'asset:../../etc' } } }).success, false)
   assert.equal(styleSchema.safeParse({ sfx: { avatar: { enabled: true, sound: 'impact' } } }).success, true)
+})
+
+test('title layout follows the font size: default size keeps 24 characters on 3 lines, bigger fonts hold less', () => {
+  assert.deepEqual(titleLayout(68, 3), { maxCharsPerLine: 24, maxLines: 3 })
+  const big = titleLayout(110, 3)
+  assert.ok(big.maxCharsPerLine < 24 && big.maxLines < 3)
+  assert.deepEqual(titleLayout(120, 3).maxLines, 1)
+  const small = titleLayout(40, 3)
+  assert.ok(small.maxCharsPerLine > 24)
+  assert.equal(titleLayout(40, 2).maxLines, 2)
+  const resolved = resolveStyle(parseStyle({ title: { fontSize: 100 } }), settings, {}, 30).title
+  assert.deepEqual([resolved.maxCharsPerLine, resolved.maxLines], [titleLayout(100, 3).maxCharsPerLine, titleLayout(100, 3).maxLines])
 })

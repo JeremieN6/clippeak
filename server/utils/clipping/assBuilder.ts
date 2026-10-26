@@ -52,6 +52,20 @@ export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
   keywords: []
 }
 
+// Place reelle du titre dans la bande noire (style ASS "Title") : marges gauche/droite de 50 px, haut a 40 px.
+const TITLE_USABLE_WIDTH = 1080 - 2 * 50
+const TITLE_USABLE_HEIGHT = DEFAULT_TITLE_STYLE.bandHeight - 40 - 10
+const TITLE_CHAR_WIDTH = 0.6
+const TITLE_LINE_HEIGHT = 1.2
+
+// Ce que le titre peut afficher selon la taille de police : plus la police est grande, moins il tient de caracteres par ligne
+// et moins il tient de lignes dans la bande. A la taille par defaut (68) : 24 caracteres, 3 lignes.
+export function titleLayout(fontSize: number, maxLines = 3): { maxCharsPerLine: number, maxLines: number } {
+  const maxCharsPerLine = Math.max(6, Math.min(40, Math.floor(TITLE_USABLE_WIDTH / (fontSize * TITLE_CHAR_WIDTH))))
+  const linesThatFit = Math.max(1, Math.floor(TITLE_USABLE_HEIGHT / (fontSize * TITLE_LINE_HEIGHT)))
+  return { maxCharsPerLine, maxLines: Math.max(1, Math.min(maxLines, linesThatFit)) }
+}
+
 // "#RRGGBB" -> "&H00BBGGRR" (format ASS).
 export function hexToAss(hex: string): string {
   const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim())

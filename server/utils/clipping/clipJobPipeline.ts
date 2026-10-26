@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import { planCut } from './cutPlanner.ts'
 import type { CutPlan, KeepRange } from './cutPlanner.ts'
 import { buildTimeline } from './timeline.ts'
-import { buildAss, fitTitle } from './assBuilder.ts'
+import { buildAss, fitTitle, titleLayout } from './assBuilder.ts'
 import type { TimedWord } from './assBuilder.ts'
 import { buildRenderArgs } from './clipRender.ts'
 import { evaluateQc } from './clipQc.ts'
@@ -71,9 +71,9 @@ export class QcFailedError extends Error {
 }
 
 // Titre par defaut : l'accroche du moment, ramenee a 3 lignes ; le streamer peut le modifier au moment de la validation.
-export function defaultTitle(hook: string | null, plan: { hook?: string } | null, maxLines = 3): string {
+export function defaultTitle(hook: string | null, plan: { hook?: string } | null, maxLines = 3, maxCharsPerLine = 24): string {
   const base = (hook || plan?.hook || '').replace(/\s+/g, ' ').trim()
-  return fitTitle(base.charAt(0).toUpperCase() + base.slice(1), maxLines, 24)
+  return fitTitle(base.charAt(0).toUpperCase() + base.slice(1), maxLines, maxCharsPerLine)
 }
 
 // Prepare et rend un clip : plan de coupe, sous-titres, illustrations, rendu ffmpeg, controle qualite, legende.
@@ -98,7 +98,8 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
     .map(w => ({ start: timeline.toClipTime(w.start), end: timeline.toClipTime(w.end), text: w.text }))
 
   const style = resolveStyle(ctx.style, ctx.settings, ctx.assets, durationFromRanges)
-  const title = ctx.title?.trim() || defaultTitle(ctx.hook, 'hook' in plan ? plan as any : null, ctx.style.title.maxLines)
+  const layout = titleLayout(ctx.style.title.fontSize, ctx.style.title.maxLines)
+  const title = ctx.title?.trim() || defaultTitle(ctx.hook, 'hook' in plan ? plan as any : null, layout.maxLines, layout.maxCharsPerLine)
 
   const illustrations = style.illustrationsEnabled && style.maxIllustrations > 0
     ? placeIllustrations(words, timeline.totalSec, ctx.library, { maxCount: style.maxIllustrations })
@@ -149,8 +150,8 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
       minSec,
       maxSec,
       title,
-      titleMaxLines: ctx.style.title.maxLines,
-      titleMaxCharsPerLine: 24,
+      titleMaxLines: layout.maxLines,
+      titleMaxCharsPerLine: layout.maxCharsPerLine,
       texts: words.map(w => w.text),
       names: [...ctx.style.names, ctx.channelName]
     })

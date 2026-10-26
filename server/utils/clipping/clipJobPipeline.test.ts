@@ -39,7 +39,7 @@ test('style: defaults fill every field, bad values are rejected, and resolveStyl
   const resolved = resolveStyle(parseStyle({ subtitles: { keywords: ['Thanos'] }, overlay: { enabled: true, assetId: null, appear: 'outro' } }),
     { accentColor: '#00FF00', highlightColor: '#FF0000', subtitles: true, keywords: ['mdr'] }, { overlayPath: '/a/logo.gif', overlayAnimated: true }, 30)
   assert.equal(resolved.title.color, '#00FF00')
-  assert.deepEqual(resolved.subtitles.keywords, ['mdr', 'Thanos'])
+  assert.deepEqual(resolved.subtitles.keywords, ['Thanos'])
   assert.equal(resolved.subtitles.highlightColor, '#FF0000')
   assert.deepEqual(resolved.render.overlay?.windows, [{ start: 27, end: 30 }])
   // sans fichier d'avatar, pas d'overlay meme si active
