@@ -36,6 +36,8 @@ export interface JobContext {
   library: IllustrationItem[]
   // Photos de reference du streamer (reconnaissance du visage pour le cadrage automatique).
   photoPaths?: string[]
+  // Dossier des polices deposees par le streamer (donne a ffmpeg pour le titre et les sous-titres).
+  fontsDir?: string
 }
 
 export interface JobResult {
@@ -137,7 +139,7 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
       sourceHeight: deps.sourceHeight ?? 720,
       keepRanges: plan.keepRanges,
       assFile: 'clip.ass',
-      fontsDir: deps.fontsDir,
+      fontsDir: deps.fontsDir ?? ctx.fontsDir,
       outPath,
       style: renderStyle,
       illustrations: illustrations.map(i => ({ path: i.path, start: i.start, end: i.end })),
