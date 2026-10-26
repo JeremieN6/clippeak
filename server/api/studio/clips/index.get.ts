@@ -33,6 +33,8 @@ export default defineEventHandler(async (event) => {
       illustrations: job.illustrations,
       reviewNote: job.reviewNote,
       score: job.moment.aiScore,
+      rationale: job.moment.rationale,
+      scorer: job.moment.scorer,
       kind: job.moment.kind,
       category: job.moment.category,
       hook: job.moment.hook,
