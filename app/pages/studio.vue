@@ -69,6 +69,9 @@ async function loadChannel() {
   detail.value = await api(`/api/studio/channels/${channelId.value}`)
   keywordsText.value = (detail.value.settings?.keywords ?? []).join(', ')
   namesText.value = (detail.value.style.names ?? []).join(', ')
+  highlightText.value = (detail.value.style.subtitles.keywords ?? []).join(', ')
+  // L'interrupteur des sous-titres est maintenant dans la direction artistique : un ancien "desactive" des reglages est repris.
+  if (detail.value.settings && detail.value.settings.subtitles === false) detail.value.style.subtitles.enabled = false
   await loadBank()
 }
 
@@ -105,8 +108,17 @@ const saveSettings = () => run(async () => {
 }, 'Reglages enregistres.')
 
 const saveStyle = () => run(async () => {
-  const style = { ...detail.value.style, names: namesText.value.split(',').map((n: string) => n.trim()).filter(Boolean) }
+  const list = (text: string) => text.split(',').map((n: string) => n.trim()).filter(Boolean)
+  const style = { ...detail.value.style, names: list(namesText.value), subtitles: { ...detail.value.style.subtitles, keywords: list(highlightText.value) } }
   await api(`/api/studio/channels/${channelId.value}/style`, { method: 'PUT', body: style })
+  // Couleurs et interrupteur des sous-titres vivent dans les reglages : ils sont enregistres avec la direction artistique.
+  const r = detail.value.settings
+  if (r) {
+    await api(`/api/studio/channels/${channelId.value}/settings`, {
+      method: 'PUT',
+      body: { keywords: r.keywords, clipMinSec: r.clipMinSec, clipMaxSec: r.clipMaxSec, subtitles: style.subtitles.enabled, accentColor: r.accentColor, highlightColor: r.highlightColor }
+    })
+  }
   await loadChannel()
 }, 'Direction artistique enregistree.')
 
@@ -214,20 +226,46 @@ const illustrationStyle = {
 
 const bandStyle = {
   position: 'absolute', left: '0', top: '0', width: '100%', height: `${300 * PREVIEW_SCALE}px`, background: '#000',
-  display: 'flex', alignItems: 'center', justifyContent: 'center'
+  display: 'flex', justifyContent: 'center', alignItems: 'flex-start', paddingTop: `${40 * PREVIEW_SCALE}px`, boxSizing: 'border-box'
 }
+
+// Memes regles que le rendu (titleLayout) : la place du titre depend de la taille de police.
+const titleSample = "Il a vraiment dit ça en direct devant tout le monde et personne n'a rien compris du tout"
+const titleFit = computed(() => {
+  const t = detail.value?.style.title
+  const size = t?.fontSize ?? 68
+  return {
+    maxCharsPerLine: Math.max(6, Math.min(40, Math.floor(980 / (size * 0.6)))),
+    maxLines: Math.max(1, Math.min(t?.maxLines ?? 3, Math.floor(250 / (size * 1.2))))
+  }
+})
+
+const titleLines = computed(() => {
+  const { maxCharsPerLine, maxLines } = titleFit.value
+  const lines: string[] = []
+  let current = ''
+  for (const word of titleSample.split(' ')) {
+    const candidate = current ? `${current} ${word}` : word
+    if (candidate.length <= maxCharsPerLine || !current) current = candidate
+    else { lines.push(current); current = word }
+  }
+  if (current) lines.push(current)
+  if (lines.length <= maxLines) return lines
+  const kept = lines.slice(0, maxLines)
+  kept[maxLines - 1] = `${kept[maxLines - 1].replace(/[.,;:!?…-]+$/, '')}…`
+  return kept
+})
 
 const titleTextStyle = computed(() => {
   const t = detail.value?.style.title
   if (!t) return {}
   return {
-    fontFamily: `"${t.fontName}", sans-serif`, fontWeight: '700', fontSize: `${t.fontSize * PREVIEW_SCALE}px`, lineHeight: '1.15',
-    color: detail.value?.settings?.accentColor || t.color || '#fff', textAlign: 'center',
-    // Le rendu coupe a 24 caracteres par ligne et au nombre de lignes choisi.
-    maxWidth: `${Math.min(PREVIEW_W - 12, 24 * 0.52 * t.fontSize * PREVIEW_SCALE)}px`,
-    display: '-webkit-box', WebkitLineClamp: String(t.maxLines), WebkitBoxOrient: 'vertical', overflow: 'hidden'
+    fontFamily: `"${t.fontName}", sans-serif`, fontWeight: '700', fontSize: `${t.fontSize * PREVIEW_SCALE}px`, lineHeight: '1.2',
+    color: detail.value?.settings?.accentColor || t.color || '#fff', textAlign: 'center', whiteSpace: 'nowrap'
   }
 })
+
+const highlightText = ref('')
 
 const subtitleBoxStyle = { position: 'absolute', left: '0', width: '100%', bottom: `${420 * PREVIEW_SCALE}px`, textAlign: 'center' }
 
@@ -277,7 +315,7 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
           <option v-for="c in channels" :key="c.id" :value="c.id">{{ c.displayName }}</option>
         </select>
         <nav class="flex flex-wrap gap-2" aria-label="Sections">
-          <button v-for="t in [['reference', '1. Clips de reference'], ['clips', 'Lots a valider'], ['da', 'Direction artistique'], ['reglages', 'Mots-cles et durees'], ['fichiers', 'Fichiers']]" :key="t[0]"
+          <button v-for="t in [['reference', '1. Clips de reference'], ['clips', 'Lots a valider'], ['da', 'Direction artistique'], ['reglages', 'Detection et durees'], ['fichiers', 'Fichiers']]" :key="t[0]"
                   type="button" :class="[ghostClass, tab === t[0] ? 'border-clippeak-violet bg-clippeak-violet/20' : '']" @click="tab = t[0] as any">
             {{ t[1] }}
           </button>
@@ -344,7 +382,9 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
               <label class="text-sm text-clippeak-muted">Taille {{ detail.style.title.fontSize }}
                 <input v-model.number="detail.style.title.fontSize" type="range" min="30" max="120" class="w-full">
               </label>
+              <label v-if="detail.settings" class="text-sm text-clippeak-muted">Couleur du titre <input v-model="detail.settings.accentColor" type="color" :class="fieldClass"></label>
               <label class="text-sm text-clippeak-muted">Lignes maximum <input v-model.number="detail.style.title.maxLines" type="number" min="1" max="3" :class="fieldClass"></label>
+              <p class="text-xs text-clippeak-muted">A cette taille, le titre tient sur {{ titleFit.maxLines }} ligne(s) de {{ titleFit.maxCharsPerLine }} caracteres maximum ; au-dela il est raccourci avec « … ».</p>
             </template>
           </fieldset>
 
@@ -354,6 +394,13 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
             <template v-if="detail.style.subtitles.enabled">
               <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.subtitles.uppercase" type="checkbox"> Majuscules</label>
               <input v-model="detail.style.subtitles.fontName" aria-label="Police des sous-titres" :class="fieldClass">
+              <div class="grid grid-cols-2 gap-3">
+                <label class="text-sm text-clippeak-muted">Couleur des sous-titres <input v-model="detail.style.subtitles.color" type="color" :class="fieldClass"></label>
+                <label v-if="detail.settings" class="text-sm text-clippeak-muted">Couleur du mot mis en valeur <input v-model="detail.settings.highlightColor" type="color" :class="fieldClass"></label>
+              </div>
+              <label class="text-sm text-clippeak-muted">Mots mis en valeur dans les sous-titres (separes par des virgules)
+                <input v-model="highlightText" placeholder="incroyable, jamais, argent" :class="fieldClass">
+              </label>
               <label class="text-sm text-clippeak-muted">Taille {{ detail.style.subtitles.fontSize }}
                 <input v-model.number="detail.style.subtitles.fontSize" type="range" min="40" max="160" class="w-full">
               </label>
@@ -460,7 +507,7 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
               </div>
               <div v-if="previewIllustration" :style="illustrationStyle">Illustration</div>
               <div v-if="detail.style.title.enabled" :style="bandStyle">
-                <span :style="titleTextStyle">Il a vraiment dit ca en direct devant tout le monde</span>
+                <div :style="titleTextStyle"><div v-for="(line, i) in titleLines" :key="i">{{ line }}</div></div>
               </div>
               <div v-else :style="{ position: 'absolute', left: 0, top: 0, width: '100%', height: 300 * PREVIEW_SCALE + 'px', background: '#000' }" />
               <div v-if="detail.style.subtitles.enabled" :style="subtitleBoxStyle">
@@ -477,19 +524,20 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
         </aside>
       </section>
 
-      <!-- Reglages -->
+      <!-- Detection et durees -->
       <section v-if="tab === 'reglages' && detail?.settings" class="card-surface mt-6 space-y-4 p-6">
-        <label class="block text-sm text-clippeak-muted">Mots-cles du chat (separes par des virgules)
+        <p class="text-sm text-clippeak-muted">
+          Ces reglages decident quels moments sont reperes et quelle longueur ont les clips. Ils ne changent pas l'apparence des clips (couleurs, titre, sous-titres : onglet Direction artistique).
+        </p>
+        <label class="block text-sm text-clippeak-muted">Mots que votre chat ecrit quand il reagit (separes par des virgules)
           <textarea v-model="keywordsText" rows="3" class="mt-1 w-full rounded-xl border border-white/15 bg-black/35 p-3 text-sm outline-none focus:border-clippeak-violet" />
         </label>
+        <p class="text-xs text-clippeak-muted">Exemples : mdr, omg, kekw. Un afflux de ces mots (et de messages en majuscules) signale un moment fort a analyser.</p>
         <div class="grid gap-4 sm:grid-cols-2">
-          <label class="text-sm text-clippeak-muted">Duree minimale (s) <input v-model.number="detail.settings.clipMinSec" type="number" min="10" max="120" :class="fieldClass"></label>
-          <label class="text-sm text-clippeak-muted">Duree maximale (s) <input v-model.number="detail.settings.clipMaxSec" type="number" min="15" max="180" :class="fieldClass"></label>
-          <label class="text-sm text-clippeak-muted">Couleur du titre <input v-model="detail.settings.accentColor" type="color" :class="fieldClass"></label>
-          <label class="text-sm text-clippeak-muted">Couleur des mots-cles <input v-model="detail.settings.highlightColor" type="color" :class="fieldClass"></label>
+          <label class="text-sm text-clippeak-muted">Duree minimale d'un clip (s) <input v-model.number="detail.settings.clipMinSec" type="number" min="10" max="120" :class="fieldClass"></label>
+          <label class="text-sm text-clippeak-muted">Duree maximale d'un clip (s) <input v-model.number="detail.settings.clipMaxSec" type="number" min="15" max="180" :class="fieldClass"></label>
         </div>
-        <label class="flex items-center gap-2 text-sm"><input v-model="detail.settings.subtitles" type="checkbox"> Sous-titres actives</label>
-        <button type="button" :class="buttonClass" :disabled="busy" @click="saveSettings">Enregistrer les reglages</button>
+        <button type="button" :class="buttonClass" :disabled="busy" @click="saveSettings">Enregistrer</button>
       </section>
 
       <!-- Fichiers -->

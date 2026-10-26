@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { DEFAULT_RENDER_STYLE } from './clipRender.ts'
 import type { OverlaySpec, RenderStyleOptions, SoundRef } from './clipRender.ts'
-import { DEFAULT_SUBTITLE_STYLE, DEFAULT_TITLE_STYLE } from './assBuilder.ts'
+import { DEFAULT_SUBTITLE_STYLE, DEFAULT_TITLE_STYLE, titleLayout } from './assBuilder.ts'
 import type { SubtitleStyle, TitleStyle } from './assBuilder.ts'
 import { ASSET_SOUND, isBuiltinSound } from './sounds.ts'
 import type { BuiltinSound } from './sounds.ts'
@@ -39,7 +39,7 @@ const baseStyleSchema = z.object({
     color: hex.default(DEFAULT_SUBTITLE_STYLE.color),
     highlightColor: hex.default(DEFAULT_SUBTITLE_STYLE.highlightColor),
     uppercase: z.boolean().default(DEFAULT_SUBTITLE_STYLE.uppercase),
-    // Mots mis en couleur en plus des mots-cles du chat.
+    // Mots mis en couleur dans les sous-titres.
     keywords: z.array(z.string().trim().min(1).max(40)).max(50).default([])
   }).prefault({}),
   zoomIntro: z.object({
@@ -144,7 +144,13 @@ export function resolveStyle(
     : undefined
 
   return {
-    title: { enabled: config.title.enabled, fontName: config.title.fontName, fontSize: config.title.fontSize, color: settings.accentColor || config.title.color, maxLines: config.title.maxLines },
+    title: {
+      enabled: config.title.enabled,
+      fontName: config.title.fontName,
+      fontSize: config.title.fontSize,
+      color: settings.accentColor || config.title.color,
+      ...titleLayout(config.title.fontSize, config.title.maxLines)
+    },
     subtitles: {
       enabled: config.subtitles.enabled && settings.subtitles,
       fontName: config.subtitles.fontName,
@@ -152,7 +158,8 @@ export function resolveStyle(
       color: config.subtitles.color,
       highlightColor: settings.highlightColor || config.subtitles.highlightColor,
       uppercase: config.subtitles.uppercase,
-      keywords: [...new Set([...settings.keywords, ...config.subtitles.keywords])]
+      // Mots mis en valeur : ceux choisis dans la DA seulement (les mots du chat servent a la detection, pas a l'apparence).
+      keywords: [...new Set(config.subtitles.keywords)]
     },
     render: {
       ...DEFAULT_RENDER_STYLE,
