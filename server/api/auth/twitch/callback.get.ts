@@ -9,6 +9,9 @@ import { exchangeCode, fetchIdentity, hashToken, newToken, SESSION_COOKIE, SESSI
 // Connexion reussie : le studio. Sinon : retour sur la page de connexion avec la raison.
 const back = (event: H3Event, result: string) => sendRedirect(event, result === 'ok' ? '/studio' : `/connexion?login=${result}`, 302)
 
+// Chaine non invitee : page d'attente (avec son pseudo Twitch, public) plutot qu'une erreur.
+const waiting = (event: H3Event, login: string) => sendRedirect(event, `/attente?login=${encodeURIComponent(login)}`, 302)
+
 // Retour de Twitch : verifie l'etat, lit l'identite du streamer, accepte seulement les chaines invitees, cree sa chaine au premier
 // passage (et l'ecoute de ses lives), puis ouvre une session. Le jeton Twitch n'est jamais conserve.
 export default defineEventHandler(async (event) => {
@@ -34,7 +37,7 @@ export default defineEventHandler(async (event) => {
 
   // Inscription sur invitation : le pseudo (ou l'identifiant Twitch deja enregistre) doit etre dans la liste de l'admin.
   const invite = await prisma.channelInvite.findFirst({ where: { OR: [{ twitchId: identity.id }, { twitchLogin: identity.login }] } })
-  if (!invite) return back(event, 'refused')
+  if (!invite) return waiting(event, identity.login)
 
   const firstLogin = !invite.twitchId
   const channel = await prisma.channel.upsert({
