@@ -3,7 +3,7 @@ declare const process: { env: Record<string, string | undefined> }
 
 export default defineNuxtConfig({
   modules: ['@nuxtjs/tailwindcss', 'nuxt-posthog'],
-  css: ['~/assets/css/main.css'],
+  css: ['~/assets/css/main.css', '~/assets/css/studio.css'],
   runtimeConfig: {
     adminPassword: process.env.ADMIN_PASSWORD || ''
   },

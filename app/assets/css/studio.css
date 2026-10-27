@@ -1,0 +1,61 @@
+/* Back-office du streamer : memes couleurs et composants que les maquettes (parcours guide et tableau de bord). */
+.st-root { font-family: 'Manrope', system-ui, sans-serif; color: #F3F1F7; }
+.st-title { font-family: 'Sora', 'Manrope', system-ui, sans-serif; letter-spacing: -0.01em; }
+.st-card { background: #16141C; border: 1px solid #2C2837; border-radius: 16px; padding: 24px; }
+.st-eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #B9A0FF; }
+.st-muted { color: #ABA5BA; }
+.st-hint { font-size: 13px; line-height: 20px; color: #ABA5BA; }
+
+.st-btn, .st-btn-ghost, .st-btn-quiet {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 20px;
+  border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: background .15s;
+}
+.st-btn { background: #7C3AED; color: #fff; border: 0; }
+.st-btn:hover:not(:disabled) { background: #8B4FF2; }
+.st-btn-ghost { background: #1D1A25; color: #F3F1F7; border: 1px solid #3B3649; }
+.st-btn-ghost:hover:not(:disabled) { background: #25212F; }
+.st-btn-quiet { background: transparent; color: #B9A0FF; border: 0; padding: 0 12px; }
+.st-btn-quiet:hover:not(:disabled) { background: #1D1A25; }
+.st-btn:disabled, .st-btn-ghost:disabled, .st-btn-quiet:disabled { opacity: .55; cursor: not-allowed; }
+.st-btn-lg { min-height: 52px; border-radius: 12px; padding: 0 28px; font-size: 16px; }
+
+.st-root button:focus-visible, .st-root a:focus-visible, .st-root input:focus-visible, .st-root textarea:focus-visible, .st-root select:focus-visible {
+  outline: 2px solid #B9A0FF; outline-offset: 2px;
+}
+.st-field {
+  width: 100%; min-height: 48px; padding: 0 14px; border-radius: 10px; border: 1px solid #2C2837; background: #100F15;
+  color: #F3F1F7; font-size: 15px; font-weight: 500;
+}
+textarea.st-field { padding: 12px 14px; line-height: 22px; min-height: 0; }
+select.st-field { min-height: 44px; font-weight: 600; background: #1D1A25; border-color: #3B3649; }
+.st-field[aria-invalid="true"] { border-color: #FF9B8D; }
+.st-label { font-size: 14px; font-weight: 700; }
+.st-range { width: 100%; accent-color: #7C3AED; height: 28px; margin: 0; }
+
+.st-badge { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.st-badge-ok { background: #12302A; color: #6EDDB8; }
+.st-badge-warn { background: #33280F; color: #F6C260; }
+.st-badge-info { background: #172640; color: #8DB9FF; }
+.st-badge-error { background: #3A1A19; color: #FF9B8D; }
+.st-badge-neutral { background: #25212F; color: #C9C3D6; }
+.st-badge-violet { background: #2A1F4A; color: #D6C7FF; }
+
+.st-alert { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; font-size: 14px; line-height: 21px; }
+.st-alert-ok { background: #12302A; color: #6EDDB8; }
+.st-alert-warn { background: #33280F; color: #F6C260; }
+.st-alert-info { background: #172640; color: #8DB9FF; }
+.st-alert-error { background: #3A1A19; color: #FF9B8D; }
+
+.st-chip { display: inline-flex; align-items: center; gap: 2px; height: 40px; padding: 0 4px 0 14px; border-radius: 999px; background: #2A1F4A; color: #E4D9FF; font-size: 14px; font-weight: 700; }
+.st-chip button { width: 40px; height: 40px; border: 0; background: none; color: #C9BBF2; display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer; }
+
+.st-switch { width: 52px; height: 44px; flex: 0 0 auto; background: none; border: 0; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.st-switch > span { display: block; width: 44px; height: 26px; border-radius: 999px; background: #3B3649; position: relative; transition: background .15s; }
+.st-switch > span::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left .15s; }
+.st-switch[aria-checked="true"] > span { background: #7C3AED; }
+.st-switch[aria-checked="true"] > span::after { left: 21px; }
+
+.st-dropzone { border: 1.5px dashed #3B3649; border-radius: 14px; padding: 24px 16px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; background: #12111A; }
+.st-nav-item { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; text-align: left; color: #F3F1F7; width: 100%; cursor: pointer; }
+.st-nav-item:hover { background: #1D1A25; }
+.st-nav-item[aria-current="step"], .st-nav-item[aria-current="page"] { background: #2A1F4A; }
