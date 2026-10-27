@@ -6,6 +6,9 @@ import type { SubtitleStyle, TitleStyle } from './assBuilder.ts'
 import { ASSET_SOUND, isBuiltinSound } from './sounds.ts'
 import type { BuiltinSound } from './sounds.ts'
 
+// Plateformes vers lesquelles le streamer veut publier (la connexion et la publication ne sont pas encore codees).
+export const PLATFORMS = ['tiktok', 'instagram', 'youtube'] as const
+
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Couleur au format #RRGGBB')
 const fontName = z.string().trim().min(1).max(60).regex(/^[\p{L}\p{N} _-]+$/u, 'Nom de police invalide')
 const fraction = z.number().min(0).max(1)
@@ -79,6 +82,13 @@ const baseStyleSchema = z.object({
   illustrations: z.object({
     enabled: z.boolean().default(true),
     maxPerClip: z.number().int().min(0).max(4).default(2)
+  }).prefault({}),
+  // Avancement du parcours guide (8 etapes) et plateformes choisies. Ne change pas le rendu : stocke ici pour eviter une migration.
+  onboarding: z.object({
+    done: z.array(z.number().int().min(1).max(8)).max(8).default([]),
+    skipped: z.array(z.number().int().min(1).max(8)).max(8).default([]),
+    completed: z.boolean().default(false),
+    platforms: z.array(z.enum(PLATFORMS)).max(PLATFORMS.length).default([])
   }).prefault({})
 })
 

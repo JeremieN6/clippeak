@@ -11,3 +11,5 @@ npm run test:integration
 - `api-it.mjs` : vrai serveur Nitro (`npx nuxt build` avant) et routes `/api/studio/*` : authentification, validation, depots de fichiers, videos a jeton signe (Range), validation humaine. L'import de la banque de reference appelle la vraie API Twitch si `TWITCH_CLIENT_ID` et `TWITCH_CLIENT_SECRET` sont definis.
 
 PGlite n'accepte qu'une connexion a la fois : `api-it.mjs` utilise le SQL direct pour preparer et verifier les donnees, et `pgbouncer=true` cote serveur pour eviter les requetes preparees nommees.
+
+- `ui-serve.mjs` : meme pile (PGlite + build de production) mais qui reste allumee, avec quelques clips de test, pour regarder `/studio` dans un navigateur : `npx nuxt build && node scripts/integration/ui-serve.mjs .` puis `http://127.0.0.1:3398/studio` (mot de passe jetable affiche au demarrage).

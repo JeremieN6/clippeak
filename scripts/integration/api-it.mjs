@@ -140,6 +140,13 @@ try {
   assert.equal((await putStyle({ ...goodStyle, sfx: { ...goodStyle.sfx, intro: { enabled: true, sound: `asset:${foreignId}` } } })).status, 400)
   ok('direction artistique : enregistree, couleur / cadrage invalides refuses, fichier d\'un autre streamer refuse')
 
+  const withProgress = { ...goodStyle, onboarding: { done: [1, 2], skipped: [5], completed: false, platforms: ['tiktok'] } }
+  assert.equal((await putStyle(withProgress)).status, 200)
+  const savedProgress = (await call(`/api/studio/channels/${channelId}`)).json.style.onboarding
+  assert.deepEqual(savedProgress, withProgress.onboarding)
+  assert.equal((await putStyle({ ...goodStyle, onboarding: { platforms: ['myspace'] } })).status, 400)
+  ok('parcours guide : etapes faites / passees et plateformes choisies conservees, plateforme inconnue refusee')
+
   assert.equal((await call(`/api/studio/assets/${up.json.id}`, { method: 'DELETE' })).status, 200)
   assert.equal(existsSync(join(DATA, stored.path)), false)
   assert.equal((await call(`/api/studio/assets/${up.json.id}`, { method: 'DELETE' })).status, 404)
@@ -175,6 +182,12 @@ try {
   assert.equal((await call(`/api/studio/clips/${reviewId}/video?t=${token.replace(/.$/, 'x')}`, { auth: false, raw: true })).status, 403)
   assert.equal((await call(`/api/studio/clips/${queuedId}/video?t=${token}`, { auth: false, raw: true })).status, 403)
   ok('liste a valider, video 200 / Range 206 / 416, jeton modifie ou d\'un autre clip refuse')
+
+  const everything = await call('/api/studio/clips?status=all')
+  assert.equal(everything.status, 200)
+  assert.ok(new Set(everything.json.clips.map(c => c.status)).size > 1)
+  assert.ok(everything.json.clips.every(c => ['chat', 'ref'].includes(c.origin) && c.createdAt))
+  ok('tous les clips d\'un coup (tableau de bord) avec leur origine et leur date')
 
   const r = (id, body) => call(`/api/studio/clips/${id}/review`, { method: 'POST', body })
   assert.equal((await r(queuedId, { action: 'approve' })).status, 409)
