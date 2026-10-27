@@ -448,7 +448,16 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
                 <label class="text-sm text-clippeak-muted">Couleur des sous-titres <input v-model="detail.style.subtitles.color" type="color" :class="fieldClass"></label>
                 <label v-if="detail.settings" class="text-sm text-clippeak-muted">Couleur du mot mis en valeur <input v-model="detail.settings.highlightColor" type="color" :class="fieldClass"></label>
               </div>
-              <label class="text-sm text-clippeak-muted">Mots mis en valeur dans les sous-titres (separes par des virgules)
+              <label class="text-sm text-clippeak-muted">Mise en valeur automatique des mots importants
+                <select v-model="detail.style.subtitles.autoEmphasis" aria-label="Mise en valeur automatique" :class="fieldClass">
+                  <option value="off">Desactivee</option>
+                  <option value="low">Legere (1 mot par phrase, les plus marques)</option>
+                  <option value="normal">Normale</option>
+                  <option value="high">Forte (jusqu'a 2 ou 3 mots par phrase)</option>
+                </select>
+              </label>
+              <p class="text-xs text-clippeak-muted">Clippeak choisit seul, clip par clip, les mots que vous appuyez a l'oral (mot etire, pause avant) et les mots forts (chiffres, « jamais », « incroyable »...).</p>
+              <label class="text-sm text-clippeak-muted">Mots a toujours mettre en valeur (facultatif, separes par des virgules)
                 <input v-model="highlightText" placeholder="incroyable, jamais, argent" :class="fieldClass">
               </label>
               <label class="text-sm text-clippeak-muted">Taille {{ detail.style.subtitles.fontSize }}

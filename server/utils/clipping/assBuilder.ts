@@ -1,3 +1,6 @@
+import { pickEmphasisWords } from './emphasis.ts'
+import type { EmphasisLevel } from './emphasis.ts'
+
 export interface TimedWord {
   start: number
   end: number
@@ -25,8 +28,10 @@ export interface SubtitleStyle {
   // Distance du bas de l'ecran (px sur 1920).
   marginBottom: number
   uppercase: boolean
-  // Mots mis en valeur par la couleur d'accent (compares sans accents ni ponctuation).
+  // Mots a toujours mettre en valeur (compares sans accents ni ponctuation) : facultatif.
   keywords: string[]
+  // Mise en valeur automatique des mots importants de chaque clip (voir emphasis.ts).
+  emphasis: EmphasisLevel
 }
 
 export const DEFAULT_TITLE_STYLE: TitleStyle = {
@@ -49,7 +54,8 @@ export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
   outlineColor: '#000000',
   marginBottom: 420,
   uppercase: true,
-  keywords: []
+  keywords: [],
+  emphasis: 'normal'
 }
 
 // Place reelle du titre dans la bande noire (style ASS "Title") : marges gauche/droite de 50 px, haut a 40 px.
@@ -169,6 +175,7 @@ export function buildAss(input: AssInput): string {
 
   if (subs.enabled) {
     const words = input.words.filter(w => w.text.trim())
+    const emphasized = pickEmphasisWords(words, subs.emphasis)
     words.forEach((word, i) => {
       const next = words[i + 1]
       // Le mot reste affiche jusqu'au suivant (pas de scintillement), 0,4 s maximum apres sa fin.
@@ -176,7 +183,7 @@ export function buildAss(input: AssInput): string {
       if (end <= word.start) return
       const raw = escapeAssText(word.text)
       const text = subs.uppercase ? raw.toLocaleUpperCase('fr-FR') : raw
-      const highlighted = keywords.has(normalizeWord(word.text))
+      const highlighted = keywords.has(normalizeWord(word.text)) || emphasized.has(i)
       const styled = highlighted ? `{\\c${hexToAss(subs.highlightColor)}}${text}` : text
       events.push(`Dialogue: 1,${assTime(word.start)},${assTime(end)},Word,,0,0,0,,${styled}`)
     })
