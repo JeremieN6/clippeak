@@ -17,11 +17,11 @@ export interface FontChoice {
 
 export const FONT_CHOICES: FontChoice[] = [
   { family: 'Lato', label: 'Lato', note: 'Classique et lisible (par defaut)', file: 'Lato-Bold.ttf' },
-  { family: 'Montserrat', label: 'Montserrat', note: 'Moderne et net', file: 'Montserrat-Bold.ttf' },
+  { family: 'Archivo Black', label: 'Archivo Black', note: 'Gras et moderne, tres lisible', file: 'ArchivoBlack-Regular.ttf' },
   { family: 'Poppins', label: 'Poppins', note: 'Rond et amical', file: 'Poppins-Bold.ttf' },
   { family: 'Anton', label: 'Anton', note: 'Epais et percutant, tres « YouTube »', file: 'Anton-Regular.ttf' },
   { family: 'Bebas Neue', label: 'Bebas Neue', note: 'Majuscules etroites, style affiche', file: 'BebasNeue-Regular.ttf' },
-  { family: 'Oswald', label: 'Oswald', note: 'Condense et energique', file: 'Oswald-Bold.ttf' },
+  { family: 'Barlow Condensed', label: 'Barlow Condensed', note: 'Etroit et energique', file: 'BarlowCondensed-Bold.ttf' },
   { family: 'Luckiest Guy', label: 'Luckiest Guy', note: 'Ludique, style bande dessinee', file: 'LuckiestGuy-Regular.ttf' }
 ]
 
