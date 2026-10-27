@@ -6,7 +6,8 @@ import { safeEqual } from '../../../utils/clipping/adminAuth'
 import { createTwitchApi } from '../../../utils/clipping/twitchApi'
 import { exchangeCode, fetchIdentity, hashToken, newToken, SESSION_COOKIE, SESSION_TTL_MS, STATE_COOKIE } from '../../../utils/clipping/twitchLogin'
 
-const back = (event: H3Event, result: string) => sendRedirect(event, `/studio?login=${result}`, 302)
+// Connexion reussie : le studio. Sinon : retour sur la page de connexion avec la raison.
+const back = (event: H3Event, result: string) => sendRedirect(event, result === 'ok' ? '/studio' : `/connexion?login=${result}`, 302)
 
 // Retour de Twitch : verifie l'etat, lit l'identite du streamer, accepte seulement les chaines invitees, cree sa chaine au premier
 // passage (et l'ecoute de ses lives), puis ouvre une session. Le jeton Twitch n'est jamais conserve.

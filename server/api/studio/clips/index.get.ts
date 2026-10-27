@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
-import { mediaSecret, requireStudioActor } from '../../../utils/studioAuth'
+import { mediaSecret, requireStudioActor, uuidSchema } from '../../../utils/studioAuth'
 import { signMediaToken } from '../../../utils/clipping/adminAuth'
 import { clipOrigin } from '../../../utils/clipping/clipOrigin'
 
@@ -14,9 +14,12 @@ export default defineEventHandler(async (event) => {
   const raw = getQuery(event).status
   const status = raw === 'all' ? undefined : statusSchema.catch('review').parse(raw)
   const secret = mediaSecret(event)
+  // L'admin voit les clips de la chaine choisie (ou de toutes), le streamer seulement les siens.
+  const requested = uuidSchema.safeParse(getQuery(event).channel)
+  const channelId = actor.admin ? (requested.success ? requested.data : null) : (actor.channelId ?? '')
 
   const jobs = await prisma.clipJob.findMany({
-    where: { ...(status ? { status } : {}), ...(actor.admin ? {} : { moment: { vod: { channelId: actor.channelId ?? '' } } }) },
+    where: { ...(status ? { status } : {}), ...(channelId ? { moment: { vod: { channelId } } } : {}) },
     orderBy: [{ batch: 'desc' }, { createdAt: 'asc' }],
     take: status ? 100 : 300,
     include: { moment: { include: { vod: { select: { twitchVodId: true, title: true, channel: { select: { displayName: true } } } } } } }

@@ -278,7 +278,7 @@ try {
 
   const redirect = (path, cookie) => fetch(B + path, { redirect: 'manual', headers: cookie ? { cookie } : {} })
   const noState = await redirect('/api/auth/twitch/callback?code=x&state=y')
-  assert.equal(noState.status, 302); assert.ok(noState.headers.get('location').includes('login=error'))
+  assert.equal(noState.status, 302); assert.ok(noState.headers.get('location').startsWith('/connexion?login=error'))
   const wrongState = await redirect('/api/auth/twitch/callback?code=x&state=y', 'clippeak_oauth_state=autre')
   assert.ok(wrongState.headers.get('location').includes('login=error'))
   const cancelled = await redirect('/api/auth/twitch/callback?error=access_denied')
@@ -302,7 +302,7 @@ try {
   await call('/api/admin/invites', { method: 'POST', body: { login: 'invitee' } })
   const good = await redirect('/api/auth/twitch/callback?code=code-invite&state=abc', 'clippeak_oauth_state=abc')
   assert.equal(good.status, 302)
-  assert.ok(good.headers.get('location').endsWith('login=ok'))
+  assert.equal(good.headers.get('location'), '/studio')
   const setCookies = good.headers.getSetCookie().join(' ; ')
   assert.ok(setCookies.includes('clippeak_session=') && setCookies.includes('HttpOnly') && setCookies.includes('SameSite=Lax'))
   const sessionCookie = good.headers.getSetCookie().find(c => c.startsWith('clippeak_session=')).split(';')[0]
@@ -321,6 +321,62 @@ try {
   const badCode = await redirect('/api/auth/twitch/callback?code=mauvais&state=abc', 'clippeak_oauth_state=abc')
   assert.ok(badCode.headers.get('location').endsWith('login=error'))
   ok('connexion Twitch (faux Twitch) : invite = chaine creee et session (jeton hache en base), non invite = refuse sans creer de chaine, code refuse = erreur')
+
+  // --- session admin (cookie pose par /admin) et chaine de demonstration
+  const adminLogin = (password) => fetch(B + '/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password }) })
+  assert.equal((await adminLogin('mauvais')).status, 401)
+  const adminOk = await adminLogin(PW)
+  assert.equal(adminOk.status, 200)
+  const adminSetCookie = adminOk.headers.getSetCookie().find(c => c.startsWith('clippeak_admin='))
+  assert.ok(adminSetCookie.includes('HttpOnly') && adminSetCookie.includes('SameSite=Lax') && !adminSetCookie.includes(PW))
+  const adminCookie = adminSetCookie.split(';')[0]
+  const asAdmin = (extra = {}) => ({ auth: false, headers: { cookie: adminCookie, ...extra } })
+  assert.equal((await call('/api/admin/me', { auth: false })).status, 401)
+  assert.equal((await call('/api/admin/me', { auth: false, headers: { cookie: 'clippeak_admin=123.forge' } })).status, 401)
+  assert.equal((await call('/api/admin/me', asAdmin())).status, 200)
+  assert.equal((await call('/api/auth/me', asAdmin())).json.role, 'admin')
+  assert.equal((await call('/api/admin/invites', asAdmin())).status, 200)
+  assert.equal((await call('/api/admin/invites', { ...asAdmin({ origin: 'https://evil.example' }), method: 'POST', body: { login: 'pirate' } })).status, 403)
+  assert.equal((await call('/api/admin/feedback', asAdmin())).status, 200)
+  assert.equal((await call(`/api/admin/feedback?password=${PW}`, { auth: false })).status, 401)
+  ok('session admin : mot de passe verifie une fois, cookie HttpOnly signe, faux cookie et origine etrangere refuses, plus de mot de passe dans l\'URL')
+
+  const demo = (await call('/api/admin/demo', { ...asAdmin(), method: 'POST' })).json.channel
+  assert.equal((await call('/api/admin/demo', { ...asAdmin(), method: 'POST' })).json.channel.id, demo.id)
+  const adminChannels = (await call('/api/studio/channels', asAdmin())).json.channels
+  assert.equal(adminChannels.find(c => c.id === demo.id).demo, true)
+  assert.equal(adminChannels.find(c => c.id === channelId).demo, false)
+  const demoClips = (await call(`/api/studio/clips?status=all&channel=${demo.id}`, asAdmin())).json.clips
+  assert.equal(demoClips.length, 5)
+  assert.equal(demoClips.some(c => c.id === otherClip), false)
+  assert.equal((await call(`/api/studio/clips?status=all&channel=${otherId}`, asAdmin())).json.clips.every(c => c.id === otherClip), true)
+  const [{ autoclip }] = await q(`SELECT auto_clip AS autoclip FROM channels WHERE id = $1`, [demo.id])
+  assert.equal(autoclip, false)
+  ok('demonstration : creee une seule fois, signalee demo, 5 clips d\'exemple, filtre des clips par chaine, jamais ecoutee ni analysee (auto_clip = false)')
+
+  const demoUpload = await call(`/api/studio/channels/${demo.id}/assets`, { ...asAdmin(), method: 'POST', body: form('photo', 'moi.png', png) })
+  assert.equal(demoUpload.status, 200)
+  const reset = (await call('/api/admin/demo/reset', { ...asAdmin(), method: 'POST' })).json.channel
+  assert.notEqual(reset.id, demo.id)
+  const afterReset = (await call(`/api/studio/channels/${reset.id}`, asAdmin())).json
+  assert.equal(afterReset.assets.length, 0); assert.equal(afterReset.style.onboarding.completed, false)
+  assert.equal((await call(`/api/studio/channels/${demo.id}`, asAdmin())).status, 404)
+  assert.equal((await call(`/api/studio/clips?status=all&channel=${reset.id}`, asAdmin())).json.clips.length, 5)
+  const [{ left }] = await q(`SELECT count(*)::int AS left FROM streamer_assets WHERE channel_id = $1`, [demo.id])
+  assert.equal(left, 0)
+  assert.equal((await call(`/api/studio/channels/${channelId}`, asAdmin())).status, 200)
+  ok('remise a zero : fichiers, reglages et parcours effaces, clips d\'exemple recrees, les vraies chaines intactes')
+
+  // Un streamer connecte ne peut ni utiliser l'administration ni voir la demonstration
+  assert.equal((await call('/api/admin/me', as(sessionCookie.split('=')[1]))).status, 401)
+  assert.equal((await call('/api/admin/invites', as(sessionCookie.split('=')[1]))).status, 401)
+  assert.equal((await call('/api/admin/demo', { ...as(sessionCookie.split('=')[1]), method: 'POST' })).status, 401)
+  assert.equal((await call('/api/admin/demo/reset', { ...as(sessionCookie.split('=')[1]), method: 'POST' })).status, 401)
+  assert.equal((await call('/api/admin/feedback', as(sessionCookie.split('=')[1]))).status, 401)
+  assert.equal((await call(`/api/studio/channels/${reset.id}`, as(sessionCookie.split('=')[1]))).status, 404)
+  assert.equal((await call('/api/studio/channels', as(sessionCookie.split('=')[1]))).json.channels.some(c => c.demo), false)
+  assert.equal((await call('/api/admin/logout', { ...asAdmin(), method: 'POST' })).status, 200)
+  ok('un streamer connecte n\'accede ni aux routes admin (invitations, demonstration, feedbacks) ni a la demonstration')
 
   console.log('API_IT_OK')
 } catch (error) {

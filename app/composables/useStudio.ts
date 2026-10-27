@@ -1,7 +1,7 @@
-// Etat et actions du back-office du streamer, partages entre le parcours guide (8 etapes) et le tableau de bord.
-// Le mot de passe reste en memoire (jamais dans l'URL ni dans le stockage du navigateur) et part dans l'en-tete x-admin-password.
+// Etat et actions du studio, partages entre le parcours guide (8 etapes) et le tableau de bord. Le streamer est identifie par son cookie
+// de session Twitch, l'admin par le cookie de session pose sur /admin : aucun mot de passe ne circule ici.
 
-export interface StudioChannel { id: string, login: string, displayName: string, autoClip: boolean }
+export interface StudioChannel { id: string, login: string, displayName: string, autoClip: boolean, demo: boolean }
 
 export interface StudioClip {
   id: string, batch: number | null, status: string, title: string | null, caption: string | null, hashtags: string | null
@@ -31,7 +31,6 @@ export const PLATFORM_LIST = [
 export type StepStatus = 'ok' | 'warn' | 'skip' | 'todo'
 
 export function createStudio() {
-  const password = ref('')
   const connected = ref(false)
   const error = ref('')
   const notice = ref('')
@@ -44,19 +43,15 @@ export function createStudio() {
   const clips = ref<StudioClip[]>([])
 
   // 'onboarding' tant que le parcours n'est pas termine, puis 'dashboard' ; le streamer peut revenir a une etape depuis le tableau de bord.
-  const view = ref<'onboarding' | 'dashboard' | 'invites'>('onboarding')
+  const view = ref<'onboarding' | 'dashboard'>('onboarding')
 
-  // 'streamer' = connecte avec Twitch (cookie de session, ne voit que sa chaine) ; 'admin' = mot de passe (voit tout, gere les invitations).
+  // 'streamer' = connecte avec Twitch (ne voit que sa chaine) ; 'admin' = session de /admin (voit la chaine de demonstration et les autres).
   const mode = ref<'streamer' | 'admin' | null>(null)
-  const invites = ref<Array<{ id: string, login: string, note: string | null, connected: boolean, createdAt: string, lastLoginAt: string | null }>>([])
   const step = ref(1)
-
-  // Le mot de passe n'est envoye que par l'admin : le streamer connecte avec Twitch passe par son cookie de session.
-  const headers = computed(() => (password.value.trim() ? { 'x-admin-password': password.value.trim() } : {}))
 
   async function api<T>(url: string, options: Record<string, any> = {}): Promise<T> {
     try {
-      return await $fetch<T>(url, { ...options, headers: { ...headers.value, ...(options.headers ?? {}) } })
+      return await $fetch<T>(url, options)
     } catch (e: any) {
       throw new Error(e?.data?.statusMessage || e?.statusMessage || 'Requête refusée')
     }
@@ -93,7 +88,7 @@ export function createStudio() {
   }
 
   async function loadClips() {
-    const data = await api<{ clips: StudioClip[] }>('/api/studio/clips', { query: { status: 'all' } })
+    const data = await api<{ clips: StudioClip[] }>('/api/studio/clips', { query: { status: 'all', channel: channelId.value || undefined } })
     clips.value = data.clips
   }
 
@@ -103,37 +98,36 @@ export function createStudio() {
     return STEPS.find(s => s.n < 8 && !handled.has(s.n))?.n ?? 8
   }
 
-  const connect = () => run(async () => {
-    const data = await api<{ channels: StudioChannel[] }>('/api/studio/channels')
-    channels.value = data.channels
-    connected.value = true
-    mode.value = 'admin'
-    channelId.value = data.channels[0]?.id ?? ''
-    await Promise.all([loadChannel(), loadClips()])
-    view.value = onboarding.value?.completed ? 'dashboard' : 'onboarding'
-    step.value = firstOpenStep()
-  })
-
-  // Au chargement de la page : un streamer deja connecte (cookie de session) retrouve directement son espace.
-  async function restoreSession() {
+  // Ouverture du studio. Streamer : sa chaine. Admin : la chaine demandee, sinon la chaine de demonstration (creee au besoin).
+  // Renvoie false si personne n'est connecte (la page renvoie alors vers /connexion).
+  async function restoreSession(preferred = ''): Promise<boolean> {
     try {
-      const me = await $fetch<{ channel: StudioChannel }>('/api/auth/me')
-      channels.value = [me.channel]
-      channelId.value = me.channel.id
-      mode.value = 'streamer'
+      const me = await $fetch<{ role: 'admin' | 'streamer', channel: StudioChannel | null }>('/api/auth/me')
+      if (me.role === 'streamer' && me.channel) {
+        channels.value = [me.channel]
+        channelId.value = me.channel.id
+        mode.value = 'streamer'
+      } else {
+        await $fetch('/api/admin/demo', { method: 'POST' })
+        channels.value = (await $fetch<{ channels: StudioChannel[] }>('/api/studio/channels')).channels
+        channelId.value = (channels.value.find(c => c.id === preferred) ?? channels.value.find(c => c.demo) ?? channels.value[0])?.id ?? ''
+        mode.value = 'admin'
+      }
       connected.value = true
       await Promise.all([loadChannel(), loadClips()])
       view.value = onboarding.value?.completed ? 'dashboard' : 'onboarding'
       step.value = firstOpenStep()
+      return true
     } catch {
       connected.value = false
       mode.value = null
+      return false
     }
   }
 
+  // Deconnexion du streamer (l'admin se deconnecte depuis /admin).
   const logout = () => run(async () => {
-    if (mode.value === 'streamer') await $fetch('/api/auth/logout', { method: 'POST' })
-    password.value = ''
+    await $fetch('/api/auth/logout', { method: 'POST' })
     connected.value = false
     mode.value = null
     detail.value = null
@@ -143,19 +137,15 @@ export function createStudio() {
     channelId.value = ''
   })
 
-  const loadInvites = () => run(async () => {
-    invites.value = (await api<{ invites: typeof invites.value }>('/api/admin/invites')).invites
-  })
-
-  const addInvite = (login: string, note: string) => run(async () => {
-    await api('/api/admin/invites', { method: 'POST', body: { login, note: note || undefined } })
-    invites.value = (await api<{ invites: typeof invites.value }>('/api/admin/invites')).invites
-  }, 'Invitation ajoutée.')
-
-  const removeInvite = (id: string) => run(async () => {
-    await api(`/api/admin/invites/${id}`, { method: 'DELETE' })
-    invites.value = (await api<{ invites: typeof invites.value }>('/api/admin/invites')).invites
-  }, 'Invitation retirée. Les sessions de cette chaîne sont fermées.')
+  // Admin : remet la chaine de demonstration a zero pour refaire le parcours d'un nouveau streamer.
+  const resetDemo = () => run(async () => {
+    const { channel } = await api<{ channel: StudioChannel }>('/api/admin/demo/reset', { method: 'POST' })
+    channels.value = (await api<{ channels: StudioChannel[] }>('/api/studio/channels')).channels
+    channelId.value = channel.id
+    await Promise.all([loadChannel(), loadClips()])
+    view.value = 'onboarding'
+    step.value = 1
+  }, 'Chaîne de démonstration remise à zéro.')
 
   const switchChannel = () => run(async () => {
     await Promise.all([loadChannel(), loadClips()])
@@ -338,8 +328,8 @@ export function createStudio() {
   }, `${list.length} clip(s) approuvé(s). Rien n’a été publié.`)
 
   return {
-    password, connected, error, notice, busy, channels, channelId, detail, bank, clips, view, step, onboarding, mode, invites,
-    api, run, assetsOf, connect, restoreSession, logout, loadInvites, addInvite, removeInvite, switchChannel, loadChannel, loadBank, loadClips,
+    connected, error, notice, busy, channels, channelId, detail, bank, clips, view, step, onboarding, mode,
+    api, run, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, advance, finishOnboarding, goToStep, stepStatus,
     addAssets, saveAsset, removeAsset, addReferences, saveStat, removeReference, reviewClip, approveMany
   }
