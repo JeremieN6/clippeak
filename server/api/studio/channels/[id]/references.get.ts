@@ -1,12 +1,13 @@
 import { prisma } from '../../../../utils/prisma'
-import { parseId, requireStudioAdmin } from '../../../../utils/studioAuth'
+import { parseId, assertChannel, requireStudioActor } from '../../../../utils/studioAuth'
 import { buildReferenceBankProfile } from '../../../../utils/clipping/referenceProfile'
 import { toProfileItem, transcriptText } from '../../../../utils/clipping/prismaReferenceStore'
 
 // Banque de reference d'un streamer : elements (fichiers, liens, comptes), etat d'analyse et profil agrege.
 export default defineEventHandler(async (event) => {
-  requireStudioAdmin(event)
+  const actor = await requireStudioActor(event)
   const id = parseId(getRouterParam(event, 'id'))
+  assertChannel(actor, id)
   const rows = await prisma.referenceItem.findMany({ where: { channelId: id }, orderBy: { createdAt: 'desc' }, take: 300 })
   const profile = buildReferenceBankProfile(rows.filter(r => r.kind === 'clip' && r.status === 'done').map(toProfileItem))
   return {

@@ -1,11 +1,12 @@
 import { prisma } from '../../../../utils/prisma'
-import { parseId, requireStudioAdmin } from '../../../../utils/studioAuth'
+import { parseId, assertChannel, requireStudioActor } from '../../../../utils/studioAuth'
 import { isKnownFont } from '../../../../utils/clipping/fonts'
 import { referencedSoundAssets, styleSchema } from '../../../../utils/clipping/streamerStyle'
 
 export default defineEventHandler(async (event) => {
-  requireStudioAdmin(event)
+  const actor = await requireStudioActor(event)
   const id = parseId(getRouterParam(event, 'id'))
+  assertChannel(actor, id)
   const parsed = styleSchema.safeParse(await readBody(event))
   if (!parsed.success) {
     const issue = parsed.error.issues[0]

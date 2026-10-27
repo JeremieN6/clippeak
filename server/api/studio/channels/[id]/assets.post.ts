@@ -2,15 +2,16 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import { prisma } from '../../../../utils/prisma'
-import { parseId, requireStudioAdmin } from '../../../../utils/studioAuth'
+import { parseId, assertChannel, requireStudioActor } from '../../../../utils/studioAuth'
 import { ASSET_KINDS, dataDir, safeFilename } from '../../../../utils/clipping/dataDir'
 import type { AssetKind } from '../../../../utils/clipping/dataDir'
 import { validateUpload } from '../../../../utils/clipping/assetValidation'
 
 // Depot d'un fichier du streamer (photo, avatar/GIF, SFX, illustration, police) : type, taille et contenu verifies.
 export default defineEventHandler(async (event) => {
-  requireStudioAdmin(event)
+  const actor = await requireStudioActor(event)
   const id = parseId(getRouterParam(event, 'id'))
+  assertChannel(actor, id)
   const channel = await prisma.channel.findUnique({ where: { id }, select: { id: true } })
   if (!channel) throw createError({ statusCode: 404, statusMessage: 'Streamer introuvable' })
 

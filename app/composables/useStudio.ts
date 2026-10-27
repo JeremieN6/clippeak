@@ -44,10 +44,15 @@ export function createStudio() {
   const clips = ref<StudioClip[]>([])
 
   // 'onboarding' tant que le parcours n'est pas termine, puis 'dashboard' ; le streamer peut revenir a une etape depuis le tableau de bord.
-  const view = ref<'onboarding' | 'dashboard'>('onboarding')
+  const view = ref<'onboarding' | 'dashboard' | 'invites'>('onboarding')
+
+  // 'streamer' = connecte avec Twitch (cookie de session, ne voit que sa chaine) ; 'admin' = mot de passe (voit tout, gere les invitations).
+  const mode = ref<'streamer' | 'admin' | null>(null)
+  const invites = ref<Array<{ id: string, login: string, note: string | null, connected: boolean, createdAt: string, lastLoginAt: string | null }>>([])
   const step = ref(1)
 
-  const headers = computed(() => ({ 'x-admin-password': password.value.trim() }))
+  // Le mot de passe n'est envoye que par l'admin : le streamer connecte avec Twitch passe par son cookie de session.
+  const headers = computed(() => (password.value.trim() ? { 'x-admin-password': password.value.trim() } : {}))
 
   async function api<T>(url: string, options: Record<string, any> = {}): Promise<T> {
     try {
@@ -102,11 +107,55 @@ export function createStudio() {
     const data = await api<{ channels: StudioChannel[] }>('/api/studio/channels')
     channels.value = data.channels
     connected.value = true
+    mode.value = 'admin'
     channelId.value = data.channels[0]?.id ?? ''
     await Promise.all([loadChannel(), loadClips()])
     view.value = onboarding.value?.completed ? 'dashboard' : 'onboarding'
     step.value = firstOpenStep()
   })
+
+  // Au chargement de la page : un streamer deja connecte (cookie de session) retrouve directement son espace.
+  async function restoreSession() {
+    try {
+      const me = await $fetch<{ channel: StudioChannel }>('/api/auth/me')
+      channels.value = [me.channel]
+      channelId.value = me.channel.id
+      mode.value = 'streamer'
+      connected.value = true
+      await Promise.all([loadChannel(), loadClips()])
+      view.value = onboarding.value?.completed ? 'dashboard' : 'onboarding'
+      step.value = firstOpenStep()
+    } catch {
+      connected.value = false
+      mode.value = null
+    }
+  }
+
+  const logout = () => run(async () => {
+    if (mode.value === 'streamer') await $fetch('/api/auth/logout', { method: 'POST' })
+    password.value = ''
+    connected.value = false
+    mode.value = null
+    detail.value = null
+    bank.value = null
+    clips.value = []
+    channels.value = []
+    channelId.value = ''
+  })
+
+  const loadInvites = () => run(async () => {
+    invites.value = (await api<{ invites: typeof invites.value }>('/api/admin/invites')).invites
+  })
+
+  const addInvite = (login: string, note: string) => run(async () => {
+    await api('/api/admin/invites', { method: 'POST', body: { login, note: note || undefined } })
+    invites.value = (await api<{ invites: typeof invites.value }>('/api/admin/invites')).invites
+  }, 'Invitation ajoutée.')
+
+  const removeInvite = (id: string) => run(async () => {
+    await api(`/api/admin/invites/${id}`, { method: 'DELETE' })
+    invites.value = (await api<{ invites: typeof invites.value }>('/api/admin/invites')).invites
+  }, 'Invitation retirée. Les sessions de cette chaîne sont fermées.')
 
   const switchChannel = () => run(async () => {
     await Promise.all([loadChannel(), loadClips()])
@@ -289,8 +338,8 @@ export function createStudio() {
   }, `${list.length} clip(s) approuvé(s). Rien n’a été publié.`)
 
   return {
-    password, connected, error, notice, busy, channels, channelId, detail, bank, clips, view, step, onboarding,
-    api, run, assetsOf, connect, switchChannel, loadChannel, loadBank, loadClips,
+    password, connected, error, notice, busy, channels, channelId, detail, bank, clips, view, step, onboarding, mode, invites,
+    api, run, assetsOf, connect, restoreSession, logout, loadInvites, addInvite, removeInvite, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, advance, finishOnboarding, goToStep, stepStatus,
     addAssets, saveAsset, removeAsset, addReferences, saveStat, removeReference, reviewClip, approveMany
   }

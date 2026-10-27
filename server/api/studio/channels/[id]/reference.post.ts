@@ -1,13 +1,14 @@
 import { readEnv } from '../../../../utils/env'
 import { prisma } from '../../../../utils/prisma'
-import { parseId, requireStudioAdmin } from '../../../../utils/studioAuth'
+import { parseId, assertChannel, requireStudioActor } from '../../../../utils/studioAuth'
 import { createTwitchApi, TwitchApiError } from '../../../../utils/clipping/twitchApi'
 import { toReferenceClips } from '../../../../utils/clipping/referenceClips'
 
 // Rafraichit la banque de clips de reference d'un streamer (API Twitch Clips : vues, categories).
 export default defineEventHandler(async (event) => {
-  requireStudioAdmin(event)
+  const actor = await requireStudioActor(event)
   const id = parseId(getRouterParam(event, 'id'))
+  assertChannel(actor, id)
   const channel = await prisma.channel.findUnique({ where: { id } })
   if (!channel) throw createError({ statusCode: 404, statusMessage: 'Streamer introuvable' })
 

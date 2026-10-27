@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { prisma } from '../../../../utils/prisma'
-import { parseId, requireStudioAdmin } from '../../../../utils/studioAuth'
+import { parseId, assertChannel, requireStudioActor } from '../../../../utils/studioAuth'
 
 const bodySchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('approve'), caption: z.string().trim().max(2200).optional(), note: z.string().trim().max(500).optional() }),
@@ -12,14 +12,15 @@ const bodySchema = z.discriminatedUnion('action', [
 // Validation humaine : approuver ne publie RIEN et ne paie RIEN. Le clip est seulement marque "approved" ;
 // la publication reste une action du streamer, en dehors de Clippeak.
 export default defineEventHandler(async (event) => {
-  requireStudioAdmin(event)
+  const actor = await requireStudioActor(event)
   const id = parseId(getRouterParam(event, 'id'))
   const parsed = bodySchema.safeParse(await readBody(event))
   if (!parsed.success) throw createError({ statusCode: 400, statusMessage: parsed.error.issues[0]?.message ?? 'Requete invalide' })
   const body = parsed.data
 
-  const job = await prisma.clipJob.findUnique({ where: { id }, select: { status: true } })
+  const job = await prisma.clipJob.findUnique({ where: { id }, select: { status: true, moment: { select: { vod: { select: { channelId: true } } } } } })
   if (!job) throw createError({ statusCode: 404, statusMessage: 'Clip introuvable' })
+  assertChannel(actor, job.moment.vod.channelId)
 
   if (body.action === 'requeue') {
     if (job.status !== 'review' && job.status !== 'failed' && job.status !== 'rejected') {
