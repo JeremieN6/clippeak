@@ -24,7 +24,7 @@ export function safeFilename(name: string): string {
   return cleaned || 'fichier'
 }
 
-export const ASSET_KINDS = ['photo', 'avatar', 'sfx', 'illustration', 'font'] as const
+export const ASSET_KINDS = ['photo', 'avatar', 'sfx', 'illustration'] as const
 export type AssetKind = typeof ASSET_KINDS[number]
 
 // Extensions et taille maximale acceptees par type de fichier.
@@ -32,6 +32,5 @@ export const ASSET_RULES: Record<AssetKind, { extensions: string[], maxBytes: nu
   photo: { extensions: ['.jpg', '.jpeg', '.png'], maxBytes: 8 * 1024 * 1024 },
   avatar: { extensions: ['.gif', '.png', '.webp'], maxBytes: 8 * 1024 * 1024 },
   sfx: { extensions: ['.mp3', '.wav', '.ogg', '.m4a'], maxBytes: 5 * 1024 * 1024 },
-  illustration: { extensions: ['.mp4', '.mov', '.webm'], maxBytes: 60 * 1024 * 1024 },
-  font: { extensions: ['.ttf', '.otf'], maxBytes: 5 * 1024 * 1024 }
+  illustration: { extensions: ['.mp4', '.mov', '.webm'], maxBytes: 60 * 1024 * 1024 }
 }

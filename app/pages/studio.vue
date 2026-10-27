@@ -124,7 +124,6 @@ const fileSections = [
   { kind: 'avatar', title: 'Avatar / GIF', accept: '.gif,.png,.webp', help: 'Image ou GIF anime affiche par-dessus le clip. Se choisit et se place dans Direction artistique > Avatar / GIF.' },
   { kind: 'sfx', title: 'Bruitages (vos sons)', accept: '.mp3,.wav,.ogg,.m4a', help: 'Vos propres sons (5 Mo max, a ecouter ci-dessous). Ils s\'ajoutent aux sons integres et se choisissent dans Direction artistique > Bruitages.' },
   { kind: 'illustration', title: 'Videos d\'illustration', accept: '.mp4,.mov,.webm', help: 'Courtes videos affichees en haut de l\'ecran pendant que vous parlez, quand vous dites l\'un de leurs mots declencheurs. Le credit est conserve avec chaque clip pour savoir d\'ou vient la video.' },
-  { kind: 'font', title: 'Polices', accept: '.ttf,.otf', help: 'Polices pour le titre et les sous-titres. Apres le depot, ecrivez le nom de la police (pas du fichier) dans Direction artistique > Police.' }
 ]
 
 interface PendingFile { file: File, tags: string, source: string }
@@ -301,6 +300,13 @@ const titleTextStyle = computed(() => {
 
 const highlightText = ref('')
 
+// Les polices proposees sont chargees dans la page depuis les memes fichiers que ceux du rendu (apercu fidele).
+const fontFaces = computed(() => (detail.value?.fonts ?? [])
+  .filter((f: any) => f.file)
+  .map((f: any) => `@font-face{font-family:"${f.family}";src:url("/fonts/${f.file}") format("truetype");font-weight:100 900;font-display:swap}`)
+  .join('\n'))
+useHead(() => ({ style: fontFaces.value ? [{ key: 'studio-fonts', innerHTML: fontFaces.value }] : [] }))
+
 const subtitleBoxStyle = { position: 'absolute', left: '0', width: '100%', bottom: `${420 * PREVIEW_SCALE}px`, textAlign: 'center' }
 
 const subtitleTextStyle = computed(() => {
@@ -412,7 +418,12 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
             <legend class="font-semibold">Titre (bande noire en haut)</legend>
             <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.title.enabled" type="checkbox"> Afficher le titre</label>
             <template v-if="detail.style.title.enabled">
-              <input v-model="detail.style.title.fontName" aria-label="Police du titre" placeholder="Police (ex : Lato)" :class="fieldClass">
+              <label class="text-sm text-clippeak-muted">Police du titre
+                <select v-model="detail.style.title.fontName" aria-label="Police du titre" :class="fieldClass">
+                  <option v-for="f in detail.fonts" :key="f.family" :value="f.family">{{ f.label }} — {{ f.note }}</option>
+                </select>
+              </label>
+              <p class="text-lg" :style="{ fontFamily: `'${detail.style.title.fontName}', sans-serif`, fontWeight: 700 }">Il a vraiment dit ça !</p>
               <label class="text-sm text-clippeak-muted">Taille {{ detail.style.title.fontSize }}
                 <input v-model.number="detail.style.title.fontSize" type="range" min="30" max="120" class="w-full">
               </label>
@@ -427,7 +438,12 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
             <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.subtitles.enabled" type="checkbox"> Afficher les sous-titres</label>
             <template v-if="detail.style.subtitles.enabled">
               <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.subtitles.uppercase" type="checkbox"> Majuscules</label>
-              <input v-model="detail.style.subtitles.fontName" aria-label="Police des sous-titres" :class="fieldClass">
+              <label class="text-sm text-clippeak-muted">Police des sous-titres
+                <select v-model="detail.style.subtitles.fontName" aria-label="Police des sous-titres" :class="fieldClass">
+                  <option v-for="f in detail.fonts" :key="f.family" :value="f.family">{{ f.label }} — {{ f.note }}</option>
+                </select>
+              </label>
+              <p class="text-lg" :style="{ fontFamily: `'${detail.style.subtitles.fontName}', sans-serif`, fontWeight: 700, textTransform: detail.style.subtitles.uppercase ? 'uppercase' : 'none' }">On a tout vu</p>
               <div class="grid grid-cols-2 gap-3">
                 <label class="text-sm text-clippeak-muted">Couleur des sous-titres <input v-model="detail.style.subtitles.color" type="color" :class="fieldClass"></label>
                 <label v-if="detail.settings" class="text-sm text-clippeak-muted">Couleur du mot mis en valeur <input v-model="detail.settings.highlightColor" type="color" :class="fieldClass"></label>

@@ -24,10 +24,8 @@ export default defineEventHandler(async (event) => {
   if (!check.ok) throw createError({ statusCode: 400, statusMessage: check.error ?? 'Fichier refuse' })
 
   const filename = safeFilename(file.filename ?? 'fichier')
-  // Les polices ont leur propre dossier : c'est lui que le rendu donne a ffmpeg (fontsdir).
-  const folder = join(dataDir(), 'assets', id, kind === 'font' ? 'fonts' : '')
-  const target = join(folder, `${randomUUID()}-${filename}`)
-  await mkdir(folder, { recursive: true })
+  const target = join(dataDir(), 'assets', id, `${randomUUID()}-${filename}`)
+  await mkdir(join(dataDir(), 'assets', id), { recursive: true })
   await writeFile(target, file.data, { flag: 'wx' })
 
   const tags = field('tags').split(',').map(t => t.trim().toLowerCase()).filter(Boolean).slice(0, 20)

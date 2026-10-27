@@ -110,11 +110,11 @@ try {
   assert.equal(image.status, 200)
   assert.equal(image.headers.get('content-type'), 'image/png')
   assert.equal((await call(withPreview.previewUrl.replace(/t=\d+/, 't=1'), { auth: false, raw: true })).status, 403)
-  const font = await upload('font', 'Police.ttf', Buffer.concat([Buffer.from([0x00, 0x01, 0x00, 0x00]), Buffer.alloc(64)]))
-  assert.equal(font.status, 200)
-  const [fontRow] = await q(`SELECT path FROM streamer_assets WHERE id = $1`, [font.json.id])
-  assert.ok(fontRow.path.startsWith(`assets/${channelId}/fonts/`))
-  assert.equal((await call(`/api/studio/channels/${channelId}`)).json.assets.find(a => a.id === font.json.id).previewUrl, null)
+  assert.equal((await upload('font', 'Police.ttf', Buffer.concat([Buffer.from([0x00, 0x01, 0x00, 0x00]), Buffer.alloc(64)]))).status, 400)
+  const fonts = (await call(`/api/studio/channels/${channelId}`)).json.fonts
+  assert.ok(fonts.some(f => f.family === 'Lato'))
+  const styleNow = (await call(`/api/studio/channels/${channelId}`)).json.style
+  assert.equal((await call(`/api/studio/channels/${channelId}/style`, { method: 'PUT', body: { ...styleNow, title: { ...styleNow.title, fontName: 'Comic Sans Inexistante' } } })).status, 400)
   const mp4 = Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypmp42'), Buffer.alloc(64)])
   const ill = await upload('illustration', 'marche.mp4', mp4)
   assert.equal(ill.status, 200)
@@ -126,7 +126,7 @@ try {
   assert.equal((await patch(up.json.id, { tags: ['x'], source: null })).status, 404)
   assert.equal((await patch(ill.json.id, { tags: 'pas une liste', source: null })).status, 400)
   assert.equal((await call(`/api/studio/assets/${ill.json.id}`, { method: 'PATCH', auth: false, body: { tags: [], source: null } })).status, 401)
-  ok('fichiers : apercu signe (image 200, jeton falsifie 403, pas d\'apercu pour une police), polices dans leur dossier, illustration modifiable')
+  ok('fichiers : apercu signe (image 200, jeton falsifie 403), plus de depot de police, police inconnue refusee, illustration modifiable')
 
   const sfx = await upload('sfx', 'vent.wav', Buffer.concat([Buffer.from('RIFF\0\0\0\0WAVEfmt '), Buffer.alloc(40)]))
   assert.equal(sfx.status, 200)
