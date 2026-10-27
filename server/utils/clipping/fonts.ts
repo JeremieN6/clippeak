@@ -32,4 +32,7 @@ export function availableFonts(dir: string = bundledFontsDir()): FontChoice[] {
   return FONT_CHOICES.filter(font => font.family === 'Lato' || (font.file && existsSync(join(dir, font.file))))
 }
 
+// Validation d'une DA enregistree : la police doit etre dans le catalogue (le fichier peut manquer dans un environnement de test ; le rendu retombe alors sur une police systeme).
+export const isKnownFont = (family: string) => FONT_CHOICES.some(font => font.family === family)
+
 export const isAvailableFont = (family: string, dir?: string) => availableFonts(dir).some(font => font.family === family)

@@ -17,12 +17,15 @@ Streamer Twitch francophone, pas technique, souvent sur PC mais il doit pouvoir 
 - **Approuver n'est pas publier.** Publier est une action distincte, explicite, confirmee.
 - Une etape peut etre passee ("plus tard") ; le streamer peut revenir a n'importe quelle etape depuis le tableau de bord.
 
+## Regle sur les mots mis en valeur
+Le streamer ne saisit PAS de liste de mots : Clippeak choisit automatiquement, clip par clip, les mots importants (mots appuyes a l'oral, chiffres, mots forts). L'ecran propose : un interrupteur "Mettre en valeur les mots importants" (actif par defaut), une intensite en 3 niveaux (leger / normal / fort) et le choix de la couleur du mot mis en valeur. Une liste de mots a toujours mettre en valeur (son nom de chaine, une expression fetiche) reste possible mais **facultative, repliee par defaut**, jamais presentee comme le reglage principal. Valeurs serveur : `subtitles.autoEmphasis` = off | low | normal | high ; `subtitles.keywords` = liste facultative.
+
 ## 4. Parcours d'onboarding (etapes, dans l'ordre)
 Barre de progression, retour/suivant, enregistrement a chaque etape, possibilite de quitter et reprendre.
 
 1. **Vos clips de reference** : deposer plusieurs videos et/ou coller des liens de clips ou de comptes (YouTube Shorts, TikTok, Instagram). Etat d'analyse par clip (en attente, en cours, analyse, echec avec message). Resume de ce que Clippeak a retenu (sujets, formats, emotions, accroches). Statistiques de vues : facultatives, jamais demandees d'office.
 2. **Vos photos** : 3 a 5 photos de face pour que Clippeak vous cadre automatiquement. Compteur "2 sur 3 minimum", miniatures, suppression.
-3. **Le look de vos clips** : titre (affichage, police, taille, couleur, lignes), sous-titres (affichage, majuscules, police, taille, couleur, couleur et liste des mots mis en valeur), zoom d'ouverture, cadrage (automatique ou manuel : position et zoom), avatar / GIF (fichier, moment d'apparition, position, taille), illustrations (oui/non, maximum par clip). **Apercu 9:16 en direct** (voir 7) avec bouton "rejouer le zoom" et "montrer une illustration".
+3. **Le look de vos clips** : titre (affichage, police, taille, couleur, lignes), sous-titres (affichage, majuscules, police, taille, couleur, couleur du mot mis en valeur, mise en valeur automatique), zoom d'ouverture, cadrage (automatique ou manuel : position et zoom), avatar / GIF (fichier, moment d'apparition, position, taille), illustrations (oui/non, maximum par clip). **Apercu 9:16 en direct** (voir 7) avec bouton "rejouer le zoom" et "montrer une illustration".
 4. **Les sons** (aujourd'hui cache dans un onglet : a mettre en evidence) : interrupteur general, volume, puis trois situations independantes (debut du clip, a chaque apparition d'une illustration, a l'apparition de l'avatar), chacune avec son propre son choisi parmi : 5 sons integres (vent, whoosh, pop, ding, impact) ou ses propres fichiers. Prevoir l'ecoute des sons.
 5. **Vos illustrations** (facultatif) : deposer des courtes videos ; pour chacune : "mots qui declenchent cette illustration" (ex. marche, legumes) et "credit" (auteur ou lien d'origine). Miniatures/lecteur, edition apres coup.
 6. **La detection** : "mots que votre chat ecrit quand il reagit" (ex. mdr, omg, kekw) et duree minimale / maximale d'un clip.

@@ -40,7 +40,9 @@ const baseStyleSchema = z.object({
     highlightColor: hex.default(DEFAULT_SUBTITLE_STYLE.highlightColor),
     uppercase: z.boolean().default(DEFAULT_SUBTITLE_STYLE.uppercase),
     // Mots mis en couleur dans les sous-titres.
-    keywords: z.array(z.string().trim().min(1).max(40)).max(50).default([])
+    keywords: z.array(z.string().trim().min(1).max(40)).max(50).default([]),
+    // Mise en valeur automatique des mots importants (choisis clip par clip, sans saisie).
+    autoEmphasis: z.enum(['off', 'low', 'normal', 'high']).default(DEFAULT_SUBTITLE_STYLE.emphasis)
   }).prefault({}),
   zoomIntro: z.object({
     enabled: z.boolean().default(DEFAULT_RENDER_STYLE.zoomIntro.enabled),
@@ -159,7 +161,8 @@ export function resolveStyle(
       highlightColor: settings.highlightColor || config.subtitles.highlightColor,
       uppercase: config.subtitles.uppercase,
       // Mots mis en valeur : ceux choisis dans la DA seulement (les mots du chat servent a la detection, pas a l'apparence).
-      keywords: [...new Set(config.subtitles.keywords)]
+      keywords: [...new Set(config.subtitles.keywords)],
+      emphasis: config.subtitles.autoEmphasis
     },
     render: {
       ...DEFAULT_RENDER_STYLE,
