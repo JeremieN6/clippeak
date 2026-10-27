@@ -4,6 +4,11 @@ const studio = useStudio()
 const step = studio.step
 const o = computed(() => studio.onboarding.value)
 
+// Sur telephone la liste des etapes est repliee pour laisser la place au contenu.
+const navOpen = ref(false)
+const currentLabel = computed(() => STEPS[step.value - 1]?.label ?? '')
+const pick = (n: number) => { step.value = n; navOpen.value = false }
+
 const pct = computed(() => Math.round(((step.value - 1) / 8) * 100))
 const hasReference = computed(() => (studio.bank.value?.items?.length ?? 0) > 0)
 const detectionInvalid = computed(() => step.value === 6 && studio.detail.value?.settings && studio.detail.value.settings.clipMinSec >= studio.detail.value.settings.clipMaxSec)
@@ -36,8 +41,9 @@ watch(step, () => nextTick(() => main.value?.scrollIntoView({ block: 'start' }))
         <div class="flex justify-between text-[13px] font-bold"><span>Étape {{ step }} sur 8</span><span class="st-muted">{{ pct }} %</span></div>
         <div class="h-1.5 overflow-hidden rounded-[3px] bg-[#2C2837]"><div class="h-full bg-[#7C3AED]" :style="{ width: `${pct}%` }" /></div>
       </div>
-      <div class="flex flex-col gap-0.5">
-        <button v-for="s in navSteps" :key="s.n" type="button" class="st-nav-item" :aria-current="s.current ? 'step' : undefined" @click="step = s.n">
+      <button type="button" class="st-btn-ghost w-full lg:hidden" :aria-expanded="navOpen" aria-controls="st-steps" @click="navOpen = !navOpen">{{ navOpen ? 'Masquer les étapes' : `Étapes : ${currentLabel}` }}</button>
+      <div id="st-steps" class="flex-col gap-0.5 lg:flex" :class="navOpen ? 'flex' : 'hidden'">
+        <button v-for="s in navSteps" :key="s.n" type="button" class="st-nav-item" :aria-current="s.current ? 'step' : undefined" @click="pick(s.n)">
           <span class="flex h-7 w-7 flex-none items-center justify-center rounded-full text-[13px] font-extrabold" :class="s.current ? 'bg-[#7C3AED] text-white' : s.done ? 'bg-[#12302A] text-[#6EDDB8]' : s.skipped ? 'border border-dashed border-[#6A6280] text-[#ABA5BA]' : 'border border-[#4B4560] text-[#ABA5BA]'">{{ s.done ? '✓' : s.n }}</span>
           <span class="flex min-w-0 flex-col">
             <span class="text-[15px] leading-5" :class="s.current ? 'font-bold text-white' : s.done ? 'font-semibold text-[#C9C3D6]' : 'font-semibold text-[#ABA5BA]'">{{ s.label }}</span>
@@ -59,14 +65,16 @@ watch(step, () => nextTick(() => main.value?.scrollIntoView({ block: 'start' }))
         <StudioStepRecap v-else />
       </div>
 
-      <div class="sticky bottom-0 z-10 flex flex-wrap items-center justify-between gap-3 border-t border-[#2C2837] bg-[#0E0D12] px-5 py-3.5 sm:px-10">
-        <button type="button" class="st-btn-ghost st-btn-lg !bg-transparent" :disabled="step === 1" @click="back">Retour</button>
-        <div v-if="step < 8" class="flex flex-wrap items-center justify-end gap-2">
-          <button v-if="step >= 2 && step <= 7" type="button" class="st-btn-quiet" :disabled="studio.busy.value" @click="later">Plus tard</button>
-          <span v-if="step === 1 && !hasReference" class="max-w-[220px] text-right text-[13px] st-muted">Ajoute au moins un clip pour continuer.</span>
-          <span v-if="detectionInvalid" class="max-w-[220px] text-right text-[13px] text-[#FF9B8D]">La durée minimale doit être plus courte que la maximale.</span>
-          <button type="button" class="st-btn st-btn-lg" :disabled="!canNext" @click="next">Enregistrer et continuer</button>
-        </div>
+      <div class="sticky bottom-0 z-10 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[#2C2837] bg-[#0E0D12] px-4 py-3 sm:px-10 sm:py-3.5">
+        <span v-if="step === 1 && !hasReference" class="basis-full text-[13px] st-muted">Ajoute au moins un clip pour continuer.</span>
+        <span v-if="detectionInvalid" class="basis-full text-[13px] text-[#FF9B8D]">La durée minimale doit être plus courte que la maximale.</span>
+        <button type="button" class="st-btn-ghost !bg-transparent sm:!min-h-[52px] sm:!px-7" :disabled="step === 1" @click="back">Retour</button>
+        <template v-if="step < 8">
+          <button v-if="step >= 2 && step <= 7" type="button" class="st-btn-quiet sm:ml-auto" :disabled="studio.busy.value" @click="later">Plus tard</button>
+          <button type="button" class="st-btn flex-1 sm:!min-h-[52px] sm:flex-none sm:!px-7 sm:text-base" :class="step === 1 ? 'sm:ml-auto' : ''" :disabled="!canNext" @click="next">
+            <span class="sm:hidden">Continuer</span><span class="hidden sm:inline">Enregistrer et continuer</span>
+          </button>
+        </template>
       </div>
     </section>
   </div>

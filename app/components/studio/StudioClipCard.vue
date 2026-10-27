@@ -27,7 +27,7 @@ const redo = () => studio.reviewClip(props.clip, 'requeue', draft)
 
 <template>
   <article class="st-card flex flex-col gap-4 !p-4 sm:flex-row" :aria-label="clip.title || clip.hook || 'Clip'">
-    <div class="w-full flex-none sm:w-[190px]">
+    <div class="mx-auto w-full max-w-[260px] flex-none sm:mx-0 sm:w-[190px] sm:max-w-none">
       <video v-if="clip.videoUrl" :src="clip.videoUrl" controls playsinline preload="metadata" class="aspect-[9/16] w-full rounded-xl bg-black" />
       <div v-else class="flex aspect-[9/16] w-full items-center justify-center rounded-xl bg-[#100F15] p-3 text-center text-[13px] leading-5 st-muted">
         {{ clip.error || (clip.status === 'queued' || clip.status === 'rendering' ? 'Le clip est en cours de préparation.' : 'Pas encore de vidéo') }}

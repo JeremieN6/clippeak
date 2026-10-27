@@ -21,9 +21,8 @@ const { password, connected, error, notice, busy, channels, channelId, view } = 
           <option v-for="c in channels" :key="c.id" :value="c.id">{{ c.displayName }}</option>
         </select>
         <span v-else-if="channels[0]" class="text-sm font-semibold st-muted">{{ channels[0].displayName }}</span>
-        <button v-if="view === 'dashboard'" type="button" class="st-btn-ghost" @click="studio.goToStep(studio.step.value)">Mes réglages</button>
-        <button v-else-if="studio.onboarding.value?.completed" type="button" class="st-btn-ghost" @click="view = 'dashboard'">Tableau de bord</button>
-        <span v-else class="hidden items-center gap-2 text-[13px] font-semibold st-muted sm:inline-flex">Enregistré à chaque étape</span>
+        <button v-if="view !== 'dashboard' && studio.onboarding.value?.completed" type="button" class="st-btn-ghost" @click="view = 'dashboard'">Tableau de bord</button>
+        <span v-else-if="view !== 'dashboard'" class="hidden items-center gap-2 text-[13px] font-semibold st-muted sm:inline-flex">Enregistré à chaque étape</span>
       </div>
     </header>
 
