@@ -1,4 +1,6 @@
+import { existsSync } from 'node:fs'
 import { relative } from 'node:path'
+import { bundledFontsDir } from './fonts'
 import type { PrismaClient } from '@prisma/client'
 import { clipsDir, dataDir, safeResolve } from './dataDir'
 import { parseStyle, referencedSoundAssets } from './streamerStyle'
@@ -72,6 +74,8 @@ export function createPipelineStore(db: Db) {
 
       const photoRows = await db.streamerAsset.findMany({ where: { channelId: channel.id, kind: 'photo' }, orderBy: { createdAt: 'desc' }, take: 8 })
       const photoPaths = photoRows.map(row => safeResolve(dataDir(), row.path))
+      // Polices fournies avec l'application (le streamer les choisit dans la DA) ; absentes = police systeme (Lato).
+      const fontsDir = existsSync(bundledFontsDir()) ? bundledFontsDir() : undefined
 
       const keepRanges = job.keepRanges as Array<{ start: number, end: number }> | null
       return {
@@ -101,7 +105,8 @@ export function createPipelineStore(db: Db) {
           overlayAnimated: overlay ? overlay.filename.toLowerCase().endsWith('.gif') : false
         },
         library,
-        photoPaths
+        photoPaths,
+        fontsDir
       }
     },
 

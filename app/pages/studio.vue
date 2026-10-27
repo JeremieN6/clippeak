@@ -27,10 +27,6 @@ const drafts = reactive<Record<string, { caption: string, title: string, note: s
 
 const keywordsText = ref('')
 const namesText = ref('')
-const uploadKind = ref('photo')
-const uploadTags = ref('')
-const uploadSource = ref('')
-const uploadInput = ref<HTMLInputElement | null>(null)
 
 const headers = computed(() => ({ 'x-admin-password': password.value.trim() }))
 
@@ -70,6 +66,7 @@ async function loadChannel() {
   keywordsText.value = (detail.value.settings?.keywords ?? []).join(', ')
   namesText.value = (detail.value.style.names ?? []).join(', ')
   highlightText.value = (detail.value.style.subtitles.keywords ?? []).join(', ')
+  for (const asset of detail.value.assets) assetEdits[asset.id] = { tags: asset.tags.join(', '), source: asset.source ?? '' }
   // L'interrupteur des sous-titres est maintenant dans la direction artistique : un ancien "desactive" des reglages est repris.
   if (detail.value.settings && detail.value.settings.subtitles === false) detail.value.style.subtitles.enabled = false
   await loadBank()
@@ -122,20 +119,56 @@ const saveStyle = () => run(async () => {
   await loadChannel()
 }, 'Direction artistique enregistree.')
 
-const upload = () => run(async () => {
-  const file = uploadInput.value?.files?.[0]
-  if (!file) throw new Error('Choisissez un fichier')
-  const form = new FormData()
-  form.append('kind', uploadKind.value)
-  form.append('tags', uploadTags.value)
-  form.append('source', uploadSource.value)
-  form.append('file', file)
-  await api(`/api/studio/channels/${channelId.value}/assets`, { method: 'POST', body: form })
-  if (uploadInput.value) uploadInput.value.value = ''
-  uploadTags.value = ''
-  uploadSource.value = ''
+const fileSections = [
+  { kind: 'photo', title: 'Photos de vous', accept: '.jpg,.jpeg,.png', help: 'Servent a vous reconnaitre dans la video pour vous cadrer automatiquement (a activer dans Direction artistique > Cadrage du streamer). 3 a 5 photos nettes, de face, suffisent.' },
+  { kind: 'avatar', title: 'Avatar / GIF', accept: '.gif,.png,.webp', help: 'Image ou GIF anime affiche par-dessus le clip. Se choisit et se place dans Direction artistique > Avatar / GIF.' },
+  { kind: 'sfx', title: 'Bruitages (vos sons)', accept: '.mp3,.wav,.ogg,.m4a', help: 'Vos propres sons (5 Mo max, a ecouter ci-dessous). Ils s\'ajoutent aux sons integres et se choisissent dans Direction artistique > Bruitages.' },
+  { kind: 'illustration', title: 'Videos d\'illustration', accept: '.mp4,.mov,.webm', help: 'Courtes videos affichees en haut de l\'ecran pendant que vous parlez, quand vous dites l\'un de leurs mots declencheurs. Le credit est conserve avec chaque clip pour savoir d\'ou vient la video.' },
+]
+
+interface PendingFile { file: File, tags: string, source: string }
+const pending = reactive<Record<string, PendingFile[]>>({})
+const inputKey = reactive<Record<string, number>>({})
+const assetEdits = reactive<Record<string, { tags: string, source: string }>>({})
+
+function pickFiles(kind: string, event: Event) {
+  pending[kind] = Array.from((event.target as HTMLInputElement).files ?? []).map(file => ({ file, tags: '', source: '' }))
+}
+
+const uploadKindFiles = (kind: string) => run(async () => {
+  const items = pending[kind] ?? []
+  if (!items.length) throw new Error('Choisissez au moins un fichier')
+  const failed: string[] = []
+  let added = 0
+  for (const item of items) {
+    const form = new FormData()
+    form.append('kind', kind)
+    form.append('tags', item.tags)
+    form.append('source', item.source)
+    form.append('file', item.file)
+    try {
+      await api(`/api/studio/channels/${channelId.value}/assets`, { method: 'POST', body: form })
+      added++
+    } catch (e: any) {
+      failed.push(`${item.file.name} : ${e.message}`)
+    }
+  }
+  pending[kind] = []
+  inputKey[kind] = (inputKey[kind] ?? 0) + 1
   await loadChannel()
-}, 'Fichier ajoute.')
+  if (added) notice.value = `${added} fichier(s) ajoute(s).`
+  if (failed.length) error.value = failed.join(' · ')
+})
+
+const saveAssetEdit = (id: string) => run(async () => {
+  const edit = assetEdits[id]
+  await api(`/api/studio/assets/${id}`, {
+    method: 'PATCH',
+    body: { tags: edit.tags.split(',').map((t: string) => t.trim()).filter(Boolean), source: edit.source.trim() || null }
+  })
+  await loadChannel()
+}, 'Illustration enregistree.')
+
 
 const removeAsset = (id: string) => run(async () => {
   await api(`/api/studio/assets/${id}`, { method: 'DELETE' })
@@ -267,6 +300,13 @@ const titleTextStyle = computed(() => {
 
 const highlightText = ref('')
 
+// Les polices proposees sont chargees dans la page depuis les memes fichiers que ceux du rendu (apercu fidele).
+const fontFaces = computed(() => (detail.value?.fonts ?? [])
+  .filter((f: any) => f.file)
+  .map((f: any) => `@font-face{font-family:"${f.family}";src:url("/fonts/${f.file}") format("truetype");font-weight:100 900;font-display:swap}`)
+  .join('\n'))
+useHead(() => ({ style: fontFaces.value ? [{ key: 'studio-fonts', innerHTML: fontFaces.value }] : [] }))
+
 const subtitleBoxStyle = { position: 'absolute', left: '0', width: '100%', bottom: `${420 * PREVIEW_SCALE}px`, textAlign: 'center' }
 
 const subtitleTextStyle = computed(() => {
@@ -378,7 +418,12 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
             <legend class="font-semibold">Titre (bande noire en haut)</legend>
             <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.title.enabled" type="checkbox"> Afficher le titre</label>
             <template v-if="detail.style.title.enabled">
-              <input v-model="detail.style.title.fontName" aria-label="Police du titre" placeholder="Police (ex : Lato)" :class="fieldClass">
+              <label class="text-sm text-clippeak-muted">Police du titre
+                <select v-model="detail.style.title.fontName" aria-label="Police du titre" :class="fieldClass">
+                  <option v-for="f in detail.fonts" :key="f.family" :value="f.family">{{ f.label }} — {{ f.note }}</option>
+                </select>
+              </label>
+              <p class="text-lg" :style="{ fontFamily: `'${detail.style.title.fontName}', sans-serif`, fontWeight: 700 }">Il a vraiment dit ça !</p>
               <label class="text-sm text-clippeak-muted">Taille {{ detail.style.title.fontSize }}
                 <input v-model.number="detail.style.title.fontSize" type="range" min="30" max="120" class="w-full">
               </label>
@@ -393,7 +438,12 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
             <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.subtitles.enabled" type="checkbox"> Afficher les sous-titres</label>
             <template v-if="detail.style.subtitles.enabled">
               <label class="flex items-center gap-2 text-sm"><input v-model="detail.style.subtitles.uppercase" type="checkbox"> Majuscules</label>
-              <input v-model="detail.style.subtitles.fontName" aria-label="Police des sous-titres" :class="fieldClass">
+              <label class="text-sm text-clippeak-muted">Police des sous-titres
+                <select v-model="detail.style.subtitles.fontName" aria-label="Police des sous-titres" :class="fieldClass">
+                  <option v-for="f in detail.fonts" :key="f.family" :value="f.family">{{ f.label }} — {{ f.note }}</option>
+                </select>
+              </label>
+              <p class="text-lg" :style="{ fontFamily: `'${detail.style.subtitles.fontName}', sans-serif`, fontWeight: 700, textTransform: detail.style.subtitles.uppercase ? 'uppercase' : 'none' }">On a tout vu</p>
               <div class="grid grid-cols-2 gap-3">
                 <label class="text-sm text-clippeak-muted">Couleur des sous-titres <input v-model="detail.style.subtitles.color" type="color" :class="fieldClass"></label>
                 <label v-if="detail.settings" class="text-sm text-clippeak-muted">Couleur du mot mis en valeur <input v-model="detail.settings.highlightColor" type="color" :class="fieldClass"></label>
@@ -540,31 +590,60 @@ const ghostClass = 'rounded-xl border border-white/20 px-4 py-2 text-sm font-sem
         <button type="button" :class="buttonClass" :disabled="busy" @click="saveSettings">Enregistrer</button>
       </section>
 
-      <!-- Fichiers -->
-      <section v-if="tab === 'fichiers' && detail" class="card-surface mt-6 space-y-5 p-6">
+      <!-- Fichiers : une section par type, avec son usage et ses propres champs -->
+      <section v-if="tab === 'fichiers' && detail" class="mt-6 space-y-6">
         <p class="text-sm text-clippeak-muted">
-          Photos (reconnaissance, 3 a 5 suffisent), avatar ou GIF, SFX, polices et videos d'illustration. Chaque illustration garde sa source.
+          Ce que vous deposez ici sert au rendu de vos clips. Chaque categorie indique a quoi elle sert et ou la regler. Vous pouvez deposer plusieurs fichiers a la fois.
         </p>
-        <form class="grid gap-3 sm:grid-cols-2" @submit.prevent="upload">
-          <select v-model="uploadKind" aria-label="Type de fichier" :class="fieldClass">
-            <option value="photo">Photo du streamer</option>
-            <option value="avatar">Avatar / GIF</option>
-            <option value="sfx">SFX</option>
-            <option value="illustration">Video d'illustration</option>
-            <option value="font">Police</option>
-          </select>
-          <input ref="uploadInput" type="file" aria-label="Fichier" class="text-sm">
-          <input v-model="uploadTags" placeholder="Mots-cles (virgules) : marche, legumes" :class="fieldClass">
-          <input v-model="uploadSource" placeholder="Source ou credit (illustrations)" :class="fieldClass">
-          <button type="submit" :class="buttonClass" :disabled="busy">Ajouter</button>
-        </form>
-        <ul class="divide-y divide-white/10 text-sm">
-          <li v-for="a in detail.assets" :key="a.id" class="flex items-center justify-between gap-3 py-2">
-            <span><strong>{{ a.kind }}</strong> · {{ a.filename }} <span class="text-clippeak-muted">{{ a.tags.join(', ') }} {{ a.source ? '· ' + a.source : '' }}</span></span>
-            <button type="button" :class="ghostClass" :disabled="busy" @click="removeAsset(a.id)">Supprimer</button>
-          </li>
-          <li v-if="!detail.assets.length" class="py-2 text-clippeak-muted">Aucun fichier.</li>
-        </ul>
+
+        <div v-for="section in fileSections" :key="section.kind" class="card-surface space-y-4 p-6">
+          <div>
+            <h2 class="font-display text-lg font-bold">
+              {{ section.title }} <span class="text-sm font-normal text-clippeak-muted">({{ assetsOf(section.kind).length }})</span>
+            </h2>
+            <p class="mt-1 text-sm text-clippeak-muted">{{ section.help }}</p>
+            <p v-if="section.kind === 'photo'" class="mt-1 text-sm" :class="assetsOf('photo').length >= 3 ? 'text-emerald-300' : 'text-amber-300'">
+              {{ assetsOf('photo').length }} photo(s) : {{ assetsOf('photo').length >= 3 ? 'c\'est suffisant pour le cadrage automatique.' : 'il en faut au moins 3 pour le cadrage automatique.' }}
+            </p>
+          </div>
+
+          <form class="space-y-3" @submit.prevent="uploadKindFiles(section.kind)">
+            <input :key="inputKey[section.kind]" type="file" multiple :accept="section.accept" :aria-label="`Ajouter : ${section.title}`" class="text-sm" @change="pickFiles(section.kind, $event)">
+            <template v-if="section.kind === 'illustration'">
+              <div v-for="(item, i) in pending[section.kind] ?? []" :key="i" class="space-y-2 rounded-xl border border-white/10 p-3 text-sm">
+                <strong>{{ item.file.name }}</strong>
+                <label class="block text-xs text-clippeak-muted">Mots qui declenchent cette illustration (facultatif, separes par des virgules)
+                  <input v-model="item.tags" placeholder="marche, legumes" :class="fieldClass">
+                </label>
+                <label class="block text-xs text-clippeak-muted">Credit : auteur ou lien d'origine de la video (facultatif)
+                  <input v-model="item.source" placeholder="Ex : https://... ou nom de l'auteur" :class="fieldClass">
+                </label>
+              </div>
+              <p v-if="pending[section.kind]?.length" class="text-xs text-clippeak-muted">Sans mots declencheurs, ceux du nom du fichier sont utilises (marche_legumes.mp4 : « marche », « legumes »).</p>
+            </template>
+            <button v-if="pending[section.kind]?.length" type="submit" :class="buttonClass" :disabled="busy">Ajouter {{ pending[section.kind].length }} fichier(s)</button>
+          </form>
+
+          <p v-if="!assetsOf(section.kind).length" class="text-sm text-clippeak-muted">Aucun fichier dans cette categorie.</p>
+          <ul v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <li v-for="a in assetsOf(section.kind)" :key="a.id" class="space-y-2 rounded-xl border border-white/10 p-3 text-sm">
+              <img v-if="a.previewUrl && (a.kind === 'photo' || a.kind === 'avatar')" :src="a.previewUrl" :alt="a.filename" class="h-32 w-full rounded-lg bg-black/40 object-cover">
+              <video v-else-if="a.previewUrl && a.kind === 'illustration'" :src="a.previewUrl" controls muted playsinline preload="metadata" class="aspect-video w-full rounded-lg bg-black" />
+              <audio v-else-if="a.previewUrl && a.kind === 'sfx'" :src="a.previewUrl" controls preload="none" class="w-full" />
+              <p class="break-all font-medium">{{ a.filename }}</p>
+              <template v-if="a.kind === 'illustration' && assetEdits[a.id]">
+                <label class="block text-xs text-clippeak-muted">Mots declencheurs
+                  <input v-model="assetEdits[a.id].tags" placeholder="marche, legumes" :class="fieldClass">
+                </label>
+                <label class="block text-xs text-clippeak-muted">Credit (auteur ou lien d'origine)
+                  <input v-model="assetEdits[a.id].source" :class="fieldClass">
+                </label>
+                <button type="button" :class="ghostClass" :disabled="busy" @click="saveAssetEdit(a.id)">Enregistrer</button>
+              </template>
+              <button type="button" :class="ghostClass" :disabled="busy" @click="removeAsset(a.id)">Supprimer</button>
+            </li>
+          </ul>
+        </div>
       </section>
 
       <!-- Banque de reference : base de tout le reste -->

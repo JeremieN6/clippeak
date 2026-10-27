@@ -57,7 +57,7 @@ test('safeFilename keeps a safe basename and asset rules cover every kind', () =
   assert.equal(safeFilename('../../Mon logo é!.GIF'), 'Mon_logo_e_.GIF')
   assert.equal(safeFilename('..'), 'fichier')
   assert.equal(safeFilename('a/b\\c.mp4'), 'c.mp4')
-  for (const kind of ['photo', 'avatar', 'sfx', 'illustration', 'font'] as const) assert.ok(ASSET_RULES[kind].maxBytes > 0)
+  for (const kind of ['photo', 'avatar', 'sfx', 'illustration'] as const) assert.ok(ASSET_RULES[kind].maxBytes > 0)
 })
 
 import { contentMatchesExtension, validateUpload } from './assetValidation.ts'

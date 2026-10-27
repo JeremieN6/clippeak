@@ -1,5 +1,6 @@
 import { prisma } from '../../../../utils/prisma'
 import { parseId, requireStudioAdmin } from '../../../../utils/studioAuth'
+import { isAvailableFont } from '../../../../utils/clipping/fonts'
 import { referencedSoundAssets, styleSchema } from '../../../../utils/clipping/streamerStyle'
 
 export default defineEventHandler(async (event) => {
@@ -9,6 +10,11 @@ export default defineEventHandler(async (event) => {
   if (!parsed.success) {
     const issue = parsed.error.issues[0]
     throw createError({ statusCode: 400, statusMessage: `${issue?.path.join('.') ?? 'style'} : ${issue?.message ?? 'invalide'}` })
+  }
+
+  // Les polices se choisissent dans la liste proposee (celles dont le fichier est fourni avec l'application).
+  for (const family of [parsed.data.title.fontName, parsed.data.subtitles.fontName]) {
+    if (!isAvailableFont(family)) throw createError({ statusCode: 400, statusMessage: `Police « ${family} » indisponible` })
   }
 
   const channel = await prisma.channel.findUnique({ where: { id }, select: { id: true } })

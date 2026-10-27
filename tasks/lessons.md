@@ -138,3 +138,9 @@
 **Cause racine** : J'ai remplace l'exigence (clips d'autres plateformes) par la donnee accessible par API, et je n'ai pas verifie avec lui que ce remplacement convenait.
 **Solution** : Banque refaite : depot de videos + liens de comptes (yt-dlp), transcription + images cles analysees par Claude, statistiques facultatives, ressemblance avec les moments des lives.
 **Regle** : Quand la source demandee est difficile d'acces, le dire et proposer des options AVANT de remplacer ; ne jamais presenter un substitut comme la fonction demandee.
+
+### [2026-10-26] Un champ qui ne sert a rien parce que le code ne le lit pas
+**Probleme** : L'onglet Fichiers acceptait des polices, mais le rendu ne les utilisait jamais (le dossier de polices n'etait jamais transmis a ffmpeg) ; le porteur a aussi releve des champs obscurs ("source ou credit", "mots-cles") et un menu qui melangeait tous les types.
+**Cause racine** : Fonction ajoutee a l'interface sans verifier qu'elle etait branchee jusqu'au rendu, et libelles ecrits du point de vue du code, pas de celui du streamer.
+**Solution** : Polices rangees dans leur dossier et transmises au rendu ; une section par type avec son usage ; champs reserves aux illustrations et renommes (mots declencheurs, credit).
+**Regle** : Pour chaque champ ou fichier propose a l'utilisateur, retrouver dans le code qui le lit ; sinon le retirer ou le brancher. Nommer les champs d'apres ce qu'ils font pour l'utilisateur.

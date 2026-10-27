@@ -73,6 +73,8 @@ Le produit reel de clipping n'existe pas encore : tout le "traitement" est simul
 - Notifications : sur les 3 feedbacks de la landing (export de la base le 2026-10-24, echantillon minuscule et probablement en partie des essais, a verifier), 2 choisissent Discord et 1 Telegram comme canal de reception, aucun le mail. Hypothese : commencer par Discord/Telegram.
 - Les streamers connaissent leur communaute : ce qui fait reagir leur chat (mots, rythme) doit etre regle par eux, pas devine. Retour terrain a valider avec de vrais utilisateurs.
 
+- Decision du 2026-10-27 : le produit devient un parcours d'onboarding guide + un tableau de bord de contenu avec publication directe vers les plateformes choisies par le streamer, plutot qu'un back-office a onglets. Contrainte a surveiller : la publication automatique depend de validations d'application par TikTok, Instagram et YouTube (delais, refus possibles). Le streamer ne doit jamais avoir a connaitre un nom de police ou un terme technique.
+
 ---
 
 ## Derniere mise a jour
