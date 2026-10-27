@@ -1,161 +1,58 @@
 <script setup lang="ts">
-interface AdminResponse {
-  metrics: {
-    total: number
-    automationOuiPct: number
-    plateformeRepartition: Record<string, number>
-    profilRepartition: Record<string, number>
-  }
-  feedbacks: Array<{
-    id: string
-    version: string
-    outilAutomatise: 'oui' | 'non' | 'peut_etre'
-    plateformeReception: string
-    plateformeAutre: string | null
-    vodsParMois: string
-    profil: string
-    manque: string | null
-    email: string | null
-    createdAt: string
-  }>
-}
+// Administration de Clippeak : page non liee depuis le site, on y arrive en tapant /admin. Le mot de passe est verifie une fois
+// puis remplace par un cookie de session (12 h). Elle regroupe : le studio de demonstration, les invitations et les feedbacks.
+// Le studio (/studio) reste l'espace des streamers : ici on gere, la-bas on essaie.
+useHead({ title: 'Administration Clippeak', meta: [{ name: 'robots', content: 'noindex, nofollow' }] })
 
-const password = ref('')
-const loading = ref(false)
-const error = ref('')
-const adminData = ref<AdminResponse | null>(null)
+const admin = createAdmin()
+const { authed, checking, password, error, notice, busy } = admin
+const tab = ref<'studio' | 'invites' | 'feedback'>('studio')
+const tabs = [
+  { id: 'studio', label: 'Studio' },
+  { id: 'invites', label: 'Invitations' },
+  { id: 'feedback', label: 'Feedbacks' }
+] as const
 
-const totalResponses = computed(() => adminData.value?.metrics.total ?? 0)
-
-async function loadFeedbacks() {
-  loading.value = true
-  error.value = ''
-
-  try {
-    const data = await $fetch<AdminResponse>('/api/admin/feedback', {
-      query: { password: password.value.trim() }
-    })
-    adminData.value = data
-  } catch {
-    error.value = 'Mot de passe invalide ou acces refuse.'
-  } finally {
-    loading.value = false
-  }
-}
-
-const platformEntries = computed(() => Object.entries(adminData.value?.metrics.plateformeRepartition || {}))
-const profileEntries = computed(() => Object.entries(adminData.value?.metrics.profilRepartition || {}))
-
-function percent(count: number) {
-  if (!totalResponses.value) return 0
-  return Math.round((count / totalResponses.value) * 100)
-}
+onMounted(() => admin.restore())
 </script>
 
 <template>
-  <main class="mx-auto min-h-screen w-full max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
-    <section class="card-surface p-6 sm:p-8">
-      <h1 class="font-display text-3xl font-bold sm:text-4xl">Admin Clippeak</h1>
-      <p class="mt-2 text-sm text-clippeak-muted">Acces protege par mot de passe.</p>
+  <div class="st-root min-h-screen bg-[#0E0D12]">
+    <header class="flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-[#2C2837] px-5 py-2 sm:px-8">
+      <div class="flex items-center gap-2.5">
+        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-[#7C3AED] text-xs font-extrabold text-white" aria-hidden="true">CP</span>
+        <span class="st-title text-lg font-bold">Clippeak</span>
+        <span class="st-badge st-badge-neutral">Administration</span>
+      </div>
+      <button v-if="authed" type="button" class="st-btn-quiet" :disabled="busy" @click="admin.logout()">Se déconnecter</button>
+    </header>
 
-      <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-        <input
-          v-model="password"
-          type="password"
-          placeholder="Mot de passe admin"
-          class="h-12 w-full rounded-xl border border-white/15 bg-black/35 px-4 text-sm outline-none focus:border-clippeak-violet"
-        >
+    <div v-if="error || notice" class="mx-auto max-w-[900px] px-5 pt-4 sm:px-8">
+      <p v-if="error" class="st-alert st-alert-error m-0" role="alert">{{ error }}</p>
+      <p v-else class="st-alert st-alert-ok m-0" role="status">{{ notice }}</p>
+    </div>
+
+    <main v-if="!authed" class="mx-auto flex max-w-md flex-col gap-6 px-5 py-16">
+      <template v-if="!checking">
+        <h1 class="st-title m-0 text-3xl font-bold">Administration</h1>
+        <form class="flex flex-col gap-3" @submit.prevent="admin.login()">
+          <label for="admin-password" class="st-label">Mot de passe</label>
+          <input id="admin-password" v-model="password" type="password" autocomplete="current-password" class="st-field">
+          <button type="submit" class="st-btn" :disabled="busy || !password">Entrer</button>
+        </form>
+      </template>
+    </main>
+
+    <main v-else class="mx-auto flex max-w-[900px] flex-col gap-6 px-5 py-8 sm:px-8">
+      <nav class="flex flex-wrap gap-2" aria-label="Sections de l’administration">
         <button
-          type="button"
-          class="h-12 rounded-xl bg-clippeak-violet px-6 font-semibold transition hover:bg-clippeak-violetLight disabled:opacity-70"
-          :disabled="loading"
-          @click="loadFeedbacks"
-        >
-          {{ loading ? 'Chargement...' : 'Voir les feedbacks' }}
-        </button>
-      </div>
-
-      <p v-if="error" class="mt-3 text-sm font-semibold text-red-400">{{ error }}</p>
-    </section>
-
-    <section v-if="adminData" class="mt-8 space-y-6">
-      <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <article class="card-surface p-5">
-          <p class="text-xs uppercase tracking-wider text-clippeak-muted">Total reponses</p>
-          <p class="mt-2 text-3xl font-bold">{{ adminData.metrics.total }}</p>
-        </article>
-        <article class="card-surface p-5">
-          <p class="text-xs uppercase tracking-wider text-clippeak-muted">Automatisation oui</p>
-          <p class="mt-2 text-3xl font-bold">{{ adminData.metrics.automationOuiPct }}%</p>
-        </article>
-        <article class="card-surface p-5">
-          <p class="text-xs uppercase tracking-wider text-clippeak-muted">Plateformes</p>
-          <p class="mt-2 text-sm text-white/85">{{ platformEntries.map(([key, value]) => `${key}: ${value}`).join(' | ') }}</p>
-        </article>
-        <article class="card-surface p-5">
-          <p class="text-xs uppercase tracking-wider text-clippeak-muted">Profils</p>
-          <p class="mt-2 text-sm text-white/85">{{ profileEntries.map(([key, value]) => `${key}: ${value}`).join(' | ') }}</p>
-        </article>
-      </div>
-
-      <div class="grid gap-4 lg:grid-cols-2">
-        <article class="card-surface p-5">
-          <h2 class="font-semibold">Repartition plateformes</h2>
-          <div class="mt-4 space-y-3">
-            <div v-for="[label, count] in platformEntries" :key="label" class="space-y-1">
-              <div class="flex items-center justify-between text-sm">
-                <span>{{ label }}</span>
-                <span class="text-clippeak-muted">{{ count }} ({{ percent(count) }}%)</span>
-              </div>
-              <div class="h-2 rounded-full bg-black/30">
-                <div class="h-2 rounded-full bg-clippeak-violet" :style="{ width: `${percent(count)}%` }"></div>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <article class="card-surface p-5">
-          <h2 class="font-semibold">Repartition profils</h2>
-          <div class="mt-4 space-y-3">
-            <div v-for="[label, count] in profileEntries" :key="label" class="space-y-1">
-              <div class="flex items-center justify-between text-sm">
-                <span>{{ label }}</span>
-                <span class="text-clippeak-muted">{{ count }} ({{ percent(count) }}%)</span>
-              </div>
-              <div class="h-2 rounded-full bg-black/30">
-                <div class="h-2 rounded-full bg-clippeak-violetLight" :style="{ width: `${percent(count)}%` }"></div>
-              </div>
-            </div>
-          </div>
-        </article>
-      </div>
-
-      <div class="card-surface overflow-x-auto p-4">
-        <table class="w-full min-w-[920px] text-left text-sm">
-          <thead>
-            <tr class="border-b border-white/10 text-clippeak-muted">
-              <th class="px-3 py-2">Date</th>
-              <th class="px-3 py-2">Profil</th>
-              <th class="px-3 py-2">Auto</th>
-              <th class="px-3 py-2">Plateforme</th>
-              <th class="px-3 py-2">VOD/mois</th>
-              <th class="px-3 py-2">Email</th>
-              <th class="px-3 py-2">Manque</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in adminData.feedbacks" :key="item.id" class="border-b border-white/5 align-top">
-              <td class="px-3 py-3 text-white/80">{{ new Date(item.createdAt).toLocaleString('fr-FR') }}</td>
-              <td class="px-3 py-3">{{ item.profil }}</td>
-              <td class="px-3 py-3">{{ item.outilAutomatise }}</td>
-              <td class="px-3 py-3">{{ item.plateformeAutre || item.plateformeReception }}</td>
-              <td class="px-3 py-3">{{ item.vodsParMois }}</td>
-              <td class="px-3 py-3">{{ item.email || '-' }}</td>
-              <td class="px-3 py-3">{{ item.manque || '-' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+          v-for="t in tabs" :key="t.id" type="button" :class="tab === t.id ? 'st-btn' : 'st-btn-ghost'"
+          :aria-pressed="tab === t.id" @click="tab = t.id"
+        >{{ t.label }}</button>
+      </nav>
+      <AdminChannels v-if="tab === 'studio'" :admin="admin" />
+      <AdminInvites v-else-if="tab === 'invites'" :admin="admin" />
+      <AdminFeedback v-else />
+    </main>
+  </div>
 </template>
