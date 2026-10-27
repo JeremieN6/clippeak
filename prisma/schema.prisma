@@ -70,6 +70,7 @@ model Channel {
   referenceClips ReferenceClip[]
   referenceItems ReferenceItem[]
   assets         StreamerAsset[]
+  sessions       StudioSession[]
 
   @@map("channels")
 }
@@ -247,4 +248,30 @@ model ReferenceItem {
   @@unique([channelId, url])
   @@index([channelId, status])
   @@map("reference_items")
+}
+
+// Chaines autorisees a se connecter avec Twitch (inscription sur invitation : l'admin ajoute le pseudo, jamais le streamer lui-meme).
+model ChannelInvite {
+  id          String    @id @default(uuid()) @db.Uuid
+  twitchLogin String    @unique @map("twitch_login") @db.VarChar(25)
+  twitchId    String?   @unique @map("twitch_id") @db.VarChar(40)
+  note        String?   @db.VarChar(200)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  lastLoginAt DateTime? @map("last_login_at")
+
+  @@map("channel_invites")
+}
+
+// Session d'un streamer connecte : seul le hash SHA-256 du jeton est conserve (le jeton ne vit que dans le cookie).
+model StudioSession {
+  id        String   @id @default(uuid()) @db.Uuid
+  channelId String   @map("channel_id") @db.Uuid
+  tokenHash String   @unique @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId])
+  @@map("studio_sessions")
 }

@@ -1,5 +1,5 @@
 import { prisma } from '../../../../utils/prisma'
-import { mediaSecret, parseId, requireStudioAdmin } from '../../../../utils/studioAuth'
+import { mediaSecret, parseId, assertChannel, requireStudioActor } from '../../../../utils/studioAuth'
 import { signMediaToken } from '../../../../utils/clipping/adminAuth'
 import { parseStyle } from '../../../../utils/clipping/streamerStyle'
 import { availableFonts } from '../../../../utils/clipping/fonts'
@@ -8,8 +8,9 @@ import { buildReferenceProfile } from '../../../../utils/clipping/referenceClips
 
 // Reglages, DA, fichiers (sans chemins serveur) et resume de la banque de reference d'un streamer.
 export default defineEventHandler(async (event) => {
-  requireStudioAdmin(event)
+  const actor = await requireStudioActor(event)
   const id = parseId(getRouterParam(event, 'id'))
+  assertChannel(actor, id)
   const secret = mediaSecret(event)
   const channel = await prisma.channel.findUnique({
     where: { id },

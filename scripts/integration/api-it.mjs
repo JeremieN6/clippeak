@@ -5,6 +5,8 @@
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import { openSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { createServer } from 'node:http'
 import { join, resolve } from 'node:path'
 import { PGlite } from '@electric-sql/pglite'
 import { PGLiteSocketServer } from '@electric-sql/pglite-socket'
@@ -40,8 +42,31 @@ const rel = `clips/${reviewId}.mp4`
 spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=270x480:rate=30:duration=2', '-pix_fmt', 'yuv420p', join(DATA, rel)])
 await q(`UPDATE clip_jobs SET output_path = $1 WHERE id = $2`, [rel, reviewId])
 
+// --- faux Twitch (jeton et profil) pour jouer le retour de connexion sans le vrai service
+const fakeTwitch = createServer((req, res) => {
+  let body = ''
+  req.on('data', c => { body += c })
+  req.on('end', () => {
+    res.setHeader('content-type', 'application/json')
+    if (req.url === '/oauth2/token') {
+      const code = new URLSearchParams(body).get('code')
+      if (code === 'code-invite') return res.end(JSON.stringify({ access_token: 'tok-invite' }))
+      if (code === 'code-inconnu') return res.end(JSON.stringify({ access_token: 'tok-inconnu' }))
+      res.statusCode = 400
+      return res.end('{}')
+    }
+    if (req.url === '/helix/users') {
+      const who = req.headers.authorization === 'Bearer tok-invite' ? { id: '555', login: 'Invitee', display_name: 'Invitee' } : { id: '666', login: 'stranger', display_name: 'Stranger' }
+      return res.end(JSON.stringify({ data: [who] }))
+    }
+    res.statusCode = 404
+    res.end('{}')
+  })
+})
+await new Promise(r => fakeTwitch.listen(3397, '127.0.0.1', r))
+
 // --- serveur
-const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT) }
+const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397' }
 const cwd = join(DATA, 'cwd'); mkdirSync(cwd, { recursive: true })
 const logFd = openSync(join(DATA, 'server.log'), 'w')
 const server = spawn('node', [join(ROOT, '.output', 'server', 'index.mjs')], { env, cwd, stdio: ['ignore', logFd, logFd] })
@@ -204,12 +229,106 @@ try {
   assert.equal((await r(queuedId, { action: 'requeue' })).status, 409)
   ok('validation : approuver = statut seulement (rien publie), transitions interdites en 409, refaire remet en file avec le nouveau titre')
 
+  // --- invitations et connexion par session (le callback Twitch lui-meme n'est pas joue : il demande le vrai Twitch)
+  assert.equal((await call('/api/admin/invites', { auth: false })).status, 401)
+  assert.equal((await call('/api/admin/invites', { method: 'POST', body: { login: 'a b' } })).status, 400)
+  const inv = await call('/api/admin/invites', { method: 'POST', body: { login: '  @Jeremfut7 ', note: 'ami' } })
+  assert.equal(inv.status, 200); assert.equal(inv.json.login, 'jeremfut7')
+  assert.equal((await call('/api/admin/invites', { method: 'POST', body: { login: 'jeremfut7' } })).json.id, inv.json.id)
+  const invList = (await call('/api/admin/invites')).json.invites
+  assert.equal(invList.length, 1); assert.equal(invList[0].note, 'ami'); assert.equal(invList[0].connected, false)
+  ok('invitations : admin seulement, pseudo valide et normalise, idempotent')
+
+  const sha = (t) => createHash('sha256').update(t).digest('hex')
+  const [{ id: otherVod }] = await q(`INSERT INTO vods (id, channel_id, twitch_vod_id, url, status) VALUES (gen_random_uuid(), $1, '999002', 'u', 'done') RETURNING id`, [otherId])
+  const [{ id: otherMoment }] = await q(`INSERT INTO moments (id, vod_id, start_sec, end_sec, peak_sec, score, signals) VALUES (gen_random_uuid(), $1, 0, 10, 5, 7, '{}') RETURNING id`, [otherVod])
+  const [{ id: otherClip }] = await q(`INSERT INTO clip_jobs (id, moment_id, status, batch, updated_at) VALUES (gen_random_uuid(), $1, 'review', 9, now()) RETURNING id`, [otherMoment])
+  await q(`INSERT INTO studio_sessions (id, channel_id, token_hash, expires_at) VALUES (gen_random_uuid(), $1, $2, now() + interval '1 day')`, [channelId, sha('jeton-valide')])
+  await q(`INSERT INTO studio_sessions (id, channel_id, token_hash, expires_at) VALUES (gen_random_uuid(), $1, $2, now() - interval '1 day')`, [channelId, sha('jeton-expire')])
+  const as = (token, extra = {}) => ({ auth: false, headers: { cookie: `clippeak_session=${token}`, ...extra } })
+
+  assert.equal((await call('/api/auth/me', { auth: false })).status, 401)
+  assert.equal((await call('/api/auth/me', as('jeton-inconnu'))).status, 401)
+  assert.equal((await call('/api/auth/me', as('jeton-expire'))).status, 401)
+  const me = await call('/api/auth/me', as('jeton-valide'))
+  assert.equal(me.status, 200); assert.equal(me.json.channel.id, channelId)
+  ok('session : sans cookie, inconnue ou expiree = 401 ; valide = sa chaine')
+
+  const mine = await call('/api/studio/channels', as('jeton-valide'))
+  assert.deepEqual(mine.json.channels.map(c => c.id), [channelId])
+  assert.equal((await call(`/api/studio/channels/${channelId}`, as('jeton-valide'))).status, 200)
+  assert.equal((await call(`/api/studio/channels/${otherId}`, as('jeton-valide'))).status, 404)
+  assert.equal((await call(`/api/studio/channels/${otherId}/references`, as('jeton-valide'))).status, 404)
+  assert.equal((await call(`/api/studio/channels/${otherId}/settings`, { ...as('jeton-valide'), method: 'PUT', body: settings })).status, 404)
+  const allMine = await call('/api/studio/clips?status=all', as('jeton-valide'))
+  assert.equal(allMine.status, 200)
+  assert.equal(allMine.json.clips.some(c => c.id === otherClip), false)
+  assert.equal((await call('/api/studio/clips?status=all')).json.clips.some(c => c.id === otherClip), true)
+  assert.equal((await call(`/api/studio/clips/${otherClip}/review`, { ...as('jeton-valide'), method: 'POST', body: { action: 'reject' } })).status, 404)
+  const [stillReview] = await q(`SELECT status FROM clip_jobs WHERE id = $1`, [otherClip])
+  assert.equal(stillReview.status, 'review')
+  const [{ id: foreignAsset }] = await q(`INSERT INTO streamer_assets (id, channel_id, kind, filename, path) VALUES (gen_random_uuid(), $1, 'sfx', 'z.wav', 'assets/z/z.wav') RETURNING id`, [otherId])
+  assert.equal((await call(`/api/studio/assets/${foreignAsset}`, { ...as('jeton-valide'), method: 'DELETE' })).status, 404)
+  ok('cloisonnement : un streamer ne voit ni ne modifie la chaine, les clips ou les fichiers d\'un autre (404)')
+
+  const hostBase = new URL(B).host
+  assert.equal((await call(`/api/studio/channels/${channelId}/settings`, { ...as('jeton-valide', { origin: 'https://evil.example' }), method: 'PUT', body: settings })).status, 403)
+  assert.equal((await call(`/api/studio/channels/${channelId}/settings`, { ...as('jeton-valide', { origin: `http://${hostBase}` }), method: 'PUT', body: settings })).status, 200)
+  ok('requete modifiante avec cookie : origine etrangere refusee (403), la notre acceptee')
+
+  const redirect = (path, cookie) => fetch(B + path, { redirect: 'manual', headers: cookie ? { cookie } : {} })
+  const noState = await redirect('/api/auth/twitch/callback?code=x&state=y')
+  assert.equal(noState.status, 302); assert.ok(noState.headers.get('location').includes('login=error'))
+  const wrongState = await redirect('/api/auth/twitch/callback?code=x&state=y', 'clippeak_oauth_state=autre')
+  assert.ok(wrongState.headers.get('location').includes('login=error'))
+  const cancelled = await redirect('/api/auth/twitch/callback?error=access_denied')
+  assert.ok(cancelled.headers.get('location').includes('login=cancelled'))
+  const start = await redirect('/api/auth/twitch')
+  assert.ok([302, 503].includes(start.status))
+  if (start.status === 302) {
+    assert.ok(start.headers.get('location').startsWith('https://id.twitch.tv/oauth2/authorize'))
+    assert.ok((start.headers.get('set-cookie') ?? '').includes('HttpOnly'))
+  }
+  ok('retour Twitch : etat absent ou different = refuse, annulation geree, depart vers Twitch avec cookie HttpOnly (ou 503 non configure)')
+
+  const del = await call(`/api/admin/invites/${inv.json.id}`, { method: 'DELETE' })
+  assert.equal(del.status, 200)
+  assert.equal((await call(`/api/admin/invites/${inv.json.id}`, { method: 'DELETE' })).status, 404)
+  assert.equal((await call('/api/auth/logout', { ...as('jeton-valide'), method: 'POST' })).status, 200)
+  assert.equal((await call('/api/auth/me', as('jeton-valide'))).status, 401)
+  ok('retrait d\'invitation et deconnexion : la session est supprimee')
+
+  // Retour de connexion complet avec le faux Twitch : invite -> chaine creee + session ; inconnu -> refuse
+  await call('/api/admin/invites', { method: 'POST', body: { login: 'invitee' } })
+  const good = await redirect('/api/auth/twitch/callback?code=code-invite&state=abc', 'clippeak_oauth_state=abc')
+  assert.equal(good.status, 302)
+  assert.ok(good.headers.get('location').endsWith('login=ok'))
+  const setCookies = good.headers.getSetCookie().join(' ; ')
+  assert.ok(setCookies.includes('clippeak_session=') && setCookies.includes('HttpOnly') && setCookies.includes('SameSite=Lax'))
+  const sessionCookie = good.headers.getSetCookie().find(c => c.startsWith('clippeak_session=')).split(';')[0]
+  const meNew = await fetch(B + '/api/auth/me', { headers: { cookie: sessionCookie } })
+  assert.equal(meNew.status, 200)
+  const created = (await meNew.json()).channel
+  assert.equal(created.login, 'invitee')
+  const [{ n }] = await q(`SELECT count(*)::int AS n FROM streamer_settings WHERE channel_id = $1`, [created.id])
+  assert.equal(n, 1)
+  const [{ token_hash }] = await q(`SELECT token_hash FROM studio_sessions WHERE channel_id = $1`, [created.id])
+  assert.notEqual(token_hash, sessionCookie.split('=')[1])
+  const stranger = await redirect('/api/auth/twitch/callback?code=code-inconnu&state=abc', 'clippeak_oauth_state=abc')
+  assert.ok(stranger.headers.get('location').endsWith('login=refused'))
+  const [{ k }] = await q(`SELECT count(*)::int AS k FROM channels WHERE twitch_id = '666'`)
+  assert.equal(k, 0)
+  const badCode = await redirect('/api/auth/twitch/callback?code=mauvais&state=abc', 'clippeak_oauth_state=abc')
+  assert.ok(badCode.headers.get('location').endsWith('login=error'))
+  ok('connexion Twitch (faux Twitch) : invite = chaine creee et session (jeton hache en base), non invite = refuse sans creer de chaine, code refuse = erreur')
+
   console.log('API_IT_OK')
 } catch (error) {
   failure = error
   console.log('ECHEC :', String(error.message ?? error).slice(0, 300), '| derniere reponse :', JSON.stringify(last))
 } finally {
   server.kill()
+  fakeTwitch.close()
   await socket.stop().catch(() => {})
   await db.close().catch(() => {})
   process.exit(failure ? 1 : 0)

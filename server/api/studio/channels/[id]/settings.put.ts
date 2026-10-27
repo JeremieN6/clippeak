@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { prisma } from '../../../../utils/prisma'
-import { parseId, requireStudioAdmin } from '../../../../utils/studioAuth'
+import { parseId, assertChannel, requireStudioActor } from '../../../../utils/studioAuth'
 
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Couleur au format #RRGGBB')
 
@@ -14,8 +14,9 @@ const settingsSchema = z.object({
 }).refine(s => s.clipMaxSec >= s.clipMinSec, { message: 'La duree maximale doit etre superieure a la duree minimale', path: ['clipMaxSec'] })
 
 export default defineEventHandler(async (event) => {
-  requireStudioAdmin(event)
+  const actor = await requireStudioActor(event)
   const id = parseId(getRouterParam(event, 'id'))
+  assertChannel(actor, id)
   const parsed = settingsSchema.safeParse(await readBody(event))
   if (!parsed.success) throw createError({ statusCode: 400, statusMessage: parsed.error.issues[0]?.message ?? 'Reglages invalides' })
   const data = { ...parsed.data, keywords: [...new Set(parsed.data.keywords.map(k => k.toLowerCase()))] }

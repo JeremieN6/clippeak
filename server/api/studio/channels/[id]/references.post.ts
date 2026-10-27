@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { mkdir, unlink, writeFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import { prisma } from '../../../../utils/prisma'
-import { parseId, requireStudioAdmin } from '../../../../utils/studioAuth'
+import { parseId, assertChannel, requireStudioActor } from '../../../../utils/studioAuth'
 import { dataDir, safeFilename } from '../../../../utils/clipping/dataDir'
 import { validateReferenceVideo } from '../../../../utils/clipping/assetValidation'
 import { parseReferenceUrls } from '../../../../utils/clipping/referenceSource'
@@ -12,8 +12,9 @@ const MAX_FILES = 20
 // Ajoute des clips de reference : videos deposees (champ "files", plusieurs possibles) et/ou liens de clips ou de comptes
 // (champ "urls", un par ligne). L'analyse est faite ensuite par le worker.
 export default defineEventHandler(async (event) => {
-  requireStudioAdmin(event)
+  const actor = await requireStudioActor(event)
   const id = parseId(getRouterParam(event, 'id'))
+  assertChannel(actor, id)
   const channel = await prisma.channel.findUnique({ where: { id }, select: { id: true } })
   if (!channel) throw createError({ statusCode: 404, statusMessage: 'Streamer introuvable' })
 

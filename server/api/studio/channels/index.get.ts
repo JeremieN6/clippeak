@@ -1,8 +1,8 @@
 import { prisma } from '../../../utils/prisma'
-import { requireStudioAdmin } from '../../../utils/studioAuth'
+import { requireStudioActor } from '../../../utils/studioAuth'
 
 export default defineEventHandler(async (event) => {
-  requireStudioAdmin(event)
-  const channels = await prisma.channel.findMany({ orderBy: { createdAt: 'asc' }, select: { id: true, login: true, displayName: true, autoClip: true } })
+  const actor = await requireStudioActor(event)
+  const channels = await prisma.channel.findMany({ where: actor.admin ? {} : { id: actor.channelId ?? '' }, orderBy: { createdAt: 'asc' }, select: { id: true, login: true, displayName: true, autoClip: true } })
   return { channels }
 })

@@ -75,6 +75,8 @@ Le produit reel de clipping n'existe pas encore : tout le "traitement" est simul
 
 - Decision du 2026-10-27 : le produit devient un parcours d'onboarding guide + un tableau de bord de contenu avec publication directe vers les plateformes choisies par le streamer, plutot qu'un back-office a onglets. Contrainte a surveiller : la publication automatique depend de validations d'application par TikTok, Instagram et YouTube (delais, refus possibles). Le streamer ne doit jamais avoir a connaitre un nom de police ou un terme technique.
 
+- Decision du 2026-10-27 : acces des streamers par « Se connecter avec Twitch », SUR INVITATION du porteur (pas de parrainage entre streamers, pas d'inscription libre au debut) pour maitriser la charge du VPS ; la page a mot de passe devient strictement un acces administrateur. Chaque streamer ne voit que ses propres donnees.
+
 ---
 
 ## Derniere mise a jour

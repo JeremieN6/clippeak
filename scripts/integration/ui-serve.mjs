@@ -2,6 +2,7 @@
 // Usage : npx nuxt build && node scripts/integration/ui-serve.mjs <racine du depot>
 // Puis ouvrir http://127.0.0.1:3398/studio (mot de passe jetable affiche au demarrage). Ctrl+C pour arreter ; rien n'est ecrit sur Neon.
 import { spawn, spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { openSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { PGlite } from '@electric-sql/pglite'
@@ -26,6 +27,9 @@ const [{ id: channelId }] = await q(`INSERT INTO channels (id, twitch_id, login,
 await q(`INSERT INTO streamer_settings (id, channel_id, updated_at) VALUES (gen_random_uuid(), $1, now())`, [channelId])
 const [{ id: vodId }] = await q(`INSERT INTO vods (id, channel_id, twitch_vod_id, url, status) VALUES (gen_random_uuid(), $1, '1', 'u', 'done') RETURNING id`, [channelId])
 
+// Session de demonstration : poser le cookie clippeak_session=jeton-demo dans le navigateur pour entrer comme le streamer (sans passer par Twitch).
+await q(`INSERT INTO studio_sessions (id, channel_id, token_hash, expires_at) VALUES (gen_random_uuid(), $1, $2, now() + interval '1 day')`, [channelId, createHash('sha256').update('jeton-demo').digest('hex')])
+
 const clips = [
   { batch: 2, status: 'review', title: 'Il a vraiment dit ça en direct devant tout le monde', score: 8.6, cat: 'Réaction', why: 'Ton chat s’est emballé en quelques secondes.', video: true },
   { batch: 2, status: 'review', title: 'Le penalty que personne n’a vu venir', score: 8.1, cat: 'Football', why: 'detecte par ressemblance avec les clips de reference (pas par le chat) : même retournement.', video: true },
@@ -44,10 +48,11 @@ for (const [i, c] of clips.entries()) {
   }
 }
 
-const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, CLIPPEAK_FONTS_DIR: join(ROOT, 'public', 'fonts'), PORT: String(PORT), NITRO_PORT: String(PORT) }
+const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, TWITCH_CLIENT_ID: 'demo', TWITCH_CLIENT_SECRET: 'demo', CLIPPEAK_FONTS_DIR: join(ROOT, 'public', 'fonts'), PORT: String(PORT), NITRO_PORT: String(PORT) }
 const cwd = join(DATA, 'cwd')
 mkdirSync(cwd, { recursive: true })
 const logFd = openSync(join(DATA, 'server.log'), 'w')
 spawn('node', [join(ROOT, '.output', 'server', 'index.mjs')], { env, cwd, stdio: ['ignore', logFd, logFd] })
+console.log('Entrer comme streamer : document.cookie = "clippeak_session=jeton-demo; path=/" puis recharger.')
 console.log(`Studio de demonstration : http://127.0.0.1:${PORT}/studio  (mot de passe : ${PW})`)
 await new Promise(() => {})

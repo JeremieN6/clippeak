@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
-import { mediaSecret, requireStudioAdmin } from '../../../utils/studioAuth'
+import { mediaSecret, requireStudioActor } from '../../../utils/studioAuth'
 import { signMediaToken } from '../../../utils/clipping/adminAuth'
 import { clipOrigin } from '../../../utils/clipping/clipOrigin'
 
@@ -10,13 +10,13 @@ const TOKEN_TTL_MS = 60 * 60 * 1000
 // Clips d'un statut donne (a valider par defaut) ou de tous les statuts (`status=all`, tableau de bord), regroupes par lot
 // de 4 cote client. Les videos sont servies par une URL signee a duree limitee : le mot de passe admin ne circule jamais dans une URL.
 export default defineEventHandler(async (event) => {
-  requireStudioAdmin(event)
+  const actor = await requireStudioActor(event)
   const raw = getQuery(event).status
   const status = raw === 'all' ? undefined : statusSchema.catch('review').parse(raw)
   const secret = mediaSecret(event)
 
   const jobs = await prisma.clipJob.findMany({
-    where: status ? { status } : {},
+    where: { ...(status ? { status } : {}), ...(actor.admin ? {} : { moment: { vod: { channelId: actor.channelId ?? '' } } }) },
     orderBy: [{ batch: 'desc' }, { createdAt: 'asc' }],
     take: status ? 100 : 300,
     include: { moment: { include: { vod: { select: { twitchVodId: true, title: true, channel: { select: { displayName: true } } } } } } }
