@@ -45,7 +45,7 @@ test('buildAss shows words one by one, highlights keywords and puts the title in
     ],
     subtitleStyle: { keywords: ['Meuf'], highlightColor: '#FF0000' }
   })
-  assert.match(ass, /Style: Title,Lato/)
+  assert.match(ass, /Style: Title,Luckiest Guy/)
   assert.match(ass, /Dialogue: 0,0:00:00\.00,0:00:05\.00,Title,,0,0,0,,Mon titre/)
   assert.match(ass, /Dialogue: 1,0:00:00\.50,0:00:01\.00,Word,,0,0,0,,UNE/)
   assert.match(ass, /\{\\c&H000000FF\}MEUF,/)

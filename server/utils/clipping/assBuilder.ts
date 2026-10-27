@@ -31,7 +31,7 @@ export interface SubtitleStyle {
 
 export const DEFAULT_TITLE_STYLE: TitleStyle = {
   enabled: true,
-  fontName: 'Lato',
+  fontName: 'Luckiest Guy',
   fontSize: 68,
   color: '#FFFFFF',
   outlineColor: '#000000',
@@ -42,7 +42,7 @@ export const DEFAULT_TITLE_STYLE: TitleStyle = {
 
 export const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
   enabled: true,
-  fontName: 'Lato',
+  fontName: 'Luckiest Guy',
   fontSize: 96,
   color: '#FFFFFF',
   highlightColor: '#FFD400',
