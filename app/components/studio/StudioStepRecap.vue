@@ -16,7 +16,7 @@ const blocking = computed(() => !(studio.bank.value?.items?.length))
 <template>
   <div class="flex max-w-[820px] flex-col gap-6">
     <StudioStepHeader :n="8" tag="Dernière étape" title="Tout est prêt, ou presque">
-      Voici ce qui est réglé, ce qui manque et ce que tu as laissé pour plus tard. Tu peux tout modifier à tout moment depuis ton tableau de bord.
+      Voici l’essentiel. Tout reste modifiable plus tard.
     </StudioStepHeader>
 
     <div class="flex flex-wrap gap-2.5">

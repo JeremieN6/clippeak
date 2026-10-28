@@ -1,111 +1,128 @@
 <script setup lang="ts">
+// Etape 1, volontairement courte : deposer ou coller des clips, voir l'objectif avancer, puis ce que Clippeak en retient.
+// Les statistiques (facultatives) sont derriere « Plus d'options ».
 const studio = useStudio()
+const GOAL = 5
 const urls = ref('')
-const fileInput = ref<HTMLInputElement | null>(null)
-const openStats = reactive<Record<string, boolean>>({})
+const picked = ref<File[]>([])
+const over = ref(false)
 
 const statusLook: Record<string, { label: string, cls: string }> = {
   done: { label: 'Analysé', cls: 'st-badge-ok' },
-  processing: { label: 'Analyse en cours', cls: 'st-badge-info' },
+  processing: { label: 'Analyse…', cls: 'st-badge-info' },
   pending: { label: 'En attente', cls: 'st-badge-neutral' },
   failed: { label: 'Échec', cls: 'st-badge-error' }
 }
-const sourceLabel: Record<string, string> = { youtube: 'YouTube Shorts', tiktok: 'TikTok', instagram: 'Instagram', upload: 'Vidéo déposée' }
 
 const items = computed(() => studio.bank.value?.items ?? [])
 const profile = computed(() => studio.bank.value?.profile)
-const groups = computed(() => !profile.value ? [] : [
-  { label: 'Sujets', items: (profile.value.topics ?? []).map((t: any) => t.word) },
-  { label: 'Formats', items: (profile.value.formats ?? []).map((f: any) => f.name) },
-  { label: 'Émotions', items: (profile.value.emotions ?? []).map((f: any) => f.name) },
-  { label: 'Accroches', items: (profile.value.hooks ?? []).map((h: any) => `« ${h.hook} »`) }
-].filter(g => g.items.length))
+const analyzed = computed(() => profile.value?.analyzedCount ?? 0)
+const analyzing = computed(() => items.value.length > 0 && analyzed.value < items.value.length && items.value.some((i: any) => i.status === 'pending' || i.status === 'processing'))
+const analysisPct = computed(() => items.value.length ? Math.round((analyzed.value / items.value.length) * 100) : 0)
+
+const goalText = computed(() => {
+  const n = items.value.length
+  if (!n) return `Objectif : ${GOAL} clips.`
+  if (n < GOAL) return `${n} sur ${GOAL} : encore ${GOAL - n} pour de meilleurs résultats.`
+  return 'Parfait, c’est largement assez.'
+})
+
+const retained = computed(() => !profile.value ? [] : [
+  ...(profile.value.topics ?? []).slice(0, 6).map((t: any) => t.word),
+  ...(profile.value.formats ?? []).slice(0, 4).map((f: any) => f.name)
+])
+
+const pickedLabel = computed(() => picked.value.length === 1 ? picked.value[0].name : `${picked.value.length} vidéos prêtes`)
+const addLabel = computed(() => {
+  const count = picked.value.length + urls.value.split(/\s+/).filter(Boolean).length
+  return count > 1 ? `Ajouter ces ${count} clips` : 'Ajouter ce clip'
+})
+
+function onPick(event: Event) {
+  picked.value = Array.from((event.target as HTMLInputElement).files ?? [])
+}
+
+function onDrop(event: DragEvent) {
+  over.value = false
+  picked.value = Array.from(event.dataTransfer?.files ?? [])
+}
 
 async function add() {
-  const files = Array.from(fileInput.value?.files ?? [])
-  await studio.addReferences(files, urls.value)
-  if (!studio.error.value || files.length || urls.value) {
-    urls.value = ''
-    if (fileInput.value) fileInput.value.value = ''
-  }
+  await studio.addReferences(picked.value, urls.value)
+  picked.value = []
+  urls.value = ''
 }
 
 const stats = [['viewCount', 'Vues'], ['likeCount', 'Likes'], ['commentCount', 'Commentaires'], ['shareCount', 'Partages']] as const
+const withStats = computed(() => items.value.filter((i: any) => i.status === 'done' && i.kind === 'clip'))
 </script>
 
 <template>
-  <div class="flex max-w-[820px] flex-col gap-7">
+  <div class="flex max-w-[720px] flex-col gap-6">
     <StudioStepHeader :n="1" tag="Obligatoire" title="Tes clips de référence">
-      Montre à Clippeak des clips qui ont déjà bien marché chez toi. Il en tire ce qui les rend forts, puis repère dans tes lives les moments qui leur ressemblent.
+      Montre à Clippeak 5 à 10 clips qui ont bien marché chez toi.
     </StudioStepHeader>
 
-    <section class="st-card flex flex-col gap-5">
-      <div>
-        <h2 class="m-0 text-[17px] font-bold">Ajouter des clips</h2>
-        <p class="st-hint m-0">Dépose des vidéos ou colle des liens. Tu peux faire les deux.</p>
-      </div>
-      <div class="st-dropzone">
-        <div class="text-base font-bold">Dépose tes vidéos ici</div>
-        <div class="st-hint">MP4, MOV ou WebM, 80 Mo maximum chacune. Tu peux en déposer plusieurs à la fois.</div>
-        <input ref="fileInput" type="file" multiple accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm" aria-label="Choisir des vidéos" class="max-w-full text-sm">
-      </div>
-      <div class="flex flex-col gap-2">
-        <label for="st-ref-links" class="st-label">Liens de clips ou de comptes</label>
-        <div class="st-hint">Si tu colles un compte, Clippeak récupère ses derniers clips. 20 liens maximum à la fois.</div>
-        <textarea id="st-ref-links" v-model="urls" rows="4" class="st-field" placeholder="Un lien par ligne : un clip ou un compte YouTube, TikTok ou Instagram" />
-        <div class="text-[13px] text-[#928BA2]">Exemple : https://www.tiktok.com/@toncompte</div>
-      </div>
-      <div>
-        <button type="button" class="st-btn" :disabled="studio.busy.value" @click="add">Ajouter à ma banque</button>
+    <section class="st-card st-rise flex flex-col gap-4" style="--d: .08s">
+      <label class="st-dropzone" :class="{ 'is-over': over }" @dragover.prevent="over = true" @dragleave="over = false" @drop.prevent="onDrop">
+        <span class="st-dz-icon" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0-4.5 4.5M12 4l4.5 4.5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg>
+        </span>
+        <span class="text-base font-bold">{{ picked.length ? pickedLabel : 'Dépose tes vidéos ici' }}</span>
+        <span class="st-hint">{{ picked.length ? 'Prêt à être ajouté.' : 'ou clique pour choisir · MP4, MOV, WebM · 80 Mo max' }}</span>
+        <input type="file" multiple accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm" aria-label="Choisir des vidéos" class="sr-only" @change="onPick">
+      </label>
+
+      <textarea v-model="urls" rows="2" class="st-field" aria-label="Liens de clips ou de comptes" placeholder="…ou colle des liens : clips ou comptes YouTube, TikTok, Instagram" />
+
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <button type="button" class="st-btn" :disabled="studio.busy.value || !(picked.length || urls.trim())" @click="add">{{ addLabel }}</button>
+        <span class="st-hint">Un compte collé = ses derniers clips.</span>
       </div>
     </section>
 
-    <section class="st-card flex flex-col gap-4">
-      <div>
-        <h2 class="m-0 text-[17px] font-bold">Ce que Clippeak a retenu</h2>
-        <p class="st-hint m-0">{{ profile?.analyzedCount ?? 0 }} clip(s) analysé(s) sur {{ items.length }}.</p>
+    <div class="st-rise flex items-center gap-3" style="--d: .16s" role="status">
+      <div class="flex gap-1.5" aria-hidden="true"><span v-for="i in GOAL" :key="i" class="st-dot" :class="{ on: i <= items.length }" /></div>
+      <span class="text-sm font-semibold">{{ goalText }}</span>
+    </div>
+
+    <section v-if="items.length" class="st-card st-rise flex flex-col gap-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="m-0 text-[17px] font-bold">Ce que Clippeak retient</h2>
+        <button type="button" class="st-btn-quiet" :disabled="studio.busy.value" @click="studio.run(studio.loadBank)">Actualiser</button>
       </div>
-      <div class="h-1.5 overflow-hidden rounded-[3px] bg-[#2C2837]" role="progressbar" aria-label="Analyse des clips" :aria-valuenow="items.length ? Math.round(((profile?.analyzedCount ?? 0) / items.length) * 100) : 0" aria-valuemin="0" aria-valuemax="100">
-        <div class="h-full bg-[#7C3AED]" :style="{ width: items.length ? `${Math.round(((profile?.analyzedCount ?? 0) / items.length) * 100)}%` : '0%' }" />
-      </div>
-      <div v-if="groups.length" class="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-        <div v-for="g in groups" :key="g.label" class="flex flex-col gap-2">
-          <div class="text-xs font-extrabold uppercase tracking-wider text-[#928BA2]">{{ g.label }}</div>
-          <div class="flex flex-wrap gap-1.5">
-            <span v-for="w in g.items" :key="w" class="st-badge st-badge-violet !h-auto min-h-[30px] !whitespace-normal py-1">{{ w }}</span>
-          </div>
+      <template v-if="analyzing">
+        <p class="st-pulse m-0 text-sm st-muted">Analyse en cours : {{ analyzed }} clip(s) sur {{ items.length }}. Tu peux continuer, ça se fait en arrière-plan.</p>
+        <div class="h-1.5 overflow-hidden rounded-[3px] bg-[#2C2837]" role="progressbar" aria-label="Analyse des clips" :aria-valuenow="analysisPct" aria-valuemin="0" aria-valuemax="100">
+          <div class="st-bar st-bar-live" :style="{ width: `${Math.max(analysisPct, 6)}%` }" />
         </div>
+      </template>
+      <div v-else-if="retained.length" class="flex flex-wrap gap-1.5">
+        <span v-for="(w, i) in retained" :key="w" class="st-badge st-badge-violet st-pop" :style="{ '--d': `${i * 0.05}s` }">{{ w }}</span>
       </div>
       <p v-else class="st-muted m-0 text-sm">Dès qu’un clip est analysé, ce que Clippeak en retient apparaît ici.</p>
-      <div>
-        <button type="button" class="st-btn-quiet" :disabled="studio.busy.value" @click="studio.run(studio.loadBank)">Actualiser{{ studio.bank.value?.pending ? ` (${studio.bank.value.pending} en cours)` : '' }}</button>
-      </div>
+
+      <TransitionGroup name="st-list" tag="ul" class="m-0 flex list-none flex-col p-0">
+        <li v-for="item in items" :key="item.id" class="flex items-center gap-3 border-t border-[#2C2837] py-2.5">
+          <span class="min-w-0 flex-1 truncate text-sm font-semibold" :title="item.title || item.url">{{ item.kind === 'account' ? 'Compte : ' : '' }}{{ item.title || item.url || 'sans titre' }}</span>
+          <span class="st-badge" :class="(statusLook[item.status] ?? statusLook.pending).cls" :title="item.status === 'failed' ? item.error || 'Impossible de lire cette vidéo.' : undefined">{{ (statusLook[item.status] ?? statusLook.pending).label }}</span>
+          <button type="button" class="st-btn-quiet !min-h-9 !px-2 !text-[#ABA5BA]" :disabled="studio.busy.value" :aria-label="`Retirer ${item.title || item.url || 'ce clip'}`" @click="studio.removeReference(item.id)">✕</button>
+        </li>
+      </TransitionGroup>
     </section>
 
-    <section class="st-card flex flex-col gap-1 !pb-2">
-      <h2 class="m-0 mb-3 text-[17px] font-bold">Tes clips de référence ({{ items.length }})</h2>
-      <p v-if="!items.length" class="st-muted m-0 pb-4 text-sm">Aucun clip de référence pour l’instant.</p>
-      <div v-for="item in items" :key="item.id" class="flex flex-col gap-3 border-t border-[#2C2837] py-3.5">
-        <div class="flex flex-wrap items-center gap-x-3.5 gap-y-2.5">
-          <div class="min-w-0 flex-1 basis-44">
-            <div class="break-words text-[15px] font-bold leading-snug">{{ item.kind === 'account' ? 'Compte : ' : '' }}{{ item.title || item.url || 'sans titre' }}</div>
-            <div class="text-[13px] st-muted">{{ sourceLabel[item.source] ?? item.source }}</div>
-            <div v-if="item.status === 'failed'" class="mt-1 text-[13px] font-semibold text-[#FF9B8D]">{{ item.error || 'Impossible de lire cette vidéo. Essaie avec un autre fichier ou un lien.' }}</div>
-            <div v-if="item.analysis?.summary" class="mt-1 text-[13px] st-muted">{{ item.analysis.summary }}</div>
-          </div>
-          <span class="st-badge" :class="(statusLook[item.status] ?? statusLook.pending).cls">{{ (statusLook[item.status] ?? statusLook.pending).label }}</span>
-        </div>
-        <div class="flex flex-wrap items-center gap-x-2">
-          <button v-if="item.status === 'done' && item.kind === 'clip'" type="button" class="st-btn-quiet text-sm" :aria-expanded="!!openStats[item.id]" @click="openStats[item.id] = !openStats[item.id]">Ajouter mes statistiques (facultatif)</button>
-          <button type="button" class="st-btn-quiet !text-[#ABA5BA] text-sm" :disabled="studio.busy.value" @click="studio.removeReference(item.id)">Retirer</button>
-        </div>
-        <div v-if="openStats[item.id]" class="grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-4">
+    <details v-if="withStats.length" class="st-card">
+      <summary class="cursor-pointer text-[15px] font-bold">Plus d’options : tes statistiques (facultatif)</summary>
+      <p class="st-hint mt-2">Si tu les connais, Clippeak donne plus de poids aux clips qui ont le mieux marché. Sinon, ils comptent tous pareil.</p>
+      <div v-for="item in withStats" :key="item.id" class="mt-4 flex flex-col gap-2">
+        <div class="truncate text-sm font-semibold">{{ item.title || item.url }}</div>
+        <div class="grid max-w-xl grid-cols-2 gap-3 sm:grid-cols-4">
           <label v-for="s in stats" :key="s[0]" class="flex flex-col gap-1 text-[13px] st-muted">
             {{ s[1] }}
-            <input :value="item[s[0]] ?? ''" inputmode="numeric" class="st-field" placeholder="Exemple : 12000" @change="studio.saveStat(item.id, s[0], ($event.target as HTMLInputElement).value)">
+            <input :value="item[s[0]] ?? ''" inputmode="numeric" class="st-field" placeholder="12000" @change="studio.saveStat(item.id, s[0], ($event.target as HTMLInputElement).value)">
           </label>
         </div>
       </div>
-    </section>
+    </details>
   </div>
 </template>

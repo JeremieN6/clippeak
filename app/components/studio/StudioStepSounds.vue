@@ -42,7 +42,7 @@ const situationDesc: Record<string, string> = {
 <template>
   <div v-if="detail" class="flex max-w-[820px] flex-col gap-6">
     <StudioStepHeader :n="4" tag="Facultatif" title="Les sons de tes clips">
-      De petits bruitages rythment tes clips : au début, quand une illustration apparaît, quand ton avatar arrive. Chaque moment a son propre son.
+      De petits sons pour rythmer chaque moment de tes clips.
     </StudioStepHeader>
 
     <section class="st-card flex flex-col gap-4 !py-3">

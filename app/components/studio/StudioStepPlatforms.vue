@@ -12,7 +12,7 @@ function toggle(id: string) {
 <template>
   <div class="flex max-w-[820px] flex-col gap-6">
     <StudioStepHeader :n="7" tag="Tu peux la passer" title="Tes plateformes">
-      Choisis où tes clips pourront partir. Rien n’est jamais publié sans ton accord : approuver un clip ne le publie pas.
+      Choisis où partiront tes clips. Rien n’est publié sans ton accord.
     </StudioStepHeader>
 
     <fieldset class="m-0 flex min-w-0 flex-col gap-3.5 border-0 p-0">
