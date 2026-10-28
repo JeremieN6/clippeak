@@ -2,6 +2,7 @@
 // La page n'est liee depuis nulle part : on y arrive en tapant l'adresse.
 
 export interface AdminInvite { id: string, login: string, note: string | null, connected: boolean, createdAt: string, lastLoginAt: string | null }
+export interface AdminVod { id: string, twitchVodId: string, url: string, title: string | null, status: string, createdAt: string, channel: string, moments: number, clips: number }
 export interface AdminChannel { id: string, login: string, displayName: string, demo: boolean }
 
 export function createAdmin() {
@@ -13,6 +14,7 @@ export function createAdmin() {
   const busy = ref(false)
   const invites = ref<AdminInvite[]>([])
   const channels = ref<AdminChannel[]>([])
+  const vods = ref<AdminVod[]>([])
 
   async function run(task: () => Promise<void>, success = '') {
     busy.value = true
@@ -62,6 +64,7 @@ export function createAdmin() {
     authed.value = false
     invites.value = []
     channels.value = []
+    vods.value = []
   })
 
   const addInvite = (loginName: string, note: string) => run(async () => {
@@ -74,12 +77,32 @@ export function createAdmin() {
     await refresh()
   }, 'Invitation retirée. Les sessions de cette chaîne sont fermées.')
 
+  const loadVods = () => run(async () => {
+    vods.value = (await $fetch<{ vods: AdminVod[] }>('/api/admin/vods')).vods
+  })
+
+  const addVod = (channelId: string, url: string) => run(async () => {
+    const r = await $fetch<{ title: string, owner: string, durationSec: number, channel: string }>('/api/admin/vods', { method: 'POST', body: { channelId, url } })
+    vods.value = (await $fetch<{ vods: AdminVod[] }>('/api/admin/vods')).vods
+    notice.value = `VOD de ${r.owner} ajoutée à ${r.channel} (${Math.round(r.durationSec / 60)} min) : le worker l’analyse au prochain passage.`
+  })
+
+  const retryVod = (id: string) => run(async () => {
+    await $fetch(`/api/admin/vods/${id}/retry`, { method: 'POST' })
+    vods.value = (await $fetch<{ vods: AdminVod[] }>('/api/admin/vods')).vods
+  }, 'Analyse relancée.')
+
+  const removeVod = (id: string) => run(async () => {
+    await $fetch(`/api/admin/vods/${id}`, { method: 'DELETE' })
+    vods.value = (await $fetch<{ vods: AdminVod[] }>('/api/admin/vods')).vods
+  }, 'VOD retirée.')
+
   const resetDemo = () => run(async () => {
     await $fetch('/api/admin/demo/reset', { method: 'POST' })
     await refresh()
   }, 'Chaîne de démonstration remise à zéro.')
 
-  return { authed, checking, password, error, notice, busy, invites, channels, restore, login, logout, addInvite, removeInvite, resetDemo }
+  return { authed, checking, password, error, notice, busy, invites, channels, vods, loadVods, addVod, retryVod, removeVod, restore, login, logout, addInvite, removeInvite, resetDemo }
 }
 
 export type Admin = ReturnType<typeof createAdmin>

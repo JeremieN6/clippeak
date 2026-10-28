@@ -48,6 +48,13 @@ const fakeTwitch = createServer((req, res) => {
   req.on('data', c => { body += c })
   req.on('end', () => {
     res.setHeader('content-type', 'application/json')
+    if (req.url === '/oauth2/token' && new URLSearchParams(body).get('grant_type') === 'client_credentials') return res.end(JSON.stringify({ access_token: 'app-tok', expires_in: 3600 }))
+    if (req.url.startsWith('/helix/videos?id=')) {
+      const id = new URL(req.url, 'http://x').searchParams.get('id')
+      const base = { stream_id: '1', user_login: 'friend', user_name: 'Friend', created_at: '2026-10-20T18:00:00Z', duration: '3h0m0s', url: 'https://www.twitch.tv/videos/' + id, title: 'Live de Friend' }
+      const videos = { 111111: { ...base, id, type: 'archive', viewable: 'public' }, 222222: { ...base, id, type: 'highlight', viewable: 'public' }, 333333: { ...base, id, type: 'archive', viewable: 'private' } }
+      return res.end(JSON.stringify({ data: videos[id] ? [videos[id]] : [] }))
+    }
     if (req.url === '/oauth2/token') {
       const code = new URLSearchParams(body).get('code')
       if (code === 'code-invite') return res.end(JSON.stringify({ access_token: 'tok-invite' }))
@@ -456,6 +463,42 @@ try {
   assert.equal((await q(`SELECT 1 FROM platform_connections WHERE channel_id = $1`, [channelId])).length, 0)
   assert.equal((await call(`/api/studio/channels/${channelId}/connections/youtube`, { ...pub, method: 'DELETE' })).status, 404)
   ok('publie = ni reprogrammable ni annulable (409) ; deconnecter efface les jetons et annule les publications programmees')
+
+  // --- ajout manuel de VOD (admin) avec un faux Helix
+  const addVod = (body, who = {}) => call('/api/admin/vods', { method: 'POST', body, ...who })
+  const pubSession = as('jeton-pub')
+  assert.equal((await addVod({ channelId, url: 'https://www.twitch.tv/videos/111111' }, { auth: false })).status, 401)
+  assert.equal((await addVod({ channelId, url: 'https://www.twitch.tv/videos/111111' }, pubSession)).status, 401)
+  assert.equal((await call('/api/admin/vods', pubSession)).status, 401)
+  assert.equal((await addVod({ channelId, url: 'https://evil.example/videos/111111' })).status, 400)
+  assert.equal((await addVod({ channelId: 'pas-un-uuid', url: '111111' })).status, 400)
+  assert.equal((await addVod({ channelId: '11111111-1111-4111-8111-111111111111', url: '111111' })).status, 404)
+  assert.equal((await addVod({ channelId: reset.id, url: '111111' })).status, 400)
+  assert.equal((await addVod({ channelId, url: '222222' })).status, 400)
+  assert.equal((await addVod({ channelId, url: '333333' })).status, 400)
+  assert.equal((await addVod({ channelId, url: '444444' })).status, 404)
+  const added = await addVod({ channelId, url: 'https://www.twitch.tv/videos/111111?t=10s' })
+  assert.equal(added.status, 200)
+  assert.equal(added.json.owner, 'Friend'); assert.equal(added.json.channel, 'YassEncore'); assert.equal(added.json.durationSec, 3 * 3600)
+  const [vodRow] = await q(`SELECT status, source, twitch_vod_id, channel_id, title, ended_at, started_at FROM vods WHERE id = $1`, [added.json.id])
+  assert.deepEqual([vodRow.status, vodRow.source, vodRow.twitch_vod_id, vodRow.channel_id], ['ended', 'manual', '111111', channelId])
+  assert.equal(new Date(vodRow.ended_at + 'Z').getTime() - new Date(vodRow.started_at + 'Z').getTime(), 3 * 3600 * 1000)
+  assert.equal((await addVod({ channelId, url: '111111' })).status, 409)
+  ok('ajout manuel de VOD : admin seulement, lien valide, chaine reelle, VOD publique de type rediffusion, creee en attente d analyse (ended, manual), doublon refuse')
+
+  const listedVods = (await call('/api/admin/vods')).json.vods
+  assert.equal(listedVods.length, 1); assert.equal(listedVods[0].status, 'ended'); assert.equal(listedVods[0].clips, 0)
+  assert.equal((await call(`/api/admin/vods/${added.json.id}/retry`, { method: 'POST' })).status, 409)
+  await q(`UPDATE vods SET status = 'failed' WHERE id = $1`, [added.json.id])
+  assert.equal((await call(`/api/admin/vods/${added.json.id}/retry`, { method: 'POST' })).status, 200)
+  assert.equal((await q(`SELECT status FROM vods WHERE id = $1`, [added.json.id]))[0].status, 'ended')
+  await q(`UPDATE vods SET status = 'analyzing' WHERE id = $1`, [added.json.id])
+  assert.equal((await call(`/api/admin/vods/${added.json.id}`, { method: 'DELETE' })).status, 409)
+  await q(`UPDATE vods SET status = 'ended' WHERE id = $1`, [added.json.id])
+  assert.equal((await call(`/api/admin/vods/${vodId}`, { method: 'DELETE' })).status, 404)
+  assert.equal((await call(`/api/admin/vods/${added.json.id}`, { method: 'DELETE' })).status, 200)
+  assert.equal((await call('/api/admin/vods')).json.vods.length, 0)
+  ok('liste, relance (seulement apres un echec), retrait (jamais pendant l analyse ni pour une VOD non manuelle)')
 
   console.log('API_IT_OK')
 } catch (error) {
