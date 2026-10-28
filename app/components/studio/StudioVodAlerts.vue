@@ -16,7 +16,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
       <template v-if="a.state === 'blocked'">
         <div class="flex flex-wrap items-center gap-2"><span class="st-badge st-badge-warn">Action requise</span><h2 class="m-0 text-base font-bold">Passe ta VOD en public</h2></div>
         <p class="m-0 text-sm leading-relaxed">
-          Ta VOD « <strong>{{ a.title }}</strong> » est réservée aux abonnés, et Twitch empêche Clippeak de la lire. Rends-la <strong>publique</strong> le temps qu’il récupère des extraits (environ 15 à 20 minutes). Clippeak te dira ici quand la remettre comme avant.
+          Clippeak ne peut pas lire ta VOD « <strong>{{ a.title }}</strong> » : elle est réservée aux abonnés (ou non publiée). Rends-la <strong>publique</strong> le temps qu’il récupère des extraits (environ 15 à 20 minutes). Clippeak te dira ici quand la remettre comme avant.
         </p>
         <p class="st-hint m-0">Rien d’autre n’est modifié sur ta chaîne. Clippeak vérifie tout seul toutes les 3 minutes.</p>
         <div><button type="button" class="st-btn" :disabled="studio.busy.value" @click="studio.recheckVod(a.id)">C’est fait, vérifier maintenant</button></div>
@@ -31,7 +31,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
       <template v-else>
         <div class="flex flex-wrap items-center gap-2"><span class="st-badge st-badge-ok st-pop">Terminé</span><h2 class="m-0 text-base font-bold">Tu peux remettre ta VOD comme avant</h2></div>
         <p class="m-0 text-sm leading-relaxed">
-          Clippeak a récupéré tout ce dont il avait besoin dans « <strong>{{ a.title }}</strong> ». Tu peux la repasser en <strong>réservée aux abonnés</strong> : tes clips, et même « Refaire », ne dépendent plus d’elle.
+          Clippeak a récupéré tout ce dont il avait besoin dans « <strong>{{ a.title }}</strong> ». Tu peux la remettre <strong>comme elle était</strong> (réservée aux abonnés ou non publiée) : tes clips, et même « Refaire », ne dépendent plus d’elle.
         </p>
         <div><button type="button" class="st-btn" :disabled="studio.busy.value" @click="studio.ackVod(a.id)">C’est fait, je l’ai remise</button></div>
       </template>

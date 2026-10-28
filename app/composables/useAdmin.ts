@@ -81,8 +81,8 @@ export function createAdmin() {
     vods.value = (await $fetch<{ vods: AdminVod[] }>('/api/admin/vods')).vods
   })
 
-  const addVod = (channelId: string, url: string) => run(async () => {
-    const r = await $fetch<{ title: string, owner: string, durationSec: number, channel: string, blocked: boolean }>('/api/admin/vods', { method: 'POST', body: { channelId, url } })
+  const addVod = (channelId: string, url: string, simulateRestricted = false) => run(async () => {
+    const r = await $fetch<{ title: string, owner: string, durationSec: number, channel: string, blocked: boolean }>('/api/admin/vods', { method: 'POST', body: { channelId, url, simulateRestricted: simulateRestricted || undefined } })
     vods.value = (await $fetch<{ vods: AdminVod[] }>('/api/admin/vods')).vods
     notice.value = r.blocked
       ? `VOD de ${r.owner} ajoutée à ${r.channel}, mais réservée aux abonnés : elle attend d’être rendue publique (le streamer voit « Action requise »).`

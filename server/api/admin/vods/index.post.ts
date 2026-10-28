@@ -6,7 +6,9 @@ import { createTwitchApi, TwitchApiError } from '../../../utils/clipping/twitchA
 import { parseTwitchVodId } from '../../../utils/clipping/vodUrl'
 import { checkVodReadable, RESTRICTED_MESSAGE } from '../../../utils/clipping/vodAccess'
 
-const schema = z.object({ channelId: uuidSchema, url: z.string().max(300) })
+// `simulateRestricted` : essai du parcours « VOD reservee aux abonnes » avec une VOD publique (la VOD d'un ami, par exemple) : elle entre en
+// attente comme si Twitch la refusait, puis repart des que le test de lecture reussit (ce qu'il fait tout de suite : elle est publique).
+const schema = z.object({ channelId: uuidSchema, url: z.string().max(300), simulateRestricted: z.boolean().optional() })
 
 // Ajout manuel d'une VOD (admin seulement) : une VOD publique, meme d'un autre streamer, est analysee comme une VOD de la chaine
 // choisie ; les clips arrivent dans le studio de cette chaine. Sert aux essais en conditions reelles.
@@ -42,7 +44,7 @@ export default defineEventHandler(async (event) => {
   const access = await checkVodReadable(twitchVodId, fetch, { gql: readEnv('TWITCH_GQL_URL') || undefined, usher: readEnv('TWITCH_USHER_URL') || undefined })
   if (access.state === 'unknown') throw createError({ statusCode: 502, statusMessage: 'Impossible de vérifier que Twitch laisse lire cette VOD. Réessaie dans un instant.' })
   // Reservee aux abonnes : acceptee mais en attente. Le streamer voit « Action requise » et la rend publique le temps de l'analyse.
-  const blocked = access.state === 'restricted'
+  const blocked = access.state === 'restricted' || (access.state === 'readable' && parsed.data.simulateRestricted === true)
 
   const endedAt = new Date(video.createdAt.getTime() + video.durationSec * 1000)
   const vod = await prisma.vod.create({

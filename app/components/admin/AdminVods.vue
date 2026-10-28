@@ -4,14 +4,15 @@
 const props = defineProps<{ admin: Admin }>()
 const url = ref('')
 const channelId = ref('')
+const simulate = ref(false)
 
 const realChannels = computed(() => props.admin.channels.value.filter(c => !c.demo))
 watch(realChannels, (list) => { if (!list.some(c => c.id === channelId.value)) channelId.value = list[0]?.id ?? '' }, { immediate: true })
 onMounted(() => props.admin.loadVods())
 
 async function add() {
-  await props.admin.addVod(channelId.value, url.value)
-  if (!props.admin.error.value) url.value = ''
+  await props.admin.addVod(channelId.value, url.value, simulate.value)
+  if (!props.admin.error.value) { url.value = ''; simulate.value = false }
 }
 
 const phaseLook = {
@@ -52,6 +53,10 @@ const date = (value: string) => new Date(value).toLocaleString('fr-FR', { day: '
       </label>
       <label class="flex flex-col gap-1.5"><span class="st-label">Lien de la VOD</span>
         <input v-model="url" class="st-field" placeholder="https://www.twitch.tv/videos/123456789" autocomplete="off" aria-label="Lien de la VOD">
+      </label>
+      <label class="flex items-start gap-2.5 text-sm leading-relaxed st-muted">
+        <input v-model="simulate" type="checkbox" class="mt-1 h-4 w-4 accent-[#7C3AED]">
+        <span><strong class="text-white">Essai du parcours « VOD d’abonnés »</strong> : fait comme si Twitch refusait cette VOD publique. Le streamer voit la carte « Action requise », puis les extraits sont récupérés et la carte « Tu peux la remettre comme avant » apparaît.</span>
       </label>
       <div><button type="submit" class="st-btn" :disabled="admin.busy.value || !channelId || !url.trim()">Ajouter la VOD</button></div>
     </form>
