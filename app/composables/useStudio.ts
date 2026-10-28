@@ -23,9 +23,9 @@ export const STEPS = [
 ] as const
 
 export const PLATFORM_LIST = [
-  { id: 'tiktok', name: 'TikTok', mono: 'TT', sub: 'Vidéos verticales' },
-  { id: 'instagram', name: 'Instagram Reels', mono: 'IG', sub: 'Compte professionnel requis' },
-  { id: 'youtube', name: 'YouTube Shorts', mono: 'YT', sub: 'Chaîne YouTube' }
+  { id: 'tiktok', name: 'TikTok', sub: 'Vidéos verticales' },
+  { id: 'instagram', name: 'Instagram Reels', sub: 'Compte professionnel requis' },
+  { id: 'youtube', name: 'YouTube Shorts', sub: 'Chaîne YouTube' }
 ] as const
 
 export type StepStatus = 'ok' | 'warn' | 'skip' | 'todo'
