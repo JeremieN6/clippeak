@@ -1,6 +1,9 @@
 export interface TwitchCredentials {
   clientId: string
   clientSecret: string
+  // Adresses de remplacement (tests d'integration avec un faux Twitch) ; par defaut les vraies.
+  idBase?: string
+  apiBase?: string
 }
 
 export interface TwitchUser {
@@ -16,6 +19,14 @@ export interface TwitchVideo {
   title: string
   createdAt: Date
   durationSec: number
+}
+
+// Une VOD vue par son identifiant : a qui elle appartient, de quel type, si tout le monde peut la voir.
+export interface TwitchVideoDetails extends TwitchVideo {
+  userLogin: string
+  userName: string
+  type: string
+  viewable: string
 }
 
 export interface TwitchClip {
@@ -52,8 +63,8 @@ export class TwitchApiError extends Error {
   }
 }
 
-const TOKEN_URL = 'https://id.twitch.tv/oauth2/token'
-const HELIX = 'https://api.twitch.tv/helix'
+const DEFAULT_ID_BASE = 'https://id.twitch.tv'
+const DEFAULT_API_BASE = 'https://api.twitch.tv'
 
 export function createTwitchApi(
   creds: TwitchCredentials,
@@ -61,6 +72,8 @@ export function createTwitchApi(
   now: () => number = () => Date.now()
 ) {
   let token: { value: string, expiresAt: number } | null = null
+  const TOKEN_URL = `${(creds.idBase ?? DEFAULT_ID_BASE).replace(/\/+$/, '')}/oauth2/token`
+  const HELIX = `${(creds.apiBase ?? DEFAULT_API_BASE).replace(/\/+$/, '')}/helix`
 
   async function getToken(force = false): Promise<string> {
     if (!force && token && token.expiresAt - 60_000 > now()) return token.value
@@ -119,6 +132,22 @@ export function createTwitchApi(
       createdAt: new Date(v.created_at),
       durationSec: parseTwitchDuration(v.duration)
     }))
+  }
+
+  // Une VOD par son identifiant (null si elle n'existe pas ou n'est plus visible).
+  async function getVideoById(id: string): Promise<TwitchVideoDetails | null> {
+    const response = await helix(`/videos?id=${encodeURIComponent(id)}`)
+    if (response.status === 404) return null
+    if (!response.ok) throw new TwitchApiError(`Lecture de la VOD impossible (HTTP ${response.status})`, response.status)
+    const body = await response.json() as {
+      data?: Array<{ id: string, stream_id: string | null, user_login: string, user_name: string, url: string, title: string, created_at: string, duration?: string, type?: string, viewable?: string }>
+    }
+    const v = body.data?.[0]
+    if (!v) return null
+    return {
+      id: v.id, streamId: v.stream_id ?? null, url: v.url, title: v.title, createdAt: new Date(v.created_at), durationSec: parseTwitchDuration(v.duration),
+      userLogin: v.user_login, userName: v.user_name, type: v.type ?? 'unknown', viewable: v.viewable ?? 'public'
+    }
   }
 
   // Chaines actuellement en direct, par lots de 100 (limite de Helix). Absente de la Map = hors ligne.
@@ -189,7 +218,7 @@ export function createTwitchApi(
     return names
   }
 
-  return { getToken, getUserByLogin, listArchives, getLiveStreams, listClips, getGameNames, subscribe }
+  return { getToken, getUserByLogin, listArchives, getVideoById, getLiveStreams, listClips, getGameNames, subscribe }
 }
 
 export type TwitchApi = ReturnType<typeof createTwitchApi>
