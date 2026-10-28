@@ -21,6 +21,9 @@ import type { DetectFramingInput } from './framingDetect.ts'
 
 export interface JobContext {
   jobId: string
+  // Identifiants de base (VOD et moment) : servent a retrouver l'extrait source du moment.
+  vodId?: string
+  momentId?: string
   channelName: string
   vodTwitchId: string
   peakSec: number
@@ -52,6 +55,8 @@ export interface JobResult {
 
 export interface PipelineDeps {
   getVideoUrl: (vodTwitchId: string) => Promise<string>
+  // Source du rendu : l'extrait local s'il couvre le plan (baseSec = instant de la VOD ou il commence), sinon la VOD (baseSec = 0).
+  getVideoSource?: (ctx: JobContext, plan: { startSec: number, endSec: number }) => Promise<{ input: string, baseSec: number }>
   detectFraming?: (input: DetectFramingInput) => Promise<Framing | null>
   runFfmpeg: (args: string[], options?: RunFfmpegOptions) => Promise<string>
   collectMetrics: (path: string, options?: RunFfmpegOptions) => Promise<ClipMetrics>
@@ -119,13 +124,17 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
       subtitleStyle: style.subtitles
     }))
 
-    const videoUrl = await deps.getVideoUrl(ctx.vodTwitchId)
+    const source = deps.getVideoSource
+      ? await deps.getVideoSource(ctx, plan)
+      : { input: await deps.getVideoUrl(ctx.vodTwitchId), baseSec: 0 }
+    const videoUrl = source.input
+    const baseSec = source.baseSec
 
     // Cadrage automatique : le streamer doit etre reconnu ; sinon on garde le cadrage manuel et on le signale.
     let renderStyle = style.render
     let framingWarning: string | null = null
     if (ctx.style.framing.auto && (ctx.photoPaths?.length ?? 0) > 0 && deps.detectFraming) {
-      const detected = await deps.detectFraming({ videoUrl, startSec: plan.startSec, endSec: plan.endSec, photos: ctx.photoPaths ?? [] }).catch(() => null)
+      const detected = await deps.detectFraming({ videoUrl, startSec: plan.startSec - baseSec, endSec: plan.endSec - baseSec, photos: ctx.photoPaths ?? [] }).catch(() => null)
       if (detected) renderStyle = { ...renderStyle, framing: detected }
       else framingWarning = 'Streamer non reconnu dans le clip : cadrage manuel utilise (verifier que personne d\'autre n\'est au centre)'
     } else if (ctx.style.framing.auto) {
@@ -133,11 +142,11 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
     }
     const { args } = buildRenderArgs({
       input: videoUrl,
-      sourceStartSec: plan.startSec,
+      sourceStartSec: plan.startSec - baseSec,
       sourceDurationSec: plan.endSec - plan.startSec + 0.5,
       sourceWidth: deps.sourceWidth ?? 1280,
       sourceHeight: deps.sourceHeight ?? 720,
-      keepRanges: plan.keepRanges,
+      keepRanges: plan.keepRanges.map(r => ({ ...r, start: r.start - baseSec, end: r.end - baseSec })),
       assFile: 'clip.ass',
       fontsDir: deps.fontsDir ?? ctx.fontsDir,
       outPath,

@@ -21,6 +21,20 @@ function notifiers(): Notifier[] {
   return loaded
 }
 
+// Message court a l'admin (Telegram / Discord) : une VOD attend d'etre rendue publique, etc. Sans canal configure : rien n'est envoye.
+export async function sendAdminMessage(text: string): Promise<boolean> {
+  let sent = false
+  for (const notifier of notifiers()) {
+    try {
+      await notifier.sendText(text)
+      sent = true
+    } catch (error) {
+      console.error(`[worker] message ${notifier.name} en echec : ${error instanceof Error ? error.message : 'erreur'}`)
+    }
+  }
+  return sent
+}
+
 // Envoie chaque lot pret (plus aucun clip en file ni en rendu) sur Discord et/ou Telegram, une seule fois par clip.
 // Sans notifieur configure, aucune requete n'est faite (Neon peut rester en veille).
 export async function notifyStep(): Promise<boolean> {

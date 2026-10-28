@@ -34,6 +34,8 @@ enum VodStatus {
   analyzing
   done
   failed
+  // Reservee aux abonnes : Twitch refuse de la lire a Clippeak ; elle attend que le streamer la rende publique.
+  blocked
 }
 
 enum VodSource {
@@ -104,6 +106,12 @@ model Vod {
   endedAt     DateTime? @map("ended_at")
   // Avancement du balayage par ressemblance (secondes de VOD deja transcrites et comparees aux clips de reference).
   scanSec     Float?    @map("scan_sec")
+  // Acces : premiere fois ou la VOD s'est averee reservee aux abonnes, fin de la recuperation des extraits (la VOD n'est plus necessaire),
+  // et moment ou le streamer a confirme l'avoir remise comme avant.
+  restrictedAt   DateTime? @map("restricted_at")
+  sourcesSavedAt DateTime? @map("sources_saved_at")
+  restoreAckAt   DateTime? @map("restore_ack_at")
+  error          String?
   createdAt   DateTime  @default(now()) @map("created_at")
 
   channel Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)

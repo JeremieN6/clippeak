@@ -80,6 +80,8 @@ export function createPipelineStore(db: Db) {
       const keepRanges = job.keepRanges as Array<{ start: number, end: number }> | null
       return {
         jobId: job.id,
+        vodId: moment.vodId,
+        momentId: moment.id,
         channelName: channel.displayName,
         vodTwitchId: moment.vod.twitchVodId,
         peakSec: moment.peakSec,
@@ -179,7 +181,8 @@ export function createPipelineStore(db: Db) {
     async vodsToScan(): Promise<ScanTarget[]> {
       const rows = await db.vod.findMany({
         // Les VODs terminees ne sont balayees que pendant 3 jours : pas de retour sur tout l'historique d'une chaine.
-        where: { OR: [{ status: 'live' }, { status: 'done', createdAt: { gte: new Date(Date.now() - 3 * 24 * 3600 * 1000) } }], startedAt: { not: null }, channel: { autoClip: true } },
+        // Une VOD qui a ete reservee aux abonnes n'est plus relue apres l'analyse : pas de balayage (il lirait sa video).
+        where: { OR: [{ status: 'live' }, { status: 'done', restrictedAt: null, createdAt: { gte: new Date(Date.now() - 3 * 24 * 3600 * 1000) } }], startedAt: { not: null }, channel: { autoClip: true } },
         orderBy: { createdAt: 'asc' },
         include: { channel: { select: { displayName: true } } }
       })
@@ -228,8 +231,35 @@ export function createPipelineStore(db: Db) {
       await db.clipJob.updateMany({ where: { id: { in: jobIds } }, data: { notifiedAt: new Date() } })
     },
 
-    async setVodStatus(vodId: string, status: 'done' | 'failed' | 'ended') {
-      await db.vod.update({ where: { id: vodId }, data: { status } })
+    async setVodStatus(vodId: string, status: 'done' | 'failed' | 'ended' | 'blocked', error: string | null = null) {
+      await db.vod.update({ where: { id: vodId }, data: { status, error } })
+    },
+
+    // VOD reservee aux abonnes : elle attend d'etre rendue publique. `restrictedAt` garde la PREMIERE fois (c'est la preuve qu'elle
+    // etait reservee aux abonnes, donc ce qu'il faudra remettre).
+    async markBlocked(vodId: string, error: string) {
+      const vod = await db.vod.findUniqueOrThrow({ where: { id: vodId }, select: { restrictedAt: true } })
+      await db.vod.update({ where: { id: vodId }, data: { status: 'blocked', error, restrictedAt: vod.restrictedAt ?? new Date(), restoreAckAt: null, sourcesSavedAt: null } })
+    },
+
+    async listBlockedVods(): Promise<Array<{ id: string, twitchVodId: string, title: string | null, channelName: string }>> {
+      const rows = await db.vod.findMany({ where: { status: 'blocked' }, orderBy: { createdAt: 'asc' }, take: 20, include: { channel: { select: { displayName: true } } } })
+      return rows.map(r => ({ id: r.id, twitchVodId: r.twitchVodId, title: r.title, channelName: r.channel.displayName }))
+    },
+
+    // Moments de la VOD qui ont (ou ont eu) un clip : ce sont eux qui ont besoin d'un extrait source.
+    async momentsNeedingSources(vodId: string): Promise<Array<{ id: string, peakSec: number }>> {
+      const rows = await db.moment.findMany({ where: { vodId, jobs: { some: {} } }, select: { id: true, peakSec: true }, orderBy: { peakSec: 'asc' } })
+      return rows
+    },
+
+    async markSourcesSaved(vodId: string) {
+      await db.vod.update({ where: { id: vodId }, data: { sourcesSavedAt: new Date() } })
+    },
+
+    async vodAccessInfo(vodId: string): Promise<{ restrictedAt: Date | null, title: string | null, channelName: string }> {
+      const vod = await db.vod.findUniqueOrThrow({ where: { id: vodId }, select: { restrictedAt: true, title: true, channel: { select: { displayName: true } } } })
+      return { restrictedAt: vod.restrictedAt, title: vod.title, channelName: vod.channel.displayName }
     },
 
     async referenceClips(channelId: string): Promise<ReferenceClip[]> {

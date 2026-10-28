@@ -84,6 +84,8 @@ async function logout() {
       <p v-else class="st-alert st-alert-ok m-0" role="status">{{ notice }}</p>
     </div>
 
+    <StudioVodAlerts v-if="connected && studio.detail.value" />
+
     <template v-if="connected && studio.detail.value">
       <StudioDashboard v-if="view === 'dashboard'" />
       <StudioOnboarding v-else />

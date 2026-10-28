@@ -107,3 +107,32 @@ test('renderJob stops before rendering when there is not enough speech for the m
   )
   assert.equal(rendered, false)
 })
+
+test('renderJob reads a local source extract and shifts every time by its start (the plan stays in VOD time)', async () => {
+  const ctx = { ...baseContext(), vodId: 'v1', momentId: 'm1' }
+  const seen: string[][] = []
+  const frames: Array<{ startSec: number, endSec: number, videoUrl: string }> = []
+  const metrics = { width: 1080, height: 1920, videoSec: 12, audioSec: 12, freezeAtEndSec: 0, leadingSilenceSec: 0, trailingSilenceSec: 0 }
+  const run = (getVideoSource?: PipelineDeps['getVideoSource']) => renderJob({ ...ctx, style: { ...ctx.style, framing: { ...ctx.style.framing, auto: true } }, photoPaths: ['p.png'] }, {
+    getVideoUrl: async () => 'https://vod/index.m3u8',
+    getVideoSource,
+    detectFraming: async (input) => { frames.push(input); return null },
+    runFfmpeg: async (args) => { seen.push(args); return '' },
+    collectMetrics: async () => metrics,
+    outputDir: tmpdir()
+  }).catch(() => null)
+
+  await run()
+  const direct = seen.at(-1) as string[]
+  await run(async () => ({ input: 'sources/v1/m1.mp4', baseSec: 10 }))
+  const local = seen.at(-1) as string[]
+  assert.equal(direct[direct.indexOf('-i') + 1], 'https://vod/index.m3u8')
+  assert.equal(local[local.indexOf('-i') + 1], 'sources/v1/m1.mp4')
+  // La recherche (-ss) recule du debut de l'extrait ; la duree lue ne change pas.
+  assert.ok(Math.abs(Number(direct[direct.indexOf('-ss') + 1]) - Number(local[local.indexOf('-ss') + 1]) - 10) < 1e-6)
+  assert.equal(direct[direct.indexOf('-t') + 1], local[local.indexOf('-t') + 1])
+  // Le cadrage automatique regarde les memes images, decalees de la meme valeur.
+  assert.ok(Math.abs(frames[0].startSec - frames[1].startSec - 10) < 1e-6)
+  assert.ok(Math.abs(frames[0].endSec - frames[1].endSec - 10) < 1e-6)
+  assert.equal(frames[1].videoUrl, 'sources/v1/m1.mp4')
+})

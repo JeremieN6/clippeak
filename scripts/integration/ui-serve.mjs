@@ -33,6 +33,10 @@ await q(`INSERT INTO studio_sessions (id, channel_id, token_hash, expires_at) VA
 // Compte YouTube factice (jetons bidon : aucune publication reelle n'est possible depuis cette base) pour voir le panneau Publier.
 await q(`INSERT INTO platform_connections (id, channel_id, platform, access_token_enc, refresh_token_enc, updated_at) VALUES (gen_random_uuid(), $1, 'youtube', 'v1.x.y.z', 'v1.x.y.z', now())`, [channelId])
 
+// Deux VODs reservees aux abonnes pour voir les cartes « Action requise » et « Tu peux la remettre comme avant ».
+await q(`INSERT INTO vods (id, channel_id, twitch_vod_id, url, title, status, restricted_at) VALUES (gen_random_uuid(), $1, '2', 'u', 'LIVE DU SOIR - TOUT LE MONDE', 'blocked', now())`, [channelId])
+await q(`INSERT INTO vods (id, channel_id, twitch_vod_id, url, title, status, restricted_at, sources_saved_at) VALUES (gen_random_uuid(), $1, '3', 'u', 'PETIT STREAM - !SUBS', 'done', now() - interval '1 hour', now())`, [channelId])
+
 const clips = [
   { batch: 2, status: 'review', title: 'Il a vraiment dit ça en direct devant tout le monde', score: 8.6, cat: 'Réaction', why: 'Ton chat s’est emballé en quelques secondes.', video: true },
   { batch: 2, status: 'review', title: 'Le penalty que personne n’a vu venir', score: 8.1, cat: 'Football', why: 'detecte par ressemblance avec les clips de reference (pas par le chat) : même retournement.', video: true },
