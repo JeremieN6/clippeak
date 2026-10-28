@@ -52,7 +52,7 @@ const fakeTwitch = createServer((req, res) => {
     if (req.url.startsWith('/helix/videos?id=')) {
       const id = new URL(req.url, 'http://x').searchParams.get('id')
       const base = { stream_id: '1', user_login: 'friend', user_name: 'Friend', created_at: '2026-10-20T18:00:00Z', duration: '3h0m0s', url: 'https://www.twitch.tv/videos/' + id, title: 'Live de Friend' }
-      const videos = { 111111: { ...base, id, type: 'archive', viewable: 'public' }, 222222: { ...base, id, type: 'highlight', viewable: 'public' }, 333333: { ...base, id, type: 'archive', viewable: 'private' } }
+      const videos = { 111111: { ...base, id, type: 'archive', viewable: 'public' }, 222222: { ...base, id, type: 'highlight', viewable: 'public' }, 333333: { ...base, id, type: 'archive', viewable: 'private' }, 555555: { ...base, id, type: 'archive', viewable: 'public' } }
       return res.end(JSON.stringify({ data: videos[id] ? [videos[id]] : [] }))
     }
     if (req.url === '/oauth2/token') {
@@ -69,6 +69,16 @@ const fakeTwitch = createServer((req, res) => {
       res.statusCode = 400
       return res.end('{}')
     }
+    if (req.url === '/gql' && req.method === 'POST') {
+      const asked = JSON.parse(body || '{}')
+      return res.end(JSON.stringify({ data: { videoPlaybackAccessToken: { value: 'tok-' + asked.variables?.vodID, signature: 'sig' } } }))
+    }
+    if (req.url.startsWith('/usher/vod/')) {
+      const vodRef = req.url.split('/usher/vod/')[1].split('.m3u8')[0]
+      if (vodRef === '555555') { res.statusCode = 403; return res.end(JSON.stringify([{ error_code: 'vod_manifest_restricted' }])) }
+      res.setHeader('content-type', 'application/vnd.apple.mpegurl')
+      return res.end('#EXTM3U\n')
+    }
     if (req.url === '/helix/users') {
       const who = req.headers.authorization === 'Bearer tok-invite' ? { id: '555', login: 'Invitee', display_name: 'Invitee' } : { id: '666', login: 'stranger', display_name: 'Stranger' }
       return res.end(JSON.stringify({ data: [who] }))
@@ -80,7 +90,7 @@ const fakeTwitch = createServer((req, res) => {
 await new Promise(r => fakeTwitch.listen(3397, '127.0.0.1', r))
 
 // --- serveur
-const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397', GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsec', GOOGLE_TOKEN_URL: 'http://127.0.0.1:3397/token', CLIPPEAK_TOKEN_KEY: randomBytes(32).toString('base64') }
+const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_GQL_URL: 'http://127.0.0.1:3397/gql', TWITCH_USHER_URL: 'http://127.0.0.1:3397/usher/vod', GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsec', GOOGLE_TOKEN_URL: 'http://127.0.0.1:3397/token', CLIPPEAK_TOKEN_KEY: randomBytes(32).toString('base64') }
 const cwd = join(DATA, 'cwd'); mkdirSync(cwd, { recursive: true })
 const logFd = openSync(join(DATA, 'server.log'), 'w')
 const server = spawn('node', [join(ROOT, '.output', 'server', 'index.mjs')], { env, cwd, stdio: ['ignore', logFd, logFd] })
@@ -477,6 +487,9 @@ try {
   assert.equal((await addVod({ channelId, url: '222222' })).status, 400)
   assert.equal((await addVod({ channelId, url: '333333' })).status, 400)
   assert.equal((await addVod({ channelId, url: '444444' })).status, 404)
+  const subOnly = await addVod({ channelId, url: '555555' })
+  assert.equal(subOnly.status, 400); assert.match(JSON.stringify(subOnly.json), /abonn/)
+  assert.equal((await q(`SELECT 1 FROM vods WHERE twitch_vod_id = '555555'`)).length, 0)
   const added = await addVod({ channelId, url: 'https://www.twitch.tv/videos/111111?t=10s' })
   assert.equal(added.status, 200)
   assert.equal(added.json.owner, 'Friend'); assert.equal(added.json.channel, 'YassEncore'); assert.equal(added.json.durationSec, 3 * 3600)
@@ -488,6 +501,8 @@ try {
 
   const listedVods = (await call('/api/admin/vods')).json.vods
   assert.equal(listedVods.length, 1); assert.equal(listedVods[0].status, 'ended'); assert.equal(listedVods[0].clips, 0)
+  assert.equal(listedVods[0].durationSec, 3 * 3600)
+  assert.deepEqual(listedVods[0].progress, { phase: 'waiting', estimateSec: 120 + 270, clipsTotal: 0, clipsInProgress: 0 })
   assert.equal((await call(`/api/admin/vods/${added.json.id}/retry`, { method: 'POST' })).status, 409)
   await q(`UPDATE vods SET status = 'failed' WHERE id = $1`, [added.json.id])
   assert.equal((await call(`/api/admin/vods/${added.json.id}/retry`, { method: 'POST' })).status, 200)

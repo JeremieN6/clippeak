@@ -14,12 +14,23 @@ async function add() {
   if (!props.admin.error.value) url.value = ''
 }
 
-const statusLook: Record<string, { label: string, cls: string }> = {
-  ended: { label: 'En attente du worker', cls: 'st-badge-neutral' },
+const phaseLook = {
+  waiting: { label: 'En attente du worker', cls: 'st-badge-neutral' },
   analyzing: { label: 'Analyse en cours', cls: 'st-badge-info' },
-  done: { label: 'Analysée', cls: 'st-badge-ok' },
-  failed: { label: 'Échec', cls: 'st-badge-error' },
-  live: { label: 'En direct', cls: 'st-badge-info' }
+  rendering: { label: 'Rendu des clips', cls: 'st-badge-info' },
+  ready: { label: 'Terminée', cls: 'st-badge-ok' },
+  failed: { label: 'Échec', cls: 'st-badge-error' }
+} as const
+
+// Durees estimees (grossieres) : on arrondit a la minute.
+const minutes = (sec: number) => sec < 90 ? 'moins de 2 min' : `environ ${Math.round(sec / 60)} min`
+function detail(v: AdminVod): string {
+  const p = v.progress
+  if (p.phase === 'waiting') return `Analyse prévue : ${minutes(p.estimateSec ?? 0)} dès que le worker est libre`
+  if (p.phase === 'analyzing') return `Estimation de l’analyse : ${minutes(p.estimateSec ?? 0)} au total`
+  if (p.phase === 'rendering') return `${p.clipsTotal - p.clipsInProgress} clip(s) prêt(s) sur ${p.clipsTotal} · il reste ${minutes(p.estimateSec ?? 0)}`
+  if (p.phase === 'ready') return `${v.clips} clip(s) issus de ${v.moments} moment(s)`
+  return ''
 }
 const date = (value: string) => new Date(value).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 </script>
@@ -52,9 +63,9 @@ const date = (value: string) => new Date(value).toLocaleString('fr-FR', { day: '
       <div v-for="v in admin.vods.value" :key="v.id" class="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-[#2C2837] py-3.5">
         <div class="min-w-0 flex-1 basis-52">
           <a :href="v.url" target="_blank" rel="noopener" class="break-words text-[15px] font-bold text-white no-underline hover:underline">{{ v.title || `VOD ${v.twitchVodId}` }}</a>
-          <div class="text-[13px] st-muted">Pour {{ v.channel }} · ajoutée {{ date(v.createdAt) }}<template v-if="v.status === 'done'"> · {{ v.clips }} clip(s) issus de {{ v.moments }} moment(s)</template></div>
+          <div class="text-[13px] st-muted">Pour {{ v.channel }} · ajoutée {{ date(v.createdAt) }}<template v-if="detail(v)"> · {{ detail(v) }}</template></div>
         </div>
-        <span class="st-badge" :class="(statusLook[v.status] ?? statusLook.ended).cls">{{ (statusLook[v.status] ?? statusLook.ended).label }}</span>
+        <span class="st-badge" :class="phaseLook[v.progress.phase].cls">{{ phaseLook[v.progress.phase].label }}</span>
         <button v-if="v.status === 'failed'" type="button" class="st-btn-ghost" :disabled="admin.busy.value" @click="admin.retryVod(v.id)">Relancer</button>
         <button v-if="v.status !== 'analyzing' && !v.moments" type="button" class="st-btn-quiet !text-[#FF9B8D] text-sm" :disabled="admin.busy.value" :aria-label="`Retirer la VOD ${v.twitchVodId}`" @click="admin.removeVod(v.id)">Retirer</button>
       </div>

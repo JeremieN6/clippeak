@@ -55,6 +55,10 @@ watch(step, () => nextTick(() => main.value?.scrollIntoView({ block: 'start' }))
 
     <section class="flex min-w-0 flex-[999_1_560px] flex-col">
       <div ref="main" class="flex-1 px-5 py-8 sm:px-10">
+        <div v-if="studio.clips.value.length" class="st-alert st-alert-ok mb-6 flex-wrap items-center justify-between" role="status">
+          <span>Tes premiers clips sont arrivés ({{ studio.clips.value.length }}). Tu peux les voir sans finir le parcours.</span>
+          <button type="button" class="st-btn" @click="studio.view.value = 'dashboard'">Voir mes clips</button>
+        </div>
         <Transition name="st-step" mode="out-in">
           <div :key="step">
             <StudioStepReference v-if="step === 1" />

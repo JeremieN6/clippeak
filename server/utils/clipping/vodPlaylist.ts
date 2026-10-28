@@ -52,8 +52,9 @@ export function pickVideoVariant(variants: VideoVariant[], maxHeight = 720): Vid
 
 // Playlist maitresse HLS d'une VOD publique (jeton de lecture GraphQL puis usher).
 // Les VODs reservees aux abonnes ou restreintes repondent "vod_manifest_restricted" (voir PRISE-DE-POSITION : OAuth).
-export async function fetchVodMasterPlaylist(videoId: string, fetchFn: typeof fetch = fetch): Promise<string> {
-  const tokenResponse = await fetchFn(GQL_URL, {
+// `endpoints` : adresses de remplacement (tests d'integration avec un faux Twitch).
+export async function fetchVodMasterPlaylist(videoId: string, fetchFn: typeof fetch = fetch, endpoints: { gql?: string, usher?: string } = {}): Promise<string> {
+  const tokenResponse = await fetchFn(endpoints.gql ?? GQL_URL, {
     method: 'POST',
     headers: { 'Client-ID': WEB_CLIENT_ID, 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -75,7 +76,7 @@ export async function fetchVodMasterPlaylist(videoId: string, fetchFn: typeof fe
     allow_source: 'true',
     allow_audio_only: 'true'
   })
-  const usherResponse = await fetchFn(`${USHER_URL}/${encodeURIComponent(videoId)}.m3u8?${query}`)
+  const usherResponse = await fetchFn(`${endpoints.usher ?? USHER_URL}/${encodeURIComponent(videoId)}.m3u8?${query}`)
   const text = await usherResponse.text()
   if (!usherResponse.ok) {
     let code = ''

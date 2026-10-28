@@ -2,7 +2,7 @@
 // La page n'est liee depuis nulle part : on y arrive en tapant l'adresse.
 
 export interface AdminInvite { id: string, login: string, note: string | null, connected: boolean, createdAt: string, lastLoginAt: string | null }
-export interface AdminVod { id: string, twitchVodId: string, url: string, title: string | null, status: string, createdAt: string, channel: string, moments: number, clips: number }
+export interface AdminVod { id: string, twitchVodId: string, url: string, title: string | null, status: string, createdAt: string, channel: string, moments: number, clips: number, durationSec: number, progress: { phase: 'waiting' | 'analyzing' | 'rendering' | 'ready' | 'failed', estimateSec: number | null, clipsTotal: number, clipsInProgress: number } }
 export interface AdminChannel { id: string, login: string, displayName: string, demo: boolean }
 
 export function createAdmin() {

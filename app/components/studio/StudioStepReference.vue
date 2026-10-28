@@ -6,6 +6,8 @@ const GOAL = 5
 const urls = ref('')
 const picked = ref<File[]>([])
 const over = ref(false)
+const MAX_MB = 80
+const tooBig = ref('')
 
 const statusLook: Record<string, { label: string, cls: string }> = {
   done: { label: 'Analysé', cls: 'st-badge-ok' },
@@ -38,19 +40,30 @@ const addLabel = computed(() => {
   return count > 1 ? `Ajouter ces ${count} clips` : 'Ajouter ce clip'
 })
 
+// Les vidéos trop lourdes sont écartées tout de suite, avec une explication, plutôt que d'échouer à l'envoi.
+function keepSendable(files: File[]) {
+  const ok = files.filter(f => f.size <= MAX_MB * 1024 * 1024)
+  const refused = files.filter(f => f.size > MAX_MB * 1024 * 1024)
+  tooBig.value = refused.length
+    ? `${refused.map(f => `« ${f.name} » (${Math.round(f.size / 1024 / 1024)} Mo)`).join(', ')} : trop lourd${refused.length > 1 ? 'es' : 'e'} (${MAX_MB} Mo maximum). Choisis une vidéo plus légère, ou colle plutôt son lien.`
+    : ''
+  picked.value = ok
+}
+
 function onPick(event: Event) {
-  picked.value = Array.from((event.target as HTMLInputElement).files ?? [])
+  keepSendable(Array.from((event.target as HTMLInputElement).files ?? []))
 }
 
 function onDrop(event: DragEvent) {
   over.value = false
-  picked.value = Array.from(event.dataTransfer?.files ?? [])
+  keepSendable(Array.from(event.dataTransfer?.files ?? []))
 }
 
 async function add() {
   await studio.addReferences(picked.value, urls.value)
   picked.value = []
   urls.value = ''
+  tooBig.value = ''
 }
 
 const stats = [['viewCount', 'Vues'], ['likeCount', 'Likes'], ['commentCount', 'Commentaires'], ['shareCount', 'Partages']] as const
@@ -72,6 +85,8 @@ const withStats = computed(() => items.value.filter((i: any) => i.status === 'do
         <span class="st-hint">{{ picked.length ? 'Prêt à être ajouté.' : 'ou clique pour choisir · MP4, MOV, WebM · 80 Mo max' }}</span>
         <input type="file" multiple accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm" aria-label="Choisir des vidéos" class="sr-only" @change="onPick">
       </label>
+
+      <p v-if="tooBig" class="st-alert st-alert-warn m-0" role="alert">{{ tooBig }}</p>
 
       <textarea v-model="urls" rows="2" class="st-field" aria-label="Liens de clips ou de comptes" placeholder="…ou colle des liens : clips ou comptes YouTube, TikTok, Instagram" />
 

@@ -55,7 +55,7 @@ async function logout() {
       </div>
       <div v-if="connected" class="flex flex-wrap items-center justify-end gap-2">
         <span v-if="mode === 'streamer' && currentChannel" class="text-sm font-semibold st-muted">{{ currentChannel.displayName }}</span>
-        <button v-if="view !== 'dashboard' && studio.onboarding.value?.completed" type="button" class="st-btn-ghost" @click="view = 'dashboard'">Tableau de bord</button>
+        <button v-if="view !== 'dashboard' && (studio.onboarding.value?.completed || studio.clips.value.length)" type="button" class="st-btn-ghost" @click="view = 'dashboard'">Tableau de bord</button>
         <span v-else-if="view === 'onboarding'" class="hidden items-center gap-2 text-[13px] font-semibold st-muted sm:inline-flex">Enregistré à chaque étape</span>
         <button v-if="mode === 'streamer'" type="button" class="st-btn-quiet" :disabled="busy" @click="logout">Se déconnecter</button>
       </div>

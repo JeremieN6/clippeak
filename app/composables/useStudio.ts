@@ -15,6 +15,22 @@ export interface StudioClip {
 export interface StudioPublication { id: string, platform: string, status: string, scheduledAt: string, publishedAt: string | null, url: string | null, error: string | null }
 export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null }
 
+// Message comprehensible pour le streamer a partir d'une erreur reseau ou serveur. Une reponse de Clippeak (message ecrit pour lui) est
+// gardee telle quelle ; un refus venu d'ailleurs (par exemple le serveur web qui coupe un envoi trop gros) est traduit.
+export function friendlyError(e: any): string {
+  const own = e?.data?.statusMessage
+  if (typeof own === 'string' && own) return own
+  const status = Number(e?.statusCode ?? e?.status ?? e?.response?.status ?? 0)
+  if (status === 413) return 'Ce fichier est trop volumineux pour être envoyé. Choisis une vidéo plus légère (80 Mo maximum).'
+  if (status === 401) return 'Ta session a expiré. Reconnecte-toi pour continuer.'
+  if (status === 403) return 'Cette action n’est pas autorisée.'
+  if (status === 404) return 'Cet élément n’existe plus. Recharge la page.'
+  if (status === 429) return 'Trop de tentatives d’affilée. Attends une minute puis réessaie.'
+  if (status >= 500) return 'Clippeak rencontre un souci passager. Réessaie dans un instant.'
+  if (!status) return 'Connexion impossible. Vérifie ta connexion internet puis réessaie.'
+  return 'Une erreur est survenue. Réessaie, et préviens-nous si ça continue.'
+}
+
 export const STEPS = [
   { n: 1, label: 'Tes clips de référence', tag: 'Obligatoire', required: true },
   { n: 2, label: 'Tes photos', tag: 'Conseillé', required: false },
@@ -58,7 +74,7 @@ export function createStudio() {
     try {
       return await $fetch<T>(url, options)
     } catch (e: any) {
-      throw new Error(e?.data?.statusMessage || e?.statusMessage || 'Requête refusée')
+      throw new Error(friendlyError(e))
     }
   }
 
