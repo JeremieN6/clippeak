@@ -31,11 +31,11 @@
                 <div>
                     <h3 class="mb-4 text-xs uppercase tracking-[0.3em] text-slate-500">Legal</h3>
                     <ul class="space-y-3">
-                        <li><a href="#" class="text-sm text-slate-400 transition hover:text-white">Mentions legales</a>
+                        <li><a href="/conditions#editeur" class="text-sm text-slate-400 transition hover:text-white">Mentions legales</a>
                         </li>
-                        <li><a href="#" class="text-sm text-slate-400 transition hover:text-white">Politique de
+                        <li><a href="/confidentialite" class="text-sm text-slate-400 transition hover:text-white">Politique de
                                 confidentialite</a></li>
-                        <li><a href="#" class="text-sm text-slate-400 transition hover:text-white">CGV</a></li>
+                        <li><a href="/conditions" class="text-sm text-slate-400 transition hover:text-white">Conditions d'utilisation</a></li>
                         <li><a href="mailto:contact.clippeak@sassify.fr"
                                 class="text-sm text-slate-400 transition hover:text-white">Contact</a></li>
                     </ul>

@@ -57,6 +57,9 @@ onMounted(async () => {
           <template v-if="signup">Déjà un compte ? <NuxtLink to="/connexion" class="font-semibold">Se connecter</NuxtLink></template>
           <template v-else>Pas encore de compte ? <NuxtLink to="/inscription" class="font-semibold">S’inscrire</NuxtLink></template>
         </p>
+        <p class="m-0 text-xs st-muted">
+          En continuant, tu acceptes les <NuxtLink to="/conditions" class="underline">conditions d’utilisation</NuxtLink> et la <NuxtLink to="/confidentialite" class="underline">politique de confidentialité</NuxtLink>.
+        </p>
       </template>
     </main>
   </div>
