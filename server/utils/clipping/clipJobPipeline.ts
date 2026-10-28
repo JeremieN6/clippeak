@@ -6,7 +6,7 @@ import type { CutPlan, KeepRange } from './cutPlanner.ts'
 import { buildTimeline } from './timeline.ts'
 import { buildAss, fitTitle, titleLayout } from './assBuilder.ts'
 import type { TimedWord } from './assBuilder.ts'
-import { buildRenderArgs } from './clipRender.ts'
+import { buildRenderArgs, splitZones } from './clipRender.ts'
 import { evaluateQc } from './clipQc.ts'
 import type { ClipMetrics, QcReport } from './clipQc.ts'
 import { buildCaption } from './caption.ts'
@@ -18,6 +18,7 @@ import type { TranscriptSegment } from './whisperTranscribe.ts'
 import type { RunFfmpegOptions } from './ffmpegRunner.ts'
 import type { Framing } from './clipRender.ts'
 import type { DetectFramingInput } from './framingDetect.ts'
+import type { ClipLayout, DetectLayoutInput } from './layoutDetect.ts'
 
 export interface JobContext {
   jobId: string
@@ -58,6 +59,8 @@ export interface PipelineDeps {
   // Source du rendu : l'extrait local s'il couvre le plan (baseSec = instant de la VOD ou il commence), sinon la VOD (baseSec = 0).
   getVideoSource?: (ctx: JobContext, plan: { startSec: number, endSec: number }) => Promise<{ input: string, baseSec: number }>
   detectFraming?: (input: DetectFramingInput) => Promise<Framing | null>
+  // Ecran partage (camera incrustee, panneau camera) : renvoie null si le clip est en plein cadre.
+  detectLayout?: (input: DetectLayoutInput) => Promise<ClipLayout | null>
   runFfmpeg: (args: string[], options?: RunFfmpegOptions) => Promise<string>
   collectMetrics: (path: string, options?: RunFfmpegOptions) => Promise<ClipMetrics>
   outputDir: string
@@ -116,24 +119,40 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
   const outPath = join(deps.outputDir, `${ctx.jobId}.mp4`)
   try {
     await mkdir(dirname(outPath), { recursive: true })
-    await writeFile(join(workDir, 'clip.ass'), buildAss({
-      title,
-      words,
-      durationSec: timeline.totalSec,
-      titleStyle: style.title,
-      subtitleStyle: style.subtitles
-    }))
-
     const source = deps.getVideoSource
       ? await deps.getVideoSource(ctx, plan)
       : { input: await deps.getVideoUrl(ctx.vodTwitchId), baseSec: 0 }
     const videoUrl = source.input
     const baseSec = source.baseSec
 
-    // Cadrage automatique : le streamer doit etre reconnu ; sinon on garde le cadrage manuel et on le signale.
+    // Ecran partage : si le streamer a une camera incrustee ou un panneau camera, le contenu va en haut et la camera en bas.
     let renderStyle = style.render
     let framingWarning: string | null = null
-    if (ctx.style.framing.auto && (ctx.photoPaths?.length ?? 0) > 0 && deps.detectFraming) {
+    let split: ClipLayout | null = null
+    const sourceWidth = deps.sourceWidth ?? 1280
+    const sourceHeight = deps.sourceHeight ?? 720
+    if (ctx.style.layout.split === 'auto' && deps.detectLayout) {
+      split = await deps.detectLayout({ videoUrl, startSec: plan.startSec - baseSec, endSec: plan.endSec - baseSec, photos: ctx.photoPaths ?? [] }).catch(() => null)
+    }
+    let subtitleStyle = style.subtitles
+    if (split) {
+      renderStyle = { ...renderStyle, split: { cam: split.cam, content: split.content, camFocusY: split.camFocusY } }
+      // Sous-titres sur la couture entre le contenu et la camera.
+      const zones = splitZones(renderStyle.split!, sourceWidth, sourceHeight, renderStyle.bandHeight)
+      subtitleStyle = { ...subtitleStyle, marginBottom: Math.round(zones.camH - (subtitleStyle.fontSize ?? 90) * 0.5) }
+    }
+    await writeFile(join(workDir, 'clip.ass'), buildAss({
+      title,
+      words,
+      durationSec: timeline.totalSec,
+      titleStyle: style.title,
+      subtitleStyle
+    }))
+
+    // Cadrage automatique : le streamer doit etre reconnu ; sinon on garde le cadrage manuel et on le signale.
+    if (split) {
+      // Le cadrage 9:16 ne sert pas : le contenu et la camera sont recadres par la disposition.
+    } else if (ctx.style.framing.auto && (ctx.photoPaths?.length ?? 0) > 0 && deps.detectFraming) {
       const detected = await deps.detectFraming({ videoUrl, startSec: plan.startSec - baseSec, endSec: plan.endSec - baseSec, photos: ctx.photoPaths ?? [] }).catch(() => null)
       if (detected) renderStyle = { ...renderStyle, framing: detected }
       else framingWarning = 'Streamer non reconnu dans le clip : cadrage manuel utilise (verifier que personne d\'autre n\'est au centre)'
@@ -144,8 +163,8 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
       input: videoUrl,
       sourceStartSec: plan.startSec - baseSec,
       sourceDurationSec: plan.endSec - plan.startSec + 0.5,
-      sourceWidth: deps.sourceWidth ?? 1280,
-      sourceHeight: deps.sourceHeight ?? 720,
+      sourceWidth,
+      sourceHeight,
       keepRanges: plan.keepRanges.map(r => ({ ...r, start: r.start - baseSec, end: r.end - baseSec })),
       assFile: 'clip.ass',
       fontsDir: deps.fontsDir ?? ctx.fontsDir,

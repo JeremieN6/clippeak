@@ -67,6 +67,10 @@ const baseStyleSchema = z.object({
     centerY: fraction.default(0.5),
     zoom: z.number().min(1).max(3).default(1)
   }).prefault({}),
+  // Ecran partage : si la camera du streamer est incrustee ou a cote du contenu, le clip montre le contenu en haut et la camera en bas.
+  layout: z.object({
+    split: z.enum(['auto', 'off']).default('auto')
+  }).prefault({}),
   overlay: z.object({
     enabled: z.boolean().default(false),
     assetId,
