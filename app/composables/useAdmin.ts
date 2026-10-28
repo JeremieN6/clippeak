@@ -2,7 +2,7 @@
 // La page n'est liee depuis nulle part : on y arrive en tapant l'adresse.
 
 export interface AdminInvite { id: string, login: string, note: string | null, connected: boolean, createdAt: string, lastLoginAt: string | null }
-export interface AdminVod { id: string, twitchVodId: string, url: string, title: string | null, status: string, createdAt: string, channel: string, moments: number, clips: number, durationSec: number, progress: { phase: 'waiting' | 'analyzing' | 'rendering' | 'ready' | 'failed', estimateSec: number | null, clipsTotal: number, clipsInProgress: number } }
+export interface AdminVod { id: string, twitchVodId: string, url: string, title: string | null, status: string, createdAt: string, channel: string, moments: number, clips: number, durationSec: number, progress: { phase: 'blocked' | 'waiting' | 'analyzing' | 'rendering' | 'ready' | 'failed', estimateSec: number | null, clipsTotal: number, clipsInProgress: number } }
 export interface AdminChannel { id: string, login: string, displayName: string, demo: boolean }
 
 export function createAdmin() {
@@ -82,9 +82,11 @@ export function createAdmin() {
   })
 
   const addVod = (channelId: string, url: string) => run(async () => {
-    const r = await $fetch<{ title: string, owner: string, durationSec: number, channel: string }>('/api/admin/vods', { method: 'POST', body: { channelId, url } })
+    const r = await $fetch<{ title: string, owner: string, durationSec: number, channel: string, blocked: boolean }>('/api/admin/vods', { method: 'POST', body: { channelId, url } })
     vods.value = (await $fetch<{ vods: AdminVod[] }>('/api/admin/vods')).vods
-    notice.value = `VOD de ${r.owner} ajoutée à ${r.channel} (${Math.round(r.durationSec / 60)} min) : le worker l’analyse au prochain passage.`
+    notice.value = r.blocked
+      ? `VOD de ${r.owner} ajoutée à ${r.channel}, mais réservée aux abonnés : elle attend d’être rendue publique (le streamer voit « Action requise »).`
+      : `VOD de ${r.owner} ajoutée à ${r.channel} (${Math.round(r.durationSec / 60)} min) : le worker l’analyse au prochain passage.`
   })
 
   const retryVod = (id: string) => run(async () => {

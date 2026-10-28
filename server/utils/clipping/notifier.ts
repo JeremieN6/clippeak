@@ -19,6 +19,8 @@ export interface BatchNotification {
 export interface Notifier {
   name: 'discord' | 'telegram'
   send(notification: BatchNotification): Promise<void>
+  // Message court a l'admin (ex. une VOD attend d'etre rendue publique).
+  sendText(text: string): Promise<void>
 }
 
 export interface NotifierDeps {
@@ -92,6 +94,9 @@ export function createDiscordNotifier(options: { webhookUrl: string } & Notifier
 
   return {
     name: 'discord',
+    async sendText(text) {
+      await post(JSON.stringify({ content: text.slice(0, 1900), allowed_mentions: { parse: [] } }), { 'content-type': 'application/json' })
+    },
     async send(notification) {
       const content = buildBatchText(notification)
       // Aucune mention (@everyone, roles) : le texte vient de titres generes a partir de la parole.
@@ -128,6 +133,9 @@ export function createTelegramNotifier(options: { token: string, chatId: string 
 
   return {
     name: 'telegram',
+    async sendText(text) {
+      await call('sendMessage', JSON.stringify({ chat_id: options.chatId, text: text.slice(0, 3900), disable_web_page_preview: true }), { 'content-type': 'application/json' })
+    },
     async send(notification) {
       await call('sendMessage', JSON.stringify({ chat_id: options.chatId, text: buildBatchText(notification, 3900), disable_web_page_preview: true }), { 'content-type': 'application/json' })
       for (const { clip, data } of await loadFiles(notification.clips, Number.MAX_SAFE_INTEGER, readFile)) {

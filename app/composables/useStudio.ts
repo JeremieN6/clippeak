@@ -13,6 +13,7 @@ export interface StudioClip {
 }
 
 export interface StudioPublication { id: string, platform: string, status: string, scheduledAt: string, publishedAt: string | null, url: string | null, error: string | null }
+export interface VodAlert { id: string, title: string, state: 'blocked' | 'working' | 'restore', since: string | null }
 export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null }
 
 // Message comprehensible pour le streamer a partir d'une erreur reseau ou serveur. Une reponse de Clippeak (message ecrit pour lui) est
@@ -62,6 +63,7 @@ export function createStudio() {
   const bank = ref<any>(null)
   const clips = ref<StudioClip[]>([])
   const connections = ref<StudioConnection[]>([])
+  const vodAlerts = ref<VodAlert[]>([])
 
   // 'onboarding' tant que le parcours n'est pas termine, puis 'dashboard' ; le streamer peut revenir a une etape depuis le tableau de bord.
   const view = ref<'onboarding' | 'dashboard'>('onboarding')
@@ -105,12 +107,21 @@ export function createStudio() {
     connections.value = (await api<{ connections: StudioConnection[] }>(`/api/studio/channels/${channelId.value}/connections`)).connections
   }
 
+  async function loadVodAlerts() {
+    if (!channelId.value) return
+    try {
+      vodAlerts.value = (await api<{ alerts: VodAlert[] }>(`/api/studio/channels/${channelId.value}/vod-alerts`)).alerts
+    } catch {
+      vodAlerts.value = []
+    }
+  }
+
   async function loadChannel() {
     if (!channelId.value) return
     detail.value = await api(`/api/studio/channels/${channelId.value}`)
     // L'interrupteur des sous-titres est dans la direction artistique : un ancien "desactive" des reglages est repris.
     if (detail.value.settings && detail.value.settings.subtitles === false) detail.value.style.subtitles.enabled = false
-    await Promise.all([loadBank(), loadConnections()])
+    await Promise.all([loadBank(), loadConnections(), loadVodAlerts()])
   }
 
   async function loadClips() {
@@ -368,14 +379,26 @@ export function createStudio() {
     await loadClips()
   }, at ? 'Publication programmée.' : 'Publication lancée : elle part dans quelques instants.')
 
+  // VOD reservee aux abonnes : « c'est fait, verifier maintenant » puis « je l'ai remise comme avant ».
+  const recheckVod = (id: string) => run(async () => {
+    const r = await api<{ state: 'readable' | 'restricted' }>(`/api/studio/vods/${id}/recheck`, { method: 'POST' })
+    await loadVodAlerts()
+    notice.value = r.state === 'readable' ? 'Merci ! Ta VOD est lisible, Clippeak récupère les extraits.' : 'Twitch refuse encore de la lire. Vérifie qu’elle est bien en public, puis réessaie.'
+  })
+
+  const ackVod = (id: string) => run(async () => {
+    await api(`/api/studio/vods/${id}/ack`, { method: 'POST' })
+    await loadVodAlerts()
+  }, 'Parfait, merci !')
+
   const cancelPublication = (id: string) => run(async () => {
     await api(`/api/studio/publications/${id}`, { method: 'DELETE' })
     await loadClips()
   }, 'Publication annulée.')
 
   return {
-    connected, error, notice, busy, channels, channelId, detail, bank, clips, connections, view, step, onboarding, mode,
-    disconnectPlatform, publishClip, cancelPublication, loadConnections,
+    connected, error, notice, busy, channels, channelId, detail, bank, clips, connections, vodAlerts, view, step, onboarding, mode,
+    disconnectPlatform, publishClip, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
     api, run, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, advance, finishOnboarding, goToStep, stepStatus,
     addAssets, saveAsset, removeAsset, addReferences, saveStat, removeReference, reviewClip, approveMany

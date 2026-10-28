@@ -15,6 +15,7 @@ async function add() {
 }
 
 const phaseLook = {
+  blocked: { label: 'Réservée aux abonnés', cls: 'st-badge-warn' },
   waiting: { label: 'En attente du worker', cls: 'st-badge-neutral' },
   analyzing: { label: 'Analyse en cours', cls: 'st-badge-info' },
   rendering: { label: 'Rendu des clips', cls: 'st-badge-info' },
@@ -26,6 +27,7 @@ const phaseLook = {
 const minutes = (sec: number) => sec < 90 ? 'moins de 2 min' : `environ ${Math.round(sec / 60)} min`
 function detail(v: AdminVod): string {
   const p = v.progress
+  if (p.phase === 'blocked') return 'En attente que le streamer la rende publique (vérification toutes les 3 min)'
   if (p.phase === 'waiting') return `Analyse prévue : ${minutes(p.estimateSec ?? 0)} dès que le worker est libre`
   if (p.phase === 'analyzing') return `Estimation de l’analyse : ${minutes(p.estimateSec ?? 0)} au total`
   if (p.phase === 'rendering') return `${p.clipsTotal - p.clipsInProgress} clip(s) prêt(s) sur ${p.clipsTotal} · il reste ${minutes(p.estimateSec ?? 0)}`

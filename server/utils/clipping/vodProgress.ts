@@ -15,7 +15,7 @@ export interface JobCounts {
   failed: number
 }
 
-export type VodPhase = 'waiting' | 'analyzing' | 'rendering' | 'ready' | 'failed'
+export type VodPhase = 'blocked' | 'waiting' | 'analyzing' | 'rendering' | 'ready' | 'failed'
 
 export interface VodProgress {
   phase: VodPhase
@@ -28,6 +28,8 @@ export interface VodProgress {
 export function vodProgress(status: string, durationSec: number, counts: JobCounts): VodProgress {
   const clipsTotal = counts.queued + counts.rendering + counts.review + counts.approved + counts.rejected + counts.failed
   const clipsInProgress = counts.queued + counts.rendering
+  // Reservee aux abonnes : rien ne se passe tant que le streamer ne l'a pas rendue publique.
+  if (status === 'blocked') return { phase: 'blocked', estimateSec: null, clipsTotal, clipsInProgress }
   if (status === 'failed') return { phase: 'failed', estimateSec: null, clipsTotal, clipsInProgress }
   if (status === 'ended') return { phase: 'waiting', estimateSec: analysisEstimateSec(durationSec), clipsTotal, clipsInProgress }
   if (status === 'analyzing') return { phase: 'analyzing', estimateSec: analysisEstimateSec(durationSec), clipsTotal, clipsInProgress }

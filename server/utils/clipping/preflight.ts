@@ -23,7 +23,8 @@ export const REQUIRED_SCHEMA = [
   { table: 'reference_items', column: 'analysis' },
   { table: 'vods', column: 'scan_sec' },
   { table: 'publications', column: 'scheduled_at' },
-  { table: 'platform_connections', column: 'refresh_token_enc' }
+  { table: 'platform_connections', column: 'refresh_token_enc' },
+  { table: 'vods', column: 'sources_saved_at' }
 ]
 
 export function commandWorks(command: string, args: string[]): boolean {

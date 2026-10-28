@@ -4,7 +4,9 @@ import { QcFailedError, renderJob } from '../utils/clipping/clipJobPipeline'
 import { dataDir } from '../utils/clipping/dataDir'
 import { collectClipMetrics } from '../utils/clipping/clipQc'
 import { runFfmpeg } from '../utils/clipping/ffmpegRunner'
+import { existsSync } from 'node:fs'
 import { getVodVideoPlaylistUrl } from '../utils/clipping/vodPlaylist'
+import { coversPlan, sourceRelPath, sourceWindow } from '../utils/clipping/sourceExtract'
 import { detectFraming, frameExtractor, runLocateScript } from '../utils/clipping/framingDetect'
 import { join } from 'node:path'
 import type { ClipJobToRender } from '../utils/clipping/clipQueue'
@@ -20,6 +22,14 @@ export async function renderClip(job: ClipJobToRender): Promise<{ outputPath: st
   try {
     const result = await renderJob(ctx, {
       getVideoUrl: vodId => getVodVideoPlaylistUrl(vodId, 720),
+      // Extrait source du moment s'il existe et couvre la coupe (la VOD peut alors etre reservee aux abonnes ou supprimee) ; sinon la VOD.
+      getVideoSource: async (job, plan) => {
+        if (job.vodId && job.momentId) {
+          const file = join(dataDir(), sourceRelPath(job.vodId, job.momentId))
+          if (existsSync(file) && coversPlan(job.peakSec, plan)) return { input: file, baseSec: sourceWindow(job.peakSec).startSec }
+        }
+        return { input: await getVodVideoPlaylistUrl(job.vodTwitchId, 720), baseSec: 0 }
+      },
       detectFraming: input => detectFraming(input, {
         extractFrame: frameExtractor(runFfmpeg),
         locate: runLocateScript,

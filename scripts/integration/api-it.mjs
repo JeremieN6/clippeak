@@ -42,6 +42,7 @@ const rel = `clips/${reviewId}.mp4`
 spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=270x480:rate=30:duration=2', '-pix_fmt', 'yuv420p', join(DATA, rel)])
 await q(`UPDATE clip_jobs SET output_path = $1 WHERE id = $2`, [rel, reviewId])
 
+let open666 = false
 // --- faux Twitch (jeton et profil) pour jouer le retour de connexion sans le vrai service
 const fakeTwitch = createServer((req, res) => {
   let body = ''
@@ -52,7 +53,7 @@ const fakeTwitch = createServer((req, res) => {
     if (req.url.startsWith('/helix/videos?id=')) {
       const id = new URL(req.url, 'http://x').searchParams.get('id')
       const base = { stream_id: '1', user_login: 'friend', user_name: 'Friend', created_at: '2026-10-20T18:00:00Z', duration: '3h0m0s', url: 'https://www.twitch.tv/videos/' + id, title: 'Live de Friend' }
-      const videos = { 111111: { ...base, id, type: 'archive', viewable: 'public' }, 222222: { ...base, id, type: 'highlight', viewable: 'public' }, 333333: { ...base, id, type: 'archive', viewable: 'private' }, 555555: { ...base, id, type: 'archive', viewable: 'public' } }
+      const videos = { 111111: { ...base, id, type: 'archive', viewable: 'public' }, 222222: { ...base, id, type: 'highlight', viewable: 'public' }, 333333: { ...base, id, type: 'archive', viewable: 'private' }, 555555: { ...base, id, type: 'archive', viewable: 'public' }, 666666: { ...base, id, type: 'archive', viewable: 'public' } }
       return res.end(JSON.stringify({ data: videos[id] ? [videos[id]] : [] }))
     }
     if (req.url === '/oauth2/token') {
@@ -69,12 +70,14 @@ const fakeTwitch = createServer((req, res) => {
       res.statusCode = 400
       return res.end('{}')
     }
+    if (req.url === '/open-666666') { open666 = true; return res.end('{}') }
     if (req.url === '/gql' && req.method === 'POST') {
       const asked = JSON.parse(body || '{}')
       return res.end(JSON.stringify({ data: { videoPlaybackAccessToken: { value: 'tok-' + asked.variables?.vodID, signature: 'sig' } } }))
     }
     if (req.url.startsWith('/usher/vod/')) {
       const vodRef = req.url.split('/usher/vod/')[1].split('.m3u8')[0]
+      if (vodRef === '666666' && !open666) { res.statusCode = 403; return res.end(JSON.stringify([{ error_code: 'vod_manifest_restricted' }])) }
       if (vodRef === '555555') { res.statusCode = 403; return res.end(JSON.stringify([{ error_code: 'vod_manifest_restricted' }])) }
       res.setHeader('content-type', 'application/vnd.apple.mpegurl')
       return res.end('#EXTM3U\n')
@@ -90,7 +93,7 @@ const fakeTwitch = createServer((req, res) => {
 await new Promise(r => fakeTwitch.listen(3397, '127.0.0.1', r))
 
 // --- serveur
-const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_GQL_URL: 'http://127.0.0.1:3397/gql', TWITCH_USHER_URL: 'http://127.0.0.1:3397/usher/vod', GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsec', GOOGLE_TOKEN_URL: 'http://127.0.0.1:3397/token', CLIPPEAK_TOKEN_KEY: randomBytes(32).toString('base64') }
+const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_GQL_URL: 'http://127.0.0.1:3397/gql', TWITCH_USHER_URL: 'http://127.0.0.1:3397/usher/vod', CLIPPEAK_RECHECK_COOLDOWN_MS: '0', GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsec', GOOGLE_TOKEN_URL: 'http://127.0.0.1:3397/token', CLIPPEAK_TOKEN_KEY: randomBytes(32).toString('base64') }
 const cwd = join(DATA, 'cwd'); mkdirSync(cwd, { recursive: true })
 const logFd = openSync(join(DATA, 'server.log'), 'w')
 const server = spawn('node', [join(ROOT, '.output', 'server', 'index.mjs')], { env, cwd, stdio: ['ignore', logFd, logFd] })
@@ -487,9 +490,6 @@ try {
   assert.equal((await addVod({ channelId, url: '222222' })).status, 400)
   assert.equal((await addVod({ channelId, url: '333333' })).status, 400)
   assert.equal((await addVod({ channelId, url: '444444' })).status, 404)
-  const subOnly = await addVod({ channelId, url: '555555' })
-  assert.equal(subOnly.status, 400); assert.match(JSON.stringify(subOnly.json), /abonn/)
-  assert.equal((await q(`SELECT 1 FROM vods WHERE twitch_vod_id = '555555'`)).length, 0)
   const added = await addVod({ channelId, url: 'https://www.twitch.tv/videos/111111?t=10s' })
   assert.equal(added.status, 200)
   assert.equal(added.json.owner, 'Friend'); assert.equal(added.json.channel, 'YassEncore'); assert.equal(added.json.durationSec, 3 * 3600)
@@ -514,6 +514,37 @@ try {
   assert.equal((await call(`/api/admin/vods/${added.json.id}`, { method: 'DELETE' })).status, 200)
   assert.equal((await call('/api/admin/vods')).json.vods.length, 0)
   ok('liste, relance (seulement apres un echec), retrait (jamais pendant l analyse ni pour une VOD non manuelle)')
+
+  // --- VOD reservee aux abonnes : acceptee en attente, cartes du streamer, deblocage, confirmation
+  const sub = await addVod({ channelId, url: '555555' })
+  assert.equal(sub.status, 200); assert.equal(sub.json.blocked, true); assert.equal(sub.json.status, 'blocked')
+  const [bRow] = await q(`SELECT status, restricted_at, error FROM vods WHERE id = $1`, [sub.json.id])
+  assert.equal(bRow.status, 'blocked'); assert.ok(bRow.restricted_at); assert.match(bRow.error, /abonn/)
+  assert.equal((await call('/api/admin/vods')).json.vods[0].progress.phase, 'blocked')
+  const alertsUrl = `/api/studio/channels/${channelId}/vod-alerts`
+  assert.deepEqual((await call(alertsUrl, pubSession)).json.alerts.map(a => a.state), ['blocked'])
+  assert.equal((await call(alertsUrl, as(sessionCookie.split('=')[1]))).status, 404)
+  assert.equal((await call(alertsUrl, { auth: false })).status, 401)
+  const rc = (id, who = pubSession) => call(`/api/studio/vods/${id}/recheck`, { ...who, method: 'POST' })
+  assert.equal((await rc(sub.json.id)).json.state, 'restricted')
+  assert.equal((await rc(sub.json.id, as(sessionCookie.split('=')[1]))).status, 404)
+  const sub2 = await addVod({ channelId, url: '666666' })
+  assert.equal(sub2.json.blocked, true)
+  assert.equal((await rc(sub2.json.id)).json.state, 'restricted')
+  await fetch('http://127.0.0.1:3397/open-666666')
+  assert.equal((await rc(sub2.json.id)).json.state, 'readable')
+  assert.deepEqual((await q(`SELECT status, error FROM vods WHERE id = $1`, [sub2.json.id]))[0], { status: 'ended', error: null })
+  const stateOf = async id => (await call(alertsUrl, pubSession)).json.alerts.find(a => a.id === id)?.state
+  assert.equal(await stateOf(sub2.json.id), 'working')
+  const ack = (id, who = pubSession) => call(`/api/studio/vods/${id}/ack`, { ...who, method: 'POST' })
+  assert.equal((await ack(sub2.json.id)).status, 409)
+  await q(`UPDATE vods SET status = 'done', sources_saved_at = now() WHERE id = $1`, [sub2.json.id])
+  assert.equal(await stateOf(sub2.json.id), 'restore')
+  assert.equal((await ack(sub2.json.id, as(sessionCookie.split('=')[1]))).status, 404)
+  assert.equal((await ack(sub2.json.id)).status, 200)
+  assert.equal(await stateOf(sub2.json.id), undefined)
+  ok('VOD reservee aux abonnes : acceptee en attente (admin), carte « Action requise » du streamer, verification immediate, deblocage, carte « tu peux la remettre » puis confirmation ; autre chaine = 404')
+
 
   console.log('API_IT_OK')
 } catch (error) {

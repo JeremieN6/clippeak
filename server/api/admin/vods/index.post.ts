@@ -4,7 +4,7 @@ import { readEnv } from '../../../utils/env'
 import { requireStudioAdmin, uuidSchema } from '../../../utils/studioAuth'
 import { createTwitchApi, TwitchApiError } from '../../../utils/clipping/twitchApi'
 import { parseTwitchVodId } from '../../../utils/clipping/vodUrl'
-import { fetchVodMasterPlaylist, VodPlaylistError } from '../../../utils/clipping/vodPlaylist'
+import { checkVodReadable, RESTRICTED_MESSAGE } from '../../../utils/clipping/vodAccess'
 
 const schema = z.object({ channelId: uuidSchema, url: z.string().max(300) })
 
@@ -39,19 +39,18 @@ export default defineEventHandler(async (event) => {
   if (video.type !== 'archive') throw createError({ statusCode: 400, statusMessage: `Seules les rediffusions de live sont acceptées (celle-ci est de type « ${video.type} »)` })
   // Helix annonce « public » meme pour une VOD d'abonnes : la vraie verification est un essai de lecture, comme le fera le worker.
   if (video.viewable !== 'public') throw createError({ statusCode: 400, statusMessage: 'Cette VOD n’est pas publique : Clippeak ne peut pas la lire' })
-  try {
-    await fetchVodMasterPlaylist(twitchVodId, fetch, { gql: readEnv('TWITCH_GQL_URL') || undefined, usher: readEnv('TWITCH_USHER_URL') || undefined })
-  } catch (error) {
-    if (error instanceof VodPlaylistError && error.kind === 'restricted') {
-      throw createError({ statusCode: 400, statusMessage: 'Cette VOD est réservée aux abonnés (ou protégée) : Twitch refuse de la lire à Clippeak. Choisis une VOD publique, ou passe-la en public chez Twitch.' })
-    }
-    throw createError({ statusCode: 502, statusMessage: 'Impossible de vérifier que Twitch laisse lire cette VOD. Réessaie dans un instant.' })
-  }
+  const access = await checkVodReadable(twitchVodId, fetch, { gql: readEnv('TWITCH_GQL_URL') || undefined, usher: readEnv('TWITCH_USHER_URL') || undefined })
+  if (access.state === 'unknown') throw createError({ statusCode: 502, statusMessage: 'Impossible de vérifier que Twitch laisse lire cette VOD. Réessaie dans un instant.' })
+  // Reservee aux abonnes : acceptee mais en attente. Le streamer voit « Action requise » et la rend publique le temps de l'analyse.
+  const blocked = access.state === 'restricted'
 
   const endedAt = new Date(video.createdAt.getTime() + video.durationSec * 1000)
   const vod = await prisma.vod.create({
-    data: { channelId: channel.id, twitchVodId, url: video.url, title: video.title, status: 'ended', source: 'manual', startedAt: video.createdAt, endedAt },
+    data: {
+      channelId: channel.id, twitchVodId, url: video.url, title: video.title, source: 'manual', startedAt: video.createdAt, endedAt,
+      status: blocked ? 'blocked' : 'ended', restrictedAt: blocked ? new Date() : null, error: blocked ? RESTRICTED_MESSAGE : null
+    },
     select: { id: true, status: true }
   })
-  return { id: vod.id, status: vod.status, title: video.title, owner: video.userName, durationSec: video.durationSec, channel: channel.displayName }
+  return { id: vod.id, status: vod.status, blocked, title: video.title, owner: video.userName, durationSec: video.durationSec, channel: channel.displayName }
 })

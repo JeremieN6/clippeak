@@ -11,7 +11,12 @@ import { analyzeVod, liveWindowStart, shouldRunLiveAnalysis } from '../utils/cli
 import type { LiveState } from '../utils/clipping/vodAnalysis'
 import { detectChatPeaks } from '../utils/clipping/chatPeaks'
 import { fetchVodChat } from '../utils/clipping/twitchChat'
-import { getVodAudioPlaylistUrl } from '../utils/clipping/vodPlaylist'
+import { getVodAudioPlaylistUrl, getVodVideoPlaylistUrl, VodPlaylistError } from '../utils/clipping/vodPlaylist'
+import { extractSources } from '../utils/clipping/sourceExtract'
+import { RESTRICTED_MESSAGE } from '../utils/clipping/vodAccess'
+import { runFfmpeg } from '../utils/clipping/ffmpegRunner'
+import { dataDir } from '../utils/clipping/dataDir'
+import { sendAdminMessage } from './notify'
 import { extractAudioWindow } from '../utils/clipping/audioWindow'
 import { transcribeWav } from '../utils/clipping/whisperTranscribe'
 import { transcribePeak } from '../utils/clipping/peakTranscript'
@@ -101,12 +106,43 @@ export async function analysisStep(): Promise<boolean> {
 
   try {
     await runAnalysis(vod, false)
+    const sourcesSaved = await saveSources(vod)
     await store.setVodStatus(vod.id, 'done')
+    if (sourcesSaved) {
+      await store.markSourcesSaved(vod.id)
+      // Les extraits sont enregistres : Clippeak n'a plus jamais besoin de la VOD. Si elle etait reservee aux abonnes, le streamer peut la remettre.
+      const info = await store.vodAccessInfo(vod.id)
+      if (info.restrictedAt) await sendAdminMessage(`✅ Extraits récupérés pour « ${info.title ?? vod.twitchVodId} » (${info.channelName}) : le streamer peut remettre la VOD comme avant.`)
+    }
   } catch (error) {
+    if (error instanceof VodPlaylistError && error.kind === 'restricted') {
+      // VOD reservee aux abonnes : elle attend d'etre rendue publique (verifiee toutes les 3 minutes par vodAccessStep).
+      console.warn(`[worker] VOD ${vod.twitchVodId} reservee aux abonnes : en attente`)
+      await store.markBlocked(vod.id, RESTRICTED_MESSAGE).catch(() => {})
+      await sendAdminMessage(`⏳ VOD réservée aux abonnés (${vod.channelName}, ${vod.twitchVodId}) : le streamer doit la rendre publique le temps de l’analyse.`)
+      return true
+    }
     console.error(`[worker] analyse en echec pour la VOD ${vod.twitchVodId}`, error)
-    await store.setVodStatus(vod.id, 'failed').catch(() => {})
+    await store.setVodStatus(vod.id, 'failed', error instanceof Error ? error.message.slice(0, 300) : 'Erreur inconnue').catch(() => {})
   }
   return true
+}
+
+// Extraits sources des moments retenus : 2 minutes autour de chaque pic, gardees sur le serveur. Renvoie true si tout est enregistre.
+async function saveSources(vod: VodToAnalyze): Promise<boolean> {
+  const moments = await store.momentsNeedingSources(vod.id)
+  if (!moments.length) return true
+  const videoUrl = await getVodVideoPlaylistUrl(vod.twitchVodId, 720)
+  const result = await extractSources({
+    vodId: vod.id,
+    moments,
+    baseDir: dataDir(),
+    videoUrl,
+    run: args => runFfmpeg(args, { timeoutMs: 10 * 60_000 }),
+    log: message => console.warn('[worker]', message)
+  })
+  console.info(`[worker] extraits de la VOD ${vod.twitchVodId}`, result)
+  return result.failed.length === 0
 }
 
 const liveStates = new Map<string, LiveState>()
