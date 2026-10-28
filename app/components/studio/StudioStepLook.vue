@@ -123,7 +123,7 @@ async function pickAvatar(event: Event) {
   <div v-if="detail" class="grid max-w-[1100px] gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
     <div class="flex min-w-0 flex-col gap-6">
       <StudioStepHeader :n="3" tag="Facultatif" title="Le look de tes clips">
-        Choisis comment s’affichent le titre, les sous-titres et le cadrage. L’aperçu se met à jour à chaque réglage.
+        Règle le titre, les sous-titres et le cadrage. L’aperçu bouge en direct.
       </StudioStepHeader>
 
       <!-- Titre -->

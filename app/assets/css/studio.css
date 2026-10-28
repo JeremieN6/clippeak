@@ -59,3 +59,45 @@ select.st-field { min-height: 44px; font-weight: 600; background: #1D1A25; borde
 .st-nav-item { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 10px; border: 0; border-radius: 10px; background: transparent; text-align: left; color: #F3F1F7; width: 100%; cursor: pointer; }
 .st-nav-item:hover { background: #1D1A25; }
 .st-nav-item[aria-current="step"], .st-nav-item[aria-current="page"] { background: #2A1F4A; }
+
+/* --- Mouvement : l'onboarding doit sembler vivant sans jamais gener (tout est coupe si le systeme demande moins d'animations) --- */
+@keyframes st-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes st-pop { 0% { opacity: 0; transform: scale(.6); } 70% { transform: scale(1.12); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes st-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes st-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes st-shine { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.st-rise { animation: st-rise .5s cubic-bezier(.2, .8, .2, 1) both; animation-delay: var(--d, 0s); }
+.st-pop { animation: st-pop .35s cubic-bezier(.2, .8, .2, 1) both; animation-delay: var(--d, 0s); }
+.st-pulse { animation: st-pulse 1.4s ease-in-out infinite; }
+
+.st-step-enter-active { transition: opacity .3s ease, transform .3s cubic-bezier(.2, .8, .2, 1); }
+.st-step-leave-active { transition: opacity .15s ease; }
+.st-step-enter-from { opacity: 0; transform: translateX(18px); }
+.st-step-leave-to { opacity: 0; }
+
+.st-list-enter-active, .st-list-leave-active { transition: opacity .3s ease, transform .3s ease; }
+.st-list-enter-from { opacity: 0; transform: translateY(-8px); }
+.st-list-leave-to { opacity: 0; transform: translateX(16px); }
+
+.st-bar { height: 100%; background: linear-gradient(90deg, #7C3AED, #B9A0FF, #7C3AED); background-size: 200% 100%; transition: width .6s cubic-bezier(.2, .8, .2, 1); }
+.st-bar-live { animation: st-shine 2.4s linear infinite; }
+
+.st-btn, .st-btn-ghost { transition: background .15s, transform .12s, box-shadow .15s; }
+.st-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 18px -6px rgba(124, 58, 237, .6); }
+.st-btn:active:not(:disabled), .st-btn-ghost:active:not(:disabled) { transform: scale(.97); }
+.st-card { transition: border-color .2s; }
+
+.st-dropzone { cursor: pointer; transition: border-color .2s, background .2s, transform .2s; }
+.st-dropzone:hover, .st-dropzone.is-over, .st-dropzone:focus-within { border-color: #7C3AED; background: #17132A; }
+.st-dropzone.is-over { transform: scale(1.015); }
+.st-dropzone:focus-within { outline: 2px solid #B9A0FF; outline-offset: 2px; }
+.st-dz-icon { display: flex; width: 48px; height: 48px; align-items: center; justify-content: center; border-radius: 50%; background: #2A1F4A; color: #D6C7FF; animation: st-float 3s ease-in-out infinite; }
+.st-dropzone.is-over .st-dz-icon { animation-duration: .8s; }
+
+.st-dot { width: 12px; height: 12px; border-radius: 50%; background: #2C2837; transition: background .3s, transform .3s; }
+.st-dot.on { background: #6EDDB8; transform: scale(1.15); }
+
+@media (prefers-reduced-motion: reduce) {
+  .st-rise, .st-pop, .st-pulse, .st-dz-icon, .st-bar-live { animation: none; }
+  .st-step-enter-active, .st-step-leave-active, .st-list-enter-active, .st-list-leave-active, .st-bar, .st-btn, .st-btn-ghost, .st-dropzone, .st-dot { transition: none; }
+}

@@ -19,7 +19,7 @@ async function pick(event: Event) {
 <template>
   <div class="flex max-w-[820px] flex-col gap-7">
     <StudioStepHeader :n="2" tag="Conseillé" title="Tes photos">
-      Clippeak te reconnaît sur la vidéo pour te garder bien cadré, même quand tu bouges. Trois à cinq photos nettes, de face, suffisent.
+      Trois photos de face suffisent pour que Clippeak te garde bien cadré.
     </StudioStepHeader>
 
     <section class="st-card flex flex-col gap-5">

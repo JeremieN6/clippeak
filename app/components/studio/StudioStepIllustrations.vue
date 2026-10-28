@@ -24,8 +24,8 @@ async function pick(event: Event) {
 
 <template>
   <div class="flex max-w-[820px] flex-col gap-6">
-    <StudioStepHeader :n="5" tag="Facultatif" title="Tes illustrations">
-      De courtes vidéos qui s’affichent en haut de l’écran pendant que tu parles, au moment où tu dis un mot choisi. Tu peux en ajouter plus tard.
+    <StudioStepHeader :n="5" tag="Facultatif" title="Tes illustrations (B-roll)">
+      Le B-roll, ce sont de courtes vidéos qui s’affichent en haut de l’écran quand tu dis un mot choisi.
     </StudioStepHeader>
 
     <div class="st-dropzone !rounded-2xl">

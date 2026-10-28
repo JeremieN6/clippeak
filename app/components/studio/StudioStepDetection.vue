@@ -10,7 +10,7 @@ defineExpose({ invalid })
 <template>
   <div v-if="detail?.settings" class="flex max-w-[820px] flex-col gap-6">
     <StudioStepHeader :n="6" tag="Tu peux la passer" title="Repérer tes bons moments">
-      Ton chat est un signal en plus. Clippeak regarde d’abord les moments qui ressemblent à tes clips de référence, puis ceux où ton chat s’emballe.
+      Clippeak cherche d’abord ce qui ressemble à tes clips, puis les moments où ton chat s’emballe.
     </StudioStepHeader>
 
     <section class="st-card flex flex-col gap-3">
