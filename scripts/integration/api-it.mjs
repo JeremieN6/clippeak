@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import { openSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { createServer } from 'node:http'
 import { join, resolve } from 'node:path'
 import { PGlite } from '@electric-sql/pglite'
@@ -55,6 +55,13 @@ const fakeTwitch = createServer((req, res) => {
       res.statusCode = 400
       return res.end('{}')
     }
+    if (req.url === '/token') {
+      const code = new URLSearchParams(body).get('code')
+      const scope = code === 'g-noscope' ? 'openid' : 'https://www.googleapis.com/auth/youtube.upload'
+      if (code === 'g-code' || code === 'g-noscope') return res.end(JSON.stringify({ access_token: 'ga-access', refresh_token: 'gr-refresh', expires_in: 3600, scope }))
+      res.statusCode = 400
+      return res.end('{}')
+    }
     if (req.url === '/helix/users') {
       const who = req.headers.authorization === 'Bearer tok-invite' ? { id: '555', login: 'Invitee', display_name: 'Invitee' } : { id: '666', login: 'stranger', display_name: 'Stranger' }
       return res.end(JSON.stringify({ data: [who] }))
@@ -66,7 +73,7 @@ const fakeTwitch = createServer((req, res) => {
 await new Promise(r => fakeTwitch.listen(3397, '127.0.0.1', r))
 
 // --- serveur
-const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397' }
+const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397', GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsec', GOOGLE_TOKEN_URL: 'http://127.0.0.1:3397/token', CLIPPEAK_TOKEN_KEY: randomBytes(32).toString('base64') }
 const cwd = join(DATA, 'cwd'); mkdirSync(cwd, { recursive: true })
 const logFd = openSync(join(DATA, 'server.log'), 'w')
 const server = spawn('node', [join(ROOT, '.output', 'server', 'index.mjs')], { env, cwd, stdio: ['ignore', logFd, logFd] })
@@ -377,6 +384,78 @@ try {
   assert.equal((await call('/api/studio/channels', as(sessionCookie.split('=')[1]))).json.channels.some(c => c.demo), false)
   assert.equal((await call('/api/admin/logout', { ...asAdmin(), method: 'POST' })).status, 200)
   ok('un streamer connecte n\'accede ni aux routes admin (invitations, demonstration, feedbacks) ni a la demonstration')
+
+  // --- publication : connexion YouTube (faux Google), programmation, annulation, cloisonnement
+  await q(`INSERT INTO studio_sessions (id, channel_id, token_hash, expires_at) VALUES (gen_random_uuid(), $1, $2, now() + interval '1 day')`, [channelId, sha('jeton-pub')])
+  const pub = as('jeton-pub')
+  const conns = (await call(`/api/studio/channels/${channelId}/connections`, pub)).json.connections
+  assert.deepEqual(conns.map(c => [c.platform, c.available, c.connected]), [['youtube', true, false], ['tiktok', false, false], ['instagram', false, false]])
+  assert.equal((await call(`/api/studio/channels/${channelId}/connections`, as(sessionCookie.split('=')[1]))).status, 404)
+  const publish = (id, body, who = pub) => call(`/api/studio/clips/${id}/publish`, { ...who, method: 'POST', body })
+  assert.equal((await publish(reviewId, { platform: 'youtube' })).status, 409)
+  assert.equal((await publish(queuedId, { platform: 'youtube' })).status, 409)
+  ok('connexions : YouTube disponible et non connecte, TikTok / Instagram pas encore ; publier sans compte connecte ou sans approbation = 409')
+
+  const ytStart = await redirect('/api/auth/youtube')
+  assert.equal(ytStart.status, 302); assert.equal(ytStart.headers.get('location'), '/connexion')
+  const ytAdmin = await fetch(B + '/api/auth/youtube', { redirect: 'manual', headers: { cookie: adminCookie } })
+  assert.equal(ytAdmin.headers.get('location'), '/studio?connect=admin')
+  const ytGo = await fetch(B + '/api/auth/youtube', { redirect: 'manual', headers: { cookie: 'clippeak_session=jeton-pub' } })
+  assert.equal(ytGo.status, 302)
+  const goUrl = new URL(ytGo.headers.get('location'))
+  assert.equal(goUrl.origin + goUrl.pathname, 'https://accounts.google.com/o/oauth2/v2/auth')
+  assert.equal(goUrl.searchParams.get('scope'), 'https://www.googleapis.com/auth/youtube.upload')
+  assert.equal(goUrl.searchParams.get('access_type'), 'offline')
+  const stateCookie = ytGo.headers.getSetCookie().find(c => c.startsWith('clippeak_oauth_yt=')).split(';')[0]
+  assert.ok(ytGo.headers.getSetCookie().join(';').includes('HttpOnly'))
+  const state = stateCookie.split('=')[1]
+  assert.equal(goUrl.searchParams.get('state'), state)
+  const cb = (code, st, cookie) => fetch(B + `/api/auth/youtube/callback?code=${code}&state=${st}`, { redirect: 'manual', headers: { cookie } })
+  assert.equal((await cb('g-code', 'autre', `clippeak_session=jeton-pub; ${stateCookie}`)).headers.get('location'), '/studio?connect=error')
+  assert.equal((await cb('g-noscope', state, `clippeak_session=jeton-pub; ${stateCookie}`)).headers.get('location'), '/studio?connect=error')
+  assert.equal((await cb('g-code', state, stateCookie)).headers.get('location'), '/connexion')
+  assert.equal((await fetch(B + '/api/auth/youtube/callback?error=access_denied', { redirect: 'manual', headers: { cookie: 'clippeak_session=jeton-pub' } })).headers.get('location'), '/studio?connect=cancelled')
+  assert.equal((await cb('g-code', state, `clippeak_session=jeton-pub; ${stateCookie}`)).headers.get('location'), '/studio?connect=youtube')
+  const [saved] = await q(`SELECT access_token_enc, refresh_token_enc, scopes FROM platform_connections WHERE channel_id = $1`, [channelId])
+  assert.ok(saved.refresh_token_enc.startsWith('v1.') && !saved.refresh_token_enc.includes('gr-refresh') && !saved.access_token_enc.includes('ga-access'))
+  assert.equal((await call(`/api/studio/channels/${channelId}/connections`, pub)).json.connections[0].connected, true)
+  ok('connexion YouTube : depart vers Google (portee minimale, hors ligne, etat en cookie HttpOnly), etat faux / droit refuse / sans session / annulation geres, jetons CHIFFRES en base')
+
+  assert.equal((await publish(reviewId, { platform: 'tiktok' })).status, 400)
+  assert.equal((await publish(reviewId, { platform: 'youtube', at: 'demain' })).status, 400)
+  assert.equal((await publish(reviewId, { platform: 'youtube', at: new Date(Date.now() + 90 * 24 * 3600 * 1000).toISOString() })).status, 400)
+  assert.equal((await publish(otherClip, { platform: 'youtube' })).status, 404)
+  assert.equal((await publish(reviewId, { platform: 'youtube' }, as(sessionCookie.split('=')[1]))).status, 404)
+  assert.equal((await publish(reviewId, { platform: 'youtube' }, { auth: false })).status, 401)
+  const in2h = new Date(Date.now() + 2 * 3600 * 1000).toISOString()
+  const first = await publish(reviewId, { platform: 'youtube', at: in2h })
+  assert.equal(first.status, 200); assert.equal(first.json.status, 'scheduled')
+  const second = await publish(reviewId, { platform: 'youtube', at: new Date(Date.now() + 48 * 3600 * 1000).toISOString() })
+  assert.equal(second.json.id, first.json.id)
+  const [{ n: pubCount }] = await q(`SELECT count(*)::int AS n FROM publications WHERE clip_job_id = $1`, [reviewId])
+  assert.equal(pubCount, 1)
+  const listed = (await call('/api/studio/clips?status=all', pub)).json.clips.find(c => c.id === reviewId)
+  assert.equal(listed.publications.length, 1); assert.equal(listed.publications[0].status, 'scheduled')
+  assert.equal((await call(`/api/studio/publications/${first.json.id}`, { ...as(sessionCookie.split('=')[1]), method: 'DELETE' })).status, 404)
+  assert.equal((await call(`/api/studio/publications/${first.json.id}`, { ...pub, method: 'DELETE' })).status, 200)
+  const again = await publish(reviewId, { platform: 'youtube' })
+  assert.equal(again.json.id, first.json.id)
+  const [{ scheduled_at: nowAt }] = await q(`SELECT scheduled_at FROM publications WHERE id = $1`, [first.json.id])
+  assert.ok(Math.abs(new Date(nowAt + 'Z').getTime() - Date.now()) < 60_000 || Math.abs(new Date(nowAt).getTime() - Date.now()) < 3 * 3600 * 1000)
+  ok('programmation : plateforme et heure validees, un seul enregistrement par clip et plateforme (reprogrammer le met a jour), annulation, autre chaine = 404, sans heure = maintenant')
+
+  await q(`UPDATE publications SET status = 'published', external_url = 'https://www.youtube.com/shorts/V1' WHERE id = $1`, [first.json.id])
+  assert.equal((await publish(reviewId, { platform: 'youtube' })).status, 409)
+  assert.equal((await call(`/api/studio/publications/${first.json.id}`, { ...pub, method: 'DELETE' })).status, 409)
+  await q(`UPDATE publications SET status = 'scheduled', external_url = NULL WHERE id = $1`, [first.json.id])
+  assert.equal((await call(`/api/studio/channels/${channelId}/connections/youtube`, { ...as(sessionCookie.split('=')[1]), method: 'DELETE' })).status, 404)
+  assert.equal((await call(`/api/studio/channels/${channelId}/connections/tiktok`, { ...pub, method: 'DELETE' })).status, 404)
+  assert.equal((await call(`/api/studio/channels/${channelId}/connections/youtube`, { ...pub, method: 'DELETE' })).status, 200)
+  const [afterDisconnect] = await q(`SELECT status FROM publications WHERE id = $1`, [first.json.id])
+  assert.equal(afterDisconnect.status, 'cancelled')
+  assert.equal((await q(`SELECT 1 FROM platform_connections WHERE channel_id = $1`, [channelId])).length, 0)
+  assert.equal((await call(`/api/studio/channels/${channelId}/connections/youtube`, { ...pub, method: 'DELETE' })).status, 404)
+  ok('publie = ni reprogrammable ni annulable (409) ; deconnecter efface les jetons et annule les publications programmees')
 
   console.log('API_IT_OK')
 } catch (error) {

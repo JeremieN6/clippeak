@@ -31,7 +31,7 @@ Chiffres vérifiés par recherche le 2026-10-28 ; les limites changent, les reli
 - Limite : 100 publications par compte et par 24 h (50 dans d'anciennes pages de la documentation).
 - Validation par Meta (App Review) nécessaire pour des utilisateurs qui n'ont pas de rôle sur l'application.
 
-## Ce que le code devra faire (étape suivante)
+## Ce que le code fait (YouTube : fait le 2026-10-28, TikTok et Instagram : à faire)
 - Table de connexions par chaîne et plateforme (jetons chiffrés, clé hors dépôt), table de publications (plateforme, créneau, statut, identifiant externe, erreur).
 - Statuts de clip : `approved` -> `scheduled` -> `published` / `publish_failed`.
 - Étape du worker qui publie à l'heure prévue, avec nouvelle tentative limitée et message clair en cas d'échec.

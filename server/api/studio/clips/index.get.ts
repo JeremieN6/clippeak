@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
     where: { ...(status ? { status } : {}), ...(channelId ? { moment: { vod: { channelId } } } : {}) },
     orderBy: [{ batch: 'desc' }, { createdAt: 'asc' }],
     take: status ? 100 : 300,
-    include: { moment: { include: { vod: { select: { twitchVodId: true, title: true, channel: { select: { displayName: true } } } } } } }
+    include: { publications: true, moment: { include: { vod: { select: { twitchVodId: true, title: true, channel: { select: { displayName: true } } } } } } }
   })
 
   return {
@@ -36,6 +36,7 @@ export default defineEventHandler(async (event) => {
       error: job.error,
       qc: job.qc,
       illustrations: job.illustrations,
+      publications: job.publications.map(p => ({ id: p.id, platform: p.platform, status: p.status, scheduledAt: p.scheduledAt, publishedAt: p.publishedAt, url: p.externalUrl, error: p.error })),
       reviewNote: job.reviewNote,
       score: job.moment.aiScore,
       rationale: job.moment.rationale,

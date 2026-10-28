@@ -51,6 +51,13 @@ const lots = computed(() => lotOptions.value.map((n) => {
 
 const toggleLot = (n: number, open: boolean) => { openLots[String(n)] = !open }
 
+const pubSummary = computed(() => {
+  const all = clips.value.flatMap(c => c.publications)
+  const scheduled = all.filter(p => p.status === 'scheduled').length
+  const published = all.filter(p => p.status === 'published').length
+  return [scheduled ? `${scheduled} programmé(s)` : '', published ? `${published} publié(s)` : ''].filter(Boolean).join(' · ')
+})
+
 const reviewCount = computed(() => count('review'))
 const approvedCount = computed(() => count('approved'))
 const next = computed(() => reviewCount.value > 0
@@ -93,6 +100,8 @@ const selectClass = 'st-field !min-h-11 !w-full sm:!w-auto sm:min-w-[140px]'
         <h1 class="st-title m-0 text-[28px] font-bold leading-tight sm:text-[32px]">Tableau de bord</h1>
         <button type="button" class="st-btn-ghost" :disabled="studio.busy.value" @click="studio.run(studio.loadClips)">Actualiser</button>
       </div>
+
+      <p v-if="pubSummary" class="st-pop m-0 -mt-4 text-sm font-semibold text-[#6EDDB8]">{{ pubSummary }}</p>
 
       <section class="flex flex-col justify-between gap-3.5 rounded-2xl border border-[#4B3A86] bg-[#1E1833] p-6">
         <div class="flex flex-col gap-1.5">

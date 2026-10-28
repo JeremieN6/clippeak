@@ -9,7 +9,11 @@ export interface StudioClip {
   illustrations: Array<{ path: string, source: string }> | null, reviewNote: string | null, score: number | null
   kind: string | null, category: string | null, hook: string | null, rationale: string | null, scorer: string | null
   channel: string, videoUrl: string | null, origin: 'chat' | 'ref', createdAt: string, durationSec: number | null
+  publications: StudioPublication[]
 }
+
+export interface StudioPublication { id: string, platform: string, status: string, scheduledAt: string, publishedAt: string | null, url: string | null, error: string | null }
+export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null }
 
 export const STEPS = [
   { n: 1, label: 'Tes clips de référence', tag: 'Obligatoire', required: true },
@@ -41,6 +45,7 @@ export function createStudio() {
   const detail = ref<any>(null)
   const bank = ref<any>(null)
   const clips = ref<StudioClip[]>([])
+  const connections = ref<StudioConnection[]>([])
 
   // 'onboarding' tant que le parcours n'est pas termine, puis 'dashboard' ; le streamer peut revenir a une etape depuis le tableau de bord.
   const view = ref<'onboarding' | 'dashboard'>('onboarding')
@@ -79,12 +84,17 @@ export function createStudio() {
     bank.value = await api(`/api/studio/channels/${channelId.value}/references`)
   }
 
+  async function loadConnections() {
+    if (!channelId.value) return
+    connections.value = (await api<{ connections: StudioConnection[] }>(`/api/studio/channels/${channelId.value}/connections`)).connections
+  }
+
   async function loadChannel() {
     if (!channelId.value) return
     detail.value = await api(`/api/studio/channels/${channelId.value}`)
     // L'interrupteur des sous-titres est dans la direction artistique : un ancien "desactive" des reglages est repris.
     if (detail.value.settings && detail.value.settings.subtitles === false) detail.value.style.subtitles.enabled = false
-    await loadBank()
+    await Promise.all([loadBank(), loadConnections()])
   }
 
   async function loadClips() {
@@ -245,7 +255,9 @@ export function createStudio() {
       case 6: return base(`${d?.keywords.length ?? 0} mot(s) de chat, clips de ${d?.clipMinSec ?? '?'} à ${d?.clipMaxSec ?? '?'} secondes.`, 'Passée : les réglages par défaut sont utilisés.')
       case 7: {
         const chosen = o?.platforms ?? []
-        if (chosen.length) return { status: 'warn', text: `${chosen.length} plateforme(s) choisie(s). La connexion n’est pas encore disponible : télécharge tes clips en attendant.` }
+        const linked = connections.value.filter(c => c.connected).length
+        if (linked) return { status: 'ok', text: `${linked} compte(s) connecté(s) : tu peux publier tes clips approuvés depuis le tableau de bord.` }
+        if (chosen.length) return { status: 'warn', text: `${chosen.length} plateforme(s) choisie(s), aucune connectée : télécharge tes clips en attendant.` }
         return done || skipped ? { status: 'skip', text: 'Aucune publication automatique. Les clips sont à télécharger.' } : { status: 'todo', text: 'Pas encore faite.' }
       }
       default: return { status: 'todo', text: '' }
@@ -327,8 +339,27 @@ export function createStudio() {
     await loadClips()
   }, `${list.length} clip(s) approuvé(s). Rien n’a été publié.`)
 
+  // --- Publication -------------------------------------------------------------------------------------------------
+
+  const disconnectPlatform = (platform: string) => run(async () => {
+    await api(`/api/studio/channels/${channelId.value}/connections/${platform}`, { method: 'DELETE' })
+    await Promise.all([loadConnections(), loadClips()])
+  }, 'Compte déconnecté. Les publications programmées sur cette plateforme sont annulées.')
+
+  // `at` null : maintenant. Rien ne part sans cet appel : approuver ne publie pas.
+  const publishClip = (clip: StudioClip, platform: string, at: Date | null) => run(async () => {
+    await api(`/api/studio/clips/${clip.id}/publish`, { method: 'POST', body: { platform, at: at ? at.toISOString() : undefined } })
+    await loadClips()
+  }, at ? 'Publication programmée.' : 'Publication lancée : elle part dans quelques instants.')
+
+  const cancelPublication = (id: string) => run(async () => {
+    await api(`/api/studio/publications/${id}`, { method: 'DELETE' })
+    await loadClips()
+  }, 'Publication annulée.')
+
   return {
-    connected, error, notice, busy, channels, channelId, detail, bank, clips, view, step, onboarding, mode,
+    connected, error, notice, busy, channels, channelId, detail, bank, clips, connections, view, step, onboarding, mode,
+    disconnectPlatform, publishClip, cancelPublication, loadConnections,
     api, run, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, advance, finishOnboarding, goToStep, stepStatus,
     addAssets, saveAsset, removeAsset, addReferences, saveStat, removeReference, reviewClip, approveMany

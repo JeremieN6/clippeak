@@ -3,6 +3,7 @@
 // (chaque plateforme doit d'abord valider Clippeak) : le choix est enregistre, et le telechargement des clips reste la voie sure.
 const studio = useStudio()
 const chosen = computed<string[]>(() => studio.onboarding.value?.platforms ?? [])
+const conn = (id: string) => studio.connections.value.find(c => c.platform === id)
 
 function toggle(id: string) {
   studio.setPlatforms(chosen.value.includes(id) ? chosen.value.filter(p => p !== id) : [...chosen.value, id])
@@ -24,8 +25,18 @@ function toggle(id: string) {
           <input type="checkbox" :checked="chosen.includes(p.id)" :disabled="studio.busy.value" :aria-label="`Publier sur ${p.name}`" class="m-0 h-6 w-6 flex-none accent-[#7C3AED]" @change="toggle(p.id)">
         </label>
         <div v-if="chosen.includes(p.id)" class="flex flex-col gap-3 border-t border-[#2C2837] pb-5 pt-4">
-          <div><span class="st-badge st-badge-neutral">Connexion bientôt disponible</span></div>
-          <div class="text-sm leading-relaxed st-muted">Ton choix est enregistré. En attendant, tu peux télécharger tes clips approuvés et les publier toi-même.</div>
+          <template v-if="conn(p.id)?.available">
+            <div v-if="conn(p.id)?.connected" class="flex flex-wrap items-center gap-3">
+              <span class="st-badge st-badge-ok st-pop">Connecté</span>
+              <button type="button" class="st-btn-quiet" :disabled="studio.busy.value" @click="studio.disconnectPlatform(p.id)">Déconnecter</button>
+            </div>
+            <div v-else><a href="/api/auth/youtube" class="st-btn no-underline">Connecter {{ p.name }}</a></div>
+            <div class="text-sm leading-relaxed st-muted">Clippeak publie seulement un clip que tu as approuvé, quand tu le demandes. Tant que Google n’a pas validé Clippeak, YouTube garde ces vidéos en privé.</div>
+          </template>
+          <template v-else>
+            <div><span class="st-badge st-badge-neutral">Connexion bientôt disponible</span></div>
+            <div class="text-sm leading-relaxed st-muted">Ton choix est enregistré. En attendant, tu peux télécharger tes clips approuvés et les publier toi-même.</div>
+          </template>
         </div>
       </div>
     </fieldset>

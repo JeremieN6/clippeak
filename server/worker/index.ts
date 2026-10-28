@@ -7,6 +7,7 @@ import { retrying } from '../utils/clipping/dbRetry'
 import { commandWorks, hasBlockingIssue, REQUIRED_SCHEMA, runPreflight } from '../utils/clipping/preflight'
 import { analysisStep, liveAnalysisStep } from './analysis'
 import { notifyStep } from './notify'
+import { publishStep } from './publish'
 import { referenceStep } from './reference'
 import { similarityScanStep } from './similarityScan'
 import { renderClip } from './render'
@@ -58,8 +59,8 @@ async function main() {
   const summary = await runClipWorker({
     store: retrying(createPrismaClipQueueStore(prisma), { onRetry: (error, attempt) => console.warn(`[worker] base injoignable (tentative ${attempt}), nouvel essai`) }),
     render: renderClip,
-    // Quand la file de rendu est vide : VOD terminee, puis tranche de live, puis notification de lot.
-    idleTask: async () => (await referenceStep()) || (await analysisStep()) || (await liveAnalysisStep()) || (await notifyStep()) || (await similarityScanStep()),
+    // Quand la file de rendu est vide : publication echue, VOD terminee, puis tranche de live, puis notification de lot.
+    idleTask: async () => (await publishStep()) || (await referenceStep()) || (await analysisStep()) || (await liveAnalysisStep()) || (await notifyStep()) || (await similarityScanStep()),
     pollMs,
     shouldStop: () => stopping,
     log: (message, detail) => (detail === undefined ? console.info('[worker]', message) : console.error('[worker]', message, detail))
