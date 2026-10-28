@@ -4,6 +4,7 @@ import { readEnv } from '../../../utils/env'
 import { requireStudioAdmin, uuidSchema } from '../../../utils/studioAuth'
 import { createTwitchApi, TwitchApiError } from '../../../utils/clipping/twitchApi'
 import { parseTwitchVodId } from '../../../utils/clipping/vodUrl'
+import { fetchVodMasterPlaylist, VodPlaylistError } from '../../../utils/clipping/vodPlaylist'
 
 const schema = z.object({ channelId: uuidSchema, url: z.string().max(300) })
 
@@ -36,7 +37,16 @@ export default defineEventHandler(async (event) => {
   }
   if (!video) throw createError({ statusCode: 404, statusMessage: 'VOD introuvable : elle est supprimée ou le lien est faux' })
   if (video.type !== 'archive') throw createError({ statusCode: 400, statusMessage: `Seules les rediffusions de live sont acceptées (celle-ci est de type « ${video.type} »)` })
-  if (video.viewable !== 'public') throw createError({ statusCode: 400, statusMessage: 'Cette VOD n’est pas publique (réservée aux abonnés ?) : Clippeak ne peut pas la lire' })
+  // Helix annonce « public » meme pour une VOD d'abonnes : la vraie verification est un essai de lecture, comme le fera le worker.
+  if (video.viewable !== 'public') throw createError({ statusCode: 400, statusMessage: 'Cette VOD n’est pas publique : Clippeak ne peut pas la lire' })
+  try {
+    await fetchVodMasterPlaylist(twitchVodId, fetch, { gql: readEnv('TWITCH_GQL_URL') || undefined, usher: readEnv('TWITCH_USHER_URL') || undefined })
+  } catch (error) {
+    if (error instanceof VodPlaylistError && error.kind === 'restricted') {
+      throw createError({ statusCode: 400, statusMessage: 'Cette VOD est réservée aux abonnés (ou protégée) : Twitch refuse de la lire à Clippeak. Choisis une VOD publique, ou passe-la en public chez Twitch.' })
+    }
+    throw createError({ statusCode: 502, statusMessage: 'Impossible de vérifier que Twitch laisse lire cette VOD. Réessaie dans un instant.' })
+  }
 
   const endedAt = new Date(video.createdAt.getTime() + video.durationSec * 1000)
   const vod = await prisma.vod.create({
