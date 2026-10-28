@@ -488,6 +488,8 @@ try {
 
   const listedVods = (await call('/api/admin/vods')).json.vods
   assert.equal(listedVods.length, 1); assert.equal(listedVods[0].status, 'ended'); assert.equal(listedVods[0].clips, 0)
+  assert.equal(listedVods[0].durationSec, 3 * 3600)
+  assert.deepEqual(listedVods[0].progress, { phase: 'waiting', estimateSec: 120 + 270, clipsTotal: 0, clipsInProgress: 0 })
   assert.equal((await call(`/api/admin/vods/${added.json.id}/retry`, { method: 'POST' })).status, 409)
   await q(`UPDATE vods SET status = 'failed' WHERE id = $1`, [added.json.id])
   assert.equal((await call(`/api/admin/vods/${added.json.id}/retry`, { method: 'POST' })).status, 200)
