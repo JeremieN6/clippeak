@@ -6,7 +6,7 @@ const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Couleur au format #RRGGBB')
 
 const settingsSchema = z.object({
   keywords: z.array(z.string().trim().min(1).max(40)).min(1).max(60),
-  clipMinSec: z.number().int().min(10).max(120),
+  clipMinSec: z.number().int().min(15).max(120),
   clipMaxSec: z.number().int().min(15).max(180),
   subtitles: z.boolean(),
   accentColor: hex,

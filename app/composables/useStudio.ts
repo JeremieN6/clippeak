@@ -230,6 +230,13 @@ export function createStudio() {
     await putStyle()
   })
 
+  // Hashtags du streamer (2 au plus) : sans # ni espace, 3 a 30 lettres ou chiffres ; enregistres tout de suite.
+  const setCaptionTags = (tags: string[]) => run(async () => {
+    const clean = tags.map(t => t.trim().replace(/^#+/, '').replace(/\s+/g, '')).filter(t => /^[\p{L}\p{N}_]{3,30}$/u.test(t))
+    detail.value.style.caption = { tags: [...new Set(clean)].slice(0, 2) }
+    await putStyle()
+  }, 'Enregistré.')
+
   // Passe a l'etape suivante apres avoir enregistre ce qu'elle contient. Les etapes 3 a 5 partagent le meme style, 6 les reglages.
   const advance = (kind: 'done' | 'skipped') => run(async () => {
     const n = step.value
@@ -400,7 +407,7 @@ export function createStudio() {
     connected, error, notice, busy, channels, channelId, detail, bank, clips, connections, vodAlerts, view, step, onboarding, mode,
     disconnectPlatform, publishClip, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
     api, run, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
-    saveLook, saveDetection, setPlatforms, advance, finishOnboarding, goToStep, stepStatus,
+    saveLook, saveDetection, setPlatforms, setCaptionTags, advance, finishOnboarding, goToStep, stepStatus,
     addAssets, saveAsset, removeAsset, addReferences, saveStat, removeReference, reviewClip, approveMany
   }
 }

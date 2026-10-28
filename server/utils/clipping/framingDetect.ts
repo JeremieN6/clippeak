@@ -32,7 +32,7 @@ export function framingFromHits(hits: FaceHit[], options: { minHits?: number, ta
   const cx = median(found.map(h => h.box.x + h.box.w / 2))
   const cy = median(found.map(h => h.box.y + h.box.h / 2))
   const faceH = median(found.map(h => h.box.h))
-  const zoom = clamp((options.targetFaceShare ?? 0.30) / Math.max(faceH, 0.01), 1, options.maxZoom ?? 3)
+  const zoom = clamp((options.targetFaceShare ?? 0.24) / Math.max(faceH, 0.01), 1, options.maxZoom ?? 2)
   return {
     centerX: round(clamp(cx, 0, 1)),
     centerY: round(clamp(cy + 0.1 / zoom, 0, 1)),

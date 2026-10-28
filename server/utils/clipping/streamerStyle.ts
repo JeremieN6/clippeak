@@ -76,6 +76,10 @@ const baseStyleSchema = z.object({
     // 'always' ; 'intro' (3 premieres secondes) ; 'outro' (3 dernieres secondes)
     appear: z.enum(['always', 'intro', 'outro']).default('always')
   }).prefault({}),
+  // Hashtags du streamer, ajoutes en tete de chaque legende (2 au plus, sans # ni espace).
+  caption: z.object({
+    tags: z.array(z.string().trim().transform(t => t.replace(/^#+/, '')).pipe(z.string().regex(/^[\p{L}\p{N}_]{3,30}$/u, 'Hashtag invalide'))).max(2).default([])
+  }).prefault({}),
   // Noms propres a ecrire exactement (controle qualite).
   names: z.array(z.string().trim().min(2).max(60)).max(100).default([]),
   // Illustrations en ecran scinde (dossier d'illustrations du streamer).

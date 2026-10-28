@@ -6,7 +6,8 @@ export interface CutSettings {
   // Pause entre deux mots au-dela de laquelle on coupe ; la pause conservee est ramenee a keepPauseSec.
   maxPauseSec?: number
   keepPauseSec?: number
-  // Marge gardee apres le dernier mot : la chute est passee, on ne finit pas sur un mot coupe.
+  // Marge MAXIMALE gardee apres le dernier mot : on laisse respirer la fin (le clip ne s'arrete pas net), sans jamais
+  // empieter sur le mot suivant ni garder plus de silence que necessaire.
   tailSec?: number
   // Marge avant la premiere syllabe de l'accroche.
   headSec?: number
@@ -96,7 +97,13 @@ export function planCut(segments: TranscriptSegment[], peakSec: number, settings
   if (!words.length) return null
 
   const head = settings.headSec ?? 0.15
-  const tail = settings.tailSec ?? 0.5
+  const tailMax = settings.tailSec ?? 1.2
+  // Marge apres un mot : la pause jusqu'au mot suivant moins 0,1 s, entre 0,15 s et tailMax.
+  const tailAfter = (word: TranscriptWord): number => {
+    const next = words[words.indexOf(word) + 1]
+    const gap = next ? next.start - word.end : Infinity
+    return Math.min(tailMax, Math.max(0.15, gap - 0.1))
+  }
   const starts = sentenceStarts(segments)
 
   // Fin : le chat reagit APRES la chute, donc on cherche la derniere phrase terminee juste avant (ou peu apres) le pic.
@@ -106,7 +113,7 @@ export function planCut(segments: TranscriptSegment[], peakSec: number, settings
   const lastWord = pool[pool.length - 1]
   const ends = phraseEnds(words)
   const closing = [...pool].reverse().find(w => ends.has(w) && w.end >= lastWord.end - 6) ?? lastWord
-  const endSec = closing.end + tail
+  const endSec = closing.end + tailAfter(closing)
 
   // Debut : on recule de phrase en phrase jusqu'a ce que la duree MONTEE (silences retires) atteigne minSec,
   // sans jamais depasser maxSec de duree brute.
@@ -127,7 +134,7 @@ export function planCut(segments: TranscriptSegment[], peakSec: number, settings
   if (durationSec < settings.minSec) {
     const later = words.filter(w => w.end > closing.end && ends.has(w))
     for (const word of later) {
-      const candidateEnd = word.end + tail
+      const candidateEnd = word.end + tailAfter(word)
       if (candidateEnd - startSec > settings.maxSec) break
       finalEnd = candidateEnd
       keepRanges = trimSilences(words, startSec, finalEnd, settings)
