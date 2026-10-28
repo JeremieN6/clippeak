@@ -15,7 +15,7 @@ test('token vault round-trips, never stores the clear text and rejects tampering
   assert.equal(decryptToken(stored, key), '1//refresh-secret')
   assert.notEqual(encryptToken('1//refresh-secret', key), stored)
   const parts = stored.split('.')
-  parts[3] = parts[3].replace(/.$/, c => (c === 'A' ? 'B' : 'A'))
+  parts[3] = (parts[3][0] === 'A' ? 'B' : 'A') + parts[3].slice(1)
   assert.throws(() => decryptToken(parts.join('.'), key))
   assert.throws(() => decryptToken(stored, parseKey(randomBytes(32).toString('base64'))))
   assert.throws(() => parseKey(undefined))

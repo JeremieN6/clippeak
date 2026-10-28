@@ -72,6 +72,7 @@ const date = (value: string) => new Date(value).toLocaleString('fr-FR', { day: '
           <a :href="v.url" target="_blank" rel="noopener" class="break-words text-[15px] font-bold text-white no-underline hover:underline">{{ v.title || `VOD ${v.twitchVodId}` }}</a>
           <div class="text-[13px] st-muted">Pour {{ v.channel }} · ajoutée {{ date(v.createdAt) }}<template v-if="detail(v)"> · {{ detail(v) }}</template></div>
         </div>
+        <p v-if="v.error && v.progress.phase === 'failed'" class="m-0 basis-full text-[13px] text-[#FF9B8D]">{{ v.error }}</p>
         <span class="st-badge" :class="phaseLook[v.progress.phase].cls">{{ phaseLook[v.progress.phase].label }}</span>
         <button v-if="v.status === 'failed'" type="button" class="st-btn-ghost" :disabled="admin.busy.value" @click="admin.retryVod(v.id)">Relancer</button>
         <button v-if="v.status !== 'analyzing' && !v.moments" type="button" class="st-btn-quiet !text-[#FF9B8D] text-sm" :disabled="admin.busy.value" :aria-label="`Retirer la VOD ${v.twitchVodId}`" @click="admin.removeVod(v.id)">Retirer</button>
