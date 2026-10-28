@@ -315,7 +315,7 @@ try {
   const [{ token_hash }] = await q(`SELECT token_hash FROM studio_sessions WHERE channel_id = $1`, [created.id])
   assert.notEqual(token_hash, sessionCookie.split('=')[1])
   const stranger = await redirect('/api/auth/twitch/callback?code=code-inconnu&state=abc', 'clippeak_oauth_state=abc')
-  assert.ok(stranger.headers.get('location').endsWith('login=refused'))
+  assert.ok(stranger.headers.get('location').startsWith('/attente?login='))
   const [{ k }] = await q(`SELECT count(*)::int AS k FROM channels WHERE twitch_id = '666'`)
   assert.equal(k, 0)
   const badCode = await redirect('/api/auth/twitch/callback?code=mauvais&state=abc', 'clippeak_oauth_state=abc')
