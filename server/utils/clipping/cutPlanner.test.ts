@@ -92,3 +92,16 @@ test('planCut uses pauses as phrase boundaries when the transcript has no punctu
   assert.ok(longer.endSec > plan.endSec)
   assert.ok(/fin$/.test(longer.lastWords))
 })
+
+test('planCut leaves a breathing tail after the punchline, bounded by the next word and by tailSec', () => {
+  const lead = speech(words(['Alors', 'hier', 'je', 'suis', 'alle', 'au', 'marche', 'et', 'la', 'chute.'], 100, 0.35))
+  const end = lead[0].end
+  // La parole reprend bien plus tard : la marge atteint tailSec (1,2 s par defaut), plus long que l'ancien 0,5 s.
+  const roomy = planCut([...lead, ...speech([{ text: 'Bref', at: end + 4 }])], 103, { minSec: 3, maxSec: 40 })!
+  assert.ok(Math.abs(roomy.endSec - (end + 1.2)) < 0.01)
+  assert.ok(planCut([...lead, ...speech([{ text: 'Bref', at: end + 4 }])], 103, { minSec: 3, maxSec: 40, tailSec: 0.5 })!.endSec - end < 0.51)
+  // Le mot suivant arrive vite : on s'arrete avant lui, jamais au milieu.
+  const tight = planCut([...lead, ...speech([{ text: 'Et', at: end + 0.35 }])], 103.4, { minSec: 3, maxSec: 40, graceSec: 0.1 })!
+  assert.ok(tight.endSec < end + 0.35)
+  assert.ok(tight.endSec - end >= 0.15)
+})

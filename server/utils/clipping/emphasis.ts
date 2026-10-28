@@ -34,10 +34,25 @@ interface Candidate {
   score: number
 }
 
-const LEVELS: Record<Exclude<EmphasisLevel, 'off'>, { threshold: number, perSentence: number, longPerSentence: number, maxShare: number }> = {
-  low: { threshold: 0.55, perSentence: 1, longPerSentence: 1, maxShare: 0.1 },
-  normal: { threshold: 0.4, perSentence: 1, longPerSentence: 2, maxShare: 0.16 },
-  high: { threshold: 0.28, perSentence: 2, longPerSentence: 3, maxShare: 0.24 }
+// maxGap : nombre de mots au-dela duquel on ajoute un mot en couleur (pris au hasard dans le trou, deterministe par clip),
+// pour que la couleur revienne regulierement sans jamais colorer deux mots voisins.
+const LEVELS: Record<Exclude<EmphasisLevel, 'off'>, { threshold: number, perSentence: number, longPerSentence: number, maxShare: number, maxGap: number }> = {
+  low: { threshold: 0.55, perSentence: 1, longPerSentence: 1, maxShare: 0.1, maxGap: 12 },
+  normal: { threshold: 0.4, perSentence: 1, longPerSentence: 2, maxShare: 0.16, maxGap: 7 },
+  high: { threshold: 0.28, perSentence: 2, longPerSentence: 3, maxShare: 0.24, maxGap: 5 }
+}
+
+const MIN_SPACING = 3
+
+// Generateur pseudo-aleatoire deterministe (meme clip = meme rendu, y compris en cas de nouvel essai).
+function seededRandom(seed: string): () => number {
+  let h = 2166136261
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619)
+  return () => {
+    h = Math.imul(h ^ (h >>> 15), 2246822507)
+    h = Math.imul(h ^ (h >>> 13), 3266265131)
+    return ((h ^= h >>> 16) >>> 0) / 4294967296
+  }
 }
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
@@ -107,5 +122,35 @@ export function pickEmphasisWords(words: EmphasisWord[], level: EmphasisLevel): 
     if (chosen.has(candidate.index - 1) || chosen.has(candidate.index + 1)) continue
     chosen.add(candidate.index)
   }
+
+  fillGaps(words, chosen, rule.maxGap)
   return chosen
+}
+
+// Mot qu'on accepte de colorer par rythme : ni mot vide ni mot de remplissage, 4 lettres ou un chiffre.
+function eligible(word: EmphasisWord): boolean {
+  const norm = normalize(word.text)
+  return Boolean(norm) && !EMPTY_WORDS.has(norm) && (norm.length >= 4 || /\d/.test(word.text))
+}
+
+// Trous trop longs sans mot colore : on y met un mot pris au hasard, a MIN_SPACING mots au moins de ses voisins colores.
+function fillGaps(words: EmphasisWord[], chosen: Set<number>, maxGap: number): void {
+  const random = seededRandom(words.map(w => w.text).join(' '))
+  let guard = words.length
+  for (;;) {
+    const marks = [-1, ...[...chosen].sort((a, b) => a - b), words.length]
+    let filled = false
+    for (let m = 0; m + 1 < marks.length; m++) {
+      const from = marks[m]
+      const to = marks[m + 1]
+      if (to - from - 1 <= maxGap) continue
+      const options: number[] = []
+      for (let i = from + (from < 0 ? 1 : MIN_SPACING); i <= to - (to >= words.length ? 1 : MIN_SPACING); i++) if (eligible(words[i])) options.push(i)
+      if (!options.length) continue
+      chosen.add(options[Math.floor(random() * options.length)])
+      filled = true
+      break
+    }
+    if (!filled || --guard <= 0) return
+  }
 }

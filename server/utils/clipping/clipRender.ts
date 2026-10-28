@@ -219,6 +219,12 @@ export function buildRenderArgs(spec: RenderSpec): { args: string[], filterCompl
     audioOut = 'am'
   }
 
+  // Fin adoucie : le son s'eteint sur 0,5 s au lieu de s'arreter net (l'image reste, jamais de fondu au noir).
+  if (durationSec > 4) {
+    filters.push(`[${audioOut}]afade=t=out:st=${num(durationSec - 0.5)}:d=0.5[afo]`)
+    audioOut = 'afo'
+  }
+
   const preset = spec.preset ?? 'veryfast'
   const crf = spec.crf ?? 22
   const filterComplex = filters.join(';')

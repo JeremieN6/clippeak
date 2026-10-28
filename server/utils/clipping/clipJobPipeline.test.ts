@@ -89,7 +89,7 @@ test('real ffmpeg: renderJob produces a clean vertical clip, passes QC and build
     assert.ok(existsSync(result.outputPath))
     assert.equal(result.qc.passed, true)
     assert.equal(result.title, 'Alors hier je suis alle au marche')
-    assert.match(result.caption, /#streamer/)
+    assert.ok(!/#streamer/.test(result.caption))
     assert.ok(result.plan.keepRanges.length >= 1)
   } finally {
     rmSync(dir, { recursive: true, force: true })

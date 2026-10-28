@@ -5,6 +5,8 @@ const studio = useStudio()
 const chosen = computed<string[]>(() => studio.onboarding.value?.platforms ?? [])
 const conn = (id: string) => studio.connections.value.find(c => c.platform === id)
 
+const tags = computed<string[]>(() => studio.detail.value?.style.caption?.tags ?? [])
+
 function toggle(id: string) {
   studio.setPlatforms(chosen.value.includes(id) ? chosen.value.filter(p => p !== id) : [...chosen.value, id])
 }
@@ -40,6 +42,11 @@ function toggle(id: string) {
         </div>
       </div>
     </fieldset>
+
+    <div class="st-card flex flex-col gap-3">
+      <div><div class="text-base font-bold">Tes hashtags</div><div class="st-hint">1 ou 2 hashtags à toi, placés en premier dans la légende de chaque clip (par exemple le nom de ta communauté). Clippeak ajoute ensuite 2 ou 3 hashtags liés au clip, jamais ton pseudo.</div></div>
+      <StudioChips :model-value="tags" input-id="st-caption-tags" placeholder="Ajouter un hashtag, puis Entrée" :max="2" @update:model-value="studio.setCaptionTags" />
+    </div>
 
     <div class="st-alert st-alert-info">
       <div><strong class="font-extrabold">La publication automatique dépend de chaque plateforme.</strong> <span class="text-[#B9D2FF]">Chacune doit d’abord accepter Clippeak, ce qui peut prendre du temps. En attendant, tu peux toujours télécharger tes clips et les publier toi-même.</span></div>

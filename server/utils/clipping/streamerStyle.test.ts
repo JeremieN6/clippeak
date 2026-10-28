@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseStyle, referencedSoundAssets, resolveStyle, styleSchema } from './streamerStyle.ts'
+import { defaultStyle, parseStyle, referencedSoundAssets, resolveStyle, styleSchema } from './streamerStyle.ts'
 import { titleLayout } from './assBuilder.ts'
 
 const ID = '11111111-1111-4111-8111-111111111111'
@@ -46,4 +46,12 @@ test('title layout follows the font size: default size keeps 24 characters on 3 
   assert.equal(titleLayout(40, 2).maxLines, 2)
   const resolved = resolveStyle(parseStyle({ title: { fontSize: 100 } }), settings, {}, 30).title
   assert.deepEqual([resolved.maxCharsPerLine, resolved.maxLines], [titleLayout(100, 3).maxCharsPerLine, titleLayout(100, 3).maxLines])
+})
+
+test('caption tags: at most two, # removed, invalid ones refused, empty by default', () => {
+  assert.deepEqual(defaultStyle().caption.tags, [])
+  assert.deepEqual(parseStyle({ caption: { tags: ['#TeamF7', 'gaming'] } }).caption.tags, ['TeamF7', 'gaming'])
+  assert.throws(() => parseStyle({ caption: { tags: ['a', 'bbb'] } }))
+  assert.throws(() => parseStyle({ caption: { tags: ['un deux'] } }))
+  assert.throws(() => parseStyle({ caption: { tags: ['aaa', 'bbb', 'ccc'] } }))
 })

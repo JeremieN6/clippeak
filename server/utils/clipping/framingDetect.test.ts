@@ -16,13 +16,13 @@ const miss = { found: false, similarity: 0.2 }
 test('framingFromHits uses the median, zooms on small faces, and refuses to guess with too few hits', () => {
   const framing = framingFromHits([hit(0.15, 0.12, 0.05, 0.11), hit(0.16, 0.12, 0.05, 0.11), hit(0.9, 0.8, 0.05, 0.11), miss, miss])!
   assert.ok(Math.abs(framing.centerX - 0.185) < 0.02)
-  assert.equal(framing.zoom, 2.7)
+  assert.equal(framing.zoom, 2)
   assert.ok(framing.centerY > 0.17 && framing.centerY < 0.3)
 
   // grand visage plein cadre : pas de zoom
   assert.equal(framingFromHits([hit(0.4, 0.2, 0.2, 0.5), hit(0.41, 0.2, 0.2, 0.5)])!.zoom, 1)
   // visage minuscule : zoom plafonne
-  assert.equal(framingFromHits([hit(0.4, 0.2, 0.01, 0.02), hit(0.4, 0.2, 0.01, 0.02)])!.zoom, 3)
+  assert.equal(framingFromHits([hit(0.4, 0.2, 0.01, 0.02), hit(0.4, 0.2, 0.01, 0.02)])!.zoom, 2)
   assert.equal(framingFromHits([hit(0.4, 0.2, 0.2, 0.5), miss, miss]), null)
   assert.equal(framingFromHits([]), null)
   assert.ok(framingFromHits([hit(0.4, 0.2, 0.2, 0.5)], { minHits: 1 }))

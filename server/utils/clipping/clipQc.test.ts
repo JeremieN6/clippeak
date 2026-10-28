@@ -44,11 +44,13 @@ test('checkNames flags near misses of the streamer dictionary but not exact spel
   assert.equal(checkNames(['bonjour tout le monde'], ['Yassencore']).length, 0)
 })
 
-test('buildCaption builds a caption and unique, clean hashtags', () => {
-  const { caption, hashtags } = buildCaption({ title: 'Il a retrouve son pere', hook: 'Hier je suis alle au marche', channelName: 'Jérémie_F7', category: 'Just Chatting', keywords: ['mdr', 'Just Chatting'] })
-  assert.deepEqual(hashtags, ['#jeremief7', '#justchatting', '#mdr', '#twitch', '#clip', '#fyp'])
-  assert.match(caption, /^Il a retrouve son pere\nHier je suis alle au marche\n\n#jeremief7/)
-  assert.equal(buildCaption({ title: 'A', channelName: 'x', maxHashtags: 2 }).hashtags.length, 2)
+test('buildCaption: streamer tags first, then clip tags, never the channel name nor generic tags', () => {
+  const { caption, hashtags } = buildCaption({ title: 'Il a retrouve son pere', hook: 'Hier je suis alle au marche', channelName: 'Jeremie_F7', category: 'Just Chatting', streamerTags: ['#Team_F7', 'gaming', 'troisieme'] })
+  assert.deepEqual(hashtags, ['#teamf7', '#gaming', '#justchatting', '#retrouve', '#marche'])
+  assert.ok(caption.startsWith('Il a retrouve son pere\nHier je suis alle au marche\n\n#teamf7 #gaming'))
+  for (const banned of ['#jeremief7', '#twitch', '#fyp', '#clip']) assert.ok(!hashtags.includes(banned), banned)
+  assert.ok(!buildCaption({ title: 'Jeremief7 arrive', channelName: 'Jeremie_F7', category: 'general' }).hashtags.some(t => t === '#jeremief7' || t === '#general'))
+  assert.ok(buildCaption({ title: 'Titre long avec plusieurs sujets differents ici', channelName: 'x', maxClipTags: 2 }).hashtags.length <= 2)
 })
 
 const hasFfmpeg = spawnSync('ffmpeg', ['-version']).status === 0

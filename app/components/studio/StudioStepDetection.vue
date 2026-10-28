@@ -33,7 +33,7 @@ defineExpose({ invalid })
       <div class="grid gap-x-7 gap-y-5 sm:grid-cols-2">
         <label class="flex flex-col gap-1.5">
           <span class="flex items-center justify-between"><span class="st-label">Durée minimale</span><span class="st-badge st-badge-violet">{{ detail.settings.clipMinSec }} s</span></span>
-          <input v-model.number="detail.settings.clipMinSec" type="range" min="10" max="120" step="1" class="st-range">
+          <input v-model.number="detail.settings.clipMinSec" type="range" min="15" max="120" step="1" class="st-range">
           <span class="text-xs text-[#928BA2]">Plus court, le moment n’a pas le temps de se raconter.</span>
         </label>
         <label class="flex flex-col gap-1.5">

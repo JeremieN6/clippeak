@@ -174,7 +174,7 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
       hook: ctx.hook ?? undefined,
       channelName: ctx.channelName,
       category: ctx.category ?? undefined,
-      keywords: ctx.settings.keywords
+      streamerTags: ctx.style.caption.tags
     })
     return { outputPath: outPath, title, caption, hashtags, plan, illustrations, qc }
   } finally {

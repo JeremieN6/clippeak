@@ -77,6 +77,8 @@ export function evaluateQc(metrics: ClipMetrics, expect: QcExpectations): QcRepo
   const issues: QcIssue[] = []
   const drift = expect.maxSyncDriftSec ?? 0.15
   const edge = expect.maxEdgeSilenceSec ?? 0.6
+  // La fin laisse volontairement respirer jusqu'a 1,2 s (cutPlanner) : le seuil de silence final est plus large.
+  const trailingEdge = Math.max(edge, 1.8)
 
   if (metrics.width !== 1080 || metrics.height !== 1920) {
     issues.push({ severity: 'error', code: 'resolution', message: `Resolution ${metrics.width}x${metrics.height} au lieu de 1080x1920` })
@@ -95,7 +97,7 @@ export function evaluateQc(metrics: ClipMetrics, expect: QcExpectations): QcRepo
   if (metrics.leadingSilenceSec > edge) {
     issues.push({ severity: 'error', code: 'leading_silence', message: `Silence de ${metrics.leadingSilenceSec.toFixed(1)} s au debut` })
   }
-  if (metrics.trailingSilenceSec > edge) {
+  if (metrics.trailingSilenceSec > trailingEdge) {
     issues.push({ severity: 'error', code: 'trailing_silence', message: `Silence de ${metrics.trailingSilenceSec.toFixed(1)} s a la fin` })
   }
 
