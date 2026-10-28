@@ -79,7 +79,8 @@ const redo = () => studio.reviewClip(props.clip, 'requeue', draft)
       <div v-if="clip.status === 'approved' && clip.videoUrl" class="flex flex-wrap gap-2">
         <a :href="clip.videoUrl" :download="`${(clip.title || 'clip').replace(/[^\w-]+/g, '_')}.mp4`" class="st-btn-ghost no-underline">Télécharger le clip</a>
       </div>
-      <p v-if="clip.status === 'approved'" class="m-0 text-[13px] st-muted">Approuvé : rien n’est publié. La publication directe n’est pas encore disponible, télécharge le clip pour le publier toi-même.</p>
+      <StudioPublishPanel v-if="clip.status === 'approved' && clip.videoUrl" :clip="clip" />
+      <p v-else-if="clip.status === 'approved'" class="m-0 text-[13px] st-muted">Approuvé : rien n’est publié.</p>
     </div>
   </article>
 </template>

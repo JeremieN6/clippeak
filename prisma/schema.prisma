@@ -71,6 +71,7 @@ model Channel {
   referenceItems ReferenceItem[]
   assets         StreamerAsset[]
   sessions       StudioSession[]
+  connections    PlatformConnection[]
 
   @@map("channels")
 }
@@ -125,13 +126,13 @@ model Moment {
 
   // Analyse (transcription autour du pic, note finale sur 10, accroche) - colonnes ajoutees par 202610241000_v2_clip_pipeline.
   transcript Json?
-  beforePeak String?  @map("before_peak")
+  beforePeak String? @map("before_peak")
   hook       String?
-  category   String?  @db.VarChar(60)
-  kind       String?  @db.VarChar(20)
-  aiScore    Float?   @map("ai_score")
+  category   String? @db.VarChar(60)
+  kind       String? @db.VarChar(20)
+  aiScore    Float?  @map("ai_score")
   rationale  String?
-  scorer     String?  @db.VarChar(20)
+  scorer     String? @db.VarChar(20)
 
   vod  Vod       @relation(fields: [vodId], references: [id], onDelete: Cascade)
   jobs ClipJob[]
@@ -163,7 +164,8 @@ model ClipJob {
   reviewedAt    DateTime? @map("reviewed_at")
   notifiedAt    DateTime? @map("notified_at")
 
-  moment Moment @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  moment       Moment        @relation(fields: [momentId], references: [id], onDelete: Cascade)
+  publications Publication[]
 
   @@index([status])
   @@map("clip_jobs")
@@ -274,4 +276,45 @@ model StudioSession {
 
   @@index([channelId])
   @@map("studio_sessions")
+}
+
+// Compte de plateforme (YouTube, plus tard TikTok / Instagram) connecte par un streamer pour y publier. Jetons chiffres (AES-256-GCM).
+model PlatformConnection {
+  id              String    @id @default(uuid()) @db.Uuid
+  channelId       String    @map("channel_id") @db.Uuid
+  platform        String    @db.VarChar(12)
+  accountName     String?   @map("account_name") @db.VarChar(120)
+  accessTokenEnc  String    @map("access_token_enc")
+  refreshTokenEnc String?   @map("refresh_token_enc")
+  expiresAt       DateTime? @map("expires_at")
+  scopes          String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, platform])
+  @@map("platform_connections")
+}
+
+// Une publication = un clip approuve, une plateforme, une heure. scheduled -> publishing -> published | failed ; cancelled par le streamer.
+model Publication {
+  id          String    @id @default(uuid()) @db.Uuid
+  clipJobId   String    @map("clip_job_id") @db.Uuid
+  platform    String    @db.VarChar(12)
+  status      String    @default("scheduled") @db.VarChar(12)
+  scheduledAt DateTime  @map("scheduled_at")
+  publishedAt DateTime? @map("published_at")
+  externalId  String?   @map("external_id") @db.VarChar(80)
+  externalUrl String?   @map("external_url") @db.VarChar(300)
+  error       String?
+  attempts    Int       @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  clipJob ClipJob @relation(fields: [clipJobId], references: [id], onDelete: Cascade)
+
+  @@unique([clipJobId, platform])
+  @@index([status, scheduledAt])
+  @@map("publications")
 }

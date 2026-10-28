@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 
 // Variables que le worker a le droit de charger depuis un fichier .env : le strict necessaire (jamais la cle SSH de deploiement,
 // SMTP, mot de passe admin...). Le worker lit ces reglages directement dans process.env.
-const ALLOWED = /^(DATABASE_URL|TWITCH_CLIENT_ID|TWITCH_CLIENT_SECRET|ANTHROPIC_API_KEY|HF_HOME|RENDER_THREADS|TELEGRAM_BOT_TOKEN|TELEGRAM_CHAT_ID|DISCORD_WEBHOOK_URL|(CLIPPEAK|WHISPER|WORKER|VISION|YTDLP)_[A-Z0-9_]+)$/
+const ALLOWED = /^(DATABASE_URL|TWITCH_CLIENT_ID|TWITCH_CLIENT_SECRET|ANTHROPIC_API_KEY|GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET|HF_HOME|RENDER_THREADS|TELEGRAM_BOT_TOKEN|TELEGRAM_CHAT_ID|DISCORD_WEBHOOK_URL|(CLIPPEAK|WHISPER|WORKER|VISION|YTDLP)_[A-Z0-9_]+)$/
 
 export function parseEnvText(text: string): Record<string, string> {
   const values: Record<string, string> = {}

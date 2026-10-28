@@ -13,10 +13,26 @@ const checking = ref(true)
 const currentChannel = computed(() => channels.value.find(c => c.id === channelId.value))
 const onDemo = computed(() => Boolean(currentChannel.value?.demo))
 
+// Retour d'une connexion de plateforme (voir /api/auth/youtube) : message, puis retour a l'etape des plateformes.
+const connectMessages: Record<string, string> = {
+  youtube: 'YouTube est connecté.',
+  cancelled: 'Connexion annulée.',
+  error: 'La connexion a échoué. Réessaie dans un instant.',
+  unavailable: 'La publication YouTube n’est pas encore activée.',
+  admin: 'Connecte une plateforme depuis un compte streamer.'
+}
+
 onMounted(async () => {
   const ok = await studio.restoreSession(typeof route.query.channel === 'string' ? route.query.channel : '')
   if (!ok) return navigateTo('/connexion', { replace: true })
   checking.value = false
+  const result = String(route.query.connect ?? '')
+  if (result) {
+    if (result === 'youtube') studio.notice.value = connectMessages.youtube
+    else studio.error.value = connectMessages[result] ?? ''
+    studio.goToStep(7)
+    await navigateTo({ query: {} }, { replace: true })
+  }
 })
 
 async function switchChannel() {

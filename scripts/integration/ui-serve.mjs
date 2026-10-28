@@ -30,6 +30,9 @@ const [{ id: vodId }] = await q(`INSERT INTO vods (id, channel_id, twitch_vod_id
 // Session de demonstration : poser le cookie clippeak_session=jeton-demo dans le navigateur pour entrer comme le streamer (sans passer par Twitch).
 await q(`INSERT INTO studio_sessions (id, channel_id, token_hash, expires_at) VALUES (gen_random_uuid(), $1, $2, now() + interval '1 day')`, [channelId, createHash('sha256').update('jeton-demo').digest('hex')])
 
+// Compte YouTube factice (jetons bidon : aucune publication reelle n'est possible depuis cette base) pour voir le panneau Publier.
+await q(`INSERT INTO platform_connections (id, channel_id, platform, access_token_enc, refresh_token_enc, updated_at) VALUES (gen_random_uuid(), $1, 'youtube', 'v1.x.y.z', 'v1.x.y.z', now())`, [channelId])
+
 const clips = [
   { batch: 2, status: 'review', title: 'Il a vraiment dit ça en direct devant tout le monde', score: 8.6, cat: 'Réaction', why: 'Ton chat s’est emballé en quelques secondes.', video: true },
   { batch: 2, status: 'review', title: 'Le penalty que personne n’a vu venir', score: 8.1, cat: 'Football', why: 'detecte par ressemblance avec les clips de reference (pas par le chat) : même retournement.', video: true },
@@ -48,7 +51,7 @@ for (const [i, c] of clips.entries()) {
   }
 }
 
-const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, TWITCH_CLIENT_ID: 'demo', TWITCH_CLIENT_SECRET: 'demo', CLIPPEAK_FONTS_DIR: join(ROOT, 'public', 'fonts'), PORT: String(PORT), NITRO_PORT: String(PORT) }
+const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, TWITCH_CLIENT_ID: 'demo', TWITCH_CLIENT_SECRET: 'demo', GOOGLE_CLIENT_ID: 'demo', GOOGLE_CLIENT_SECRET: 'demo', CLIPPEAK_TOKEN_KEY: Buffer.alloc(32, 7).toString('base64'), CLIPPEAK_FONTS_DIR: join(ROOT, 'public', 'fonts'), PORT: String(PORT), NITRO_PORT: String(PORT) }
 const cwd = join(DATA, 'cwd')
 mkdirSync(cwd, { recursive: true })
 const logFd = openSync(join(DATA, 'server.log'), 'w')

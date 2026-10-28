@@ -21,7 +21,9 @@ export const REQUIRED_SCHEMA = [
   { table: 'streamer_assets', column: 'path' },
   { table: 'reference_clips', column: 'view_count' },
   { table: 'reference_items', column: 'analysis' },
-  { table: 'vods', column: 'scan_sec' }
+  { table: 'vods', column: 'scan_sec' },
+  { table: 'publications', column: 'scheduled_at' },
+  { table: 'platform_connections', column: 'refresh_token_enc' }
 ]
 
 export function commandWorks(command: string, args: string[]): boolean {
@@ -34,7 +36,7 @@ export async function runPreflight(deps: PreflightDeps): Promise<PreflightIssue[
   const issues: PreflightIssue[] = []
   const missing = await deps.missingSchema()
   if (missing.length) {
-    issues.push({ level: 'error', message: `Migration 202610241000_v2_clip_pipeline non appliquee (manque : ${missing.join(', ')})` })
+    issues.push({ level: 'error', message: `Migration non appliquee (manque : ${missing.join(', ')})` })
   }
   if (!deps.commandWorks('ffmpeg', ['-version'])) issues.push({ level: 'error', message: 'ffmpeg introuvable dans le PATH' })
   if (!deps.commandWorks('ffprobe', ['-version'])) issues.push({ level: 'error', message: 'ffprobe introuvable dans le PATH' })

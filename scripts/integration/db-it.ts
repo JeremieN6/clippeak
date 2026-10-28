@@ -5,6 +5,7 @@ import { createPrismaClipQueueStore } from '../../server/utils/clipping/prismaCl
 import { createPrismaReferenceStore, loadAnalyzedReferences, transcriptText } from '../../server/utils/clipping/prismaReferenceStore'
 import { dataDir } from '../../server/utils/clipping/dataDir'
 import { REQUIRED_SCHEMA } from '../../server/utils/clipping/preflight'
+import { createPrismaPublishStore } from '../../server/utils/clipping/prismaPublishStore'
 
 // Meme requete que server/worker/index.ts (missingSchema).
 async function missingSchemaCheck(db: any): Promise<string[]> {
@@ -173,6 +174,36 @@ async function main() {
   const analysed = await loadAnalyzedReferences(prisma as any, channel.id)
   assert.deepEqual(analysed.map(i => i.id), [clipA.id])
   log('banque de reference : prise atomique, comptes expanses sans doublon, stats manuelles conservees, reprise')
+
+  // 7b. Publication : prise atomique des publications echues, jetons dechiffres, reprise apres erreur passagere
+  const pubStore = createPrismaPublishStore(prisma as any, { decrypt: stored => stored.replace(/^enc:/, '') })
+  const pubVod = await prisma.vod.create({ data: { channelId: channel.id, twitchVodId: '999777', url: 'u', status: 'done' } })
+  const pubMoment = await prisma.moment.create({ data: { vodId: pubVod.id, startSec: 0, endSec: 10, peakSec: 5, score: 7, signals: {} } })
+  const pubJob = await prisma.clipJob.create({ data: { momentId: pubMoment.id, status: 'approved', title: 'Titre', caption: 'Legende', hashtags: '#a', outputPath: 'clips/pub.mp4' } })
+  await prisma.platformConnection.create({ data: { channelId: channel.id, platform: 'youtube', accessTokenEnc: 'enc:acces', refreshTokenEnc: 'enc:renouvellement', expiresAt: new Date(Date.now() + 3600_000) } })
+  const pubPast = await prisma.publication.create({ data: { clipJobId: pubJob.id, platform: 'youtube', scheduledAt: new Date(Date.now() - 60_000) } })
+  const pubFuture = await prisma.clipJob.create({ data: { momentId: pubMoment.id, status: 'approved', outputPath: 'clips/pub2.mp4' } })
+    .then(j => prisma.publication.create({ data: { clipJobId: j.id, platform: 'youtube', scheduledAt: new Date(Date.now() + 3600_000) } }))
+  const pubDue = await pubStore.claimDue(new Date())
+  assert.equal(pubDue?.id, pubPast.id)
+  assert.equal(pubDue?.attempts, 0)
+  assert.equal(pubDue?.connection?.refreshToken, 'renouvellement')
+  assert.equal(pubDue?.connection?.accessToken, 'acces')
+  assert.equal(pubDue?.clip.status, 'approved')
+  assert.ok(pubDue?.clip.videoPath?.replace(/\\/g, '/').endsWith('clips/pub.mp4'))
+  assert.equal((await prisma.publication.findUniqueOrThrow({ where: { id: pubPast.id } })).status, 'publishing')
+  assert.equal(await pubStore.claimDue(new Date()), null)
+  await pubStore.markFailed(pubPast.id, 'passager', new Date(Date.now() - 1000))
+  const pubRetried = await pubStore.claimDue(new Date())
+  assert.equal(pubRetried?.id, pubPast.id)
+  assert.equal(pubRetried?.attempts, 1)
+  await pubStore.markPublished(pubPast.id, { externalId: 'VID', url: 'https://www.youtube.com/shorts/VID' }, new Date())
+  const pubDone = await prisma.publication.findUniqueOrThrow({ where: { id: pubPast.id } })
+  assert.deepEqual([pubDone.status, pubDone.externalId, pubDone.error], ['published', 'VID', null])
+  await prisma.publication.update({ where: { id: pubFuture.id }, data: { status: 'publishing' } })
+  assert.equal(await pubStore.requeueInterrupted(), 1)
+  assert.equal((await prisma.publication.findUniqueOrThrow({ where: { id: pubFuture.id } })).status, 'failed')
+  log('publication : une seule prise, jetons dechiffres, nouvel essai apres erreur passagere, publiee, une publication interrompue n\'est jamais rejouee')
 
   // 8. Preflight : sur une base migree, plus rien ne manque
   assert.deepEqual(await missingSchemaCheck(prisma), [])
