@@ -10,7 +10,7 @@ export default defineEventHandler(async (event) => {
     orderBy: { createdAt: 'desc' },
     take: 50,
     select: {
-      id: true, twitchVodId: true, url: true, title: true, status: true, createdAt: true, startedAt: true, endedAt: true,
+      id: true, twitchVodId: true, url: true, title: true, status: true, error: true, createdAt: true, startedAt: true, endedAt: true,
       channel: { select: { displayName: true } },
       moments: { select: { jobs: { select: { status: true } } } }
     }
@@ -26,6 +26,7 @@ export default defineEventHandler(async (event) => {
       url: v.url,
       title: v.title,
       status: v.status,
+      error: v.status === 'failed' || v.status === 'blocked' ? v.error : null,
       createdAt: v.createdAt,
       channel: v.channel.displayName,
       moments: v.moments.length,

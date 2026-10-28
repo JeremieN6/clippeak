@@ -13,7 +13,7 @@ import { detectChatPeaks } from '../utils/clipping/chatPeaks'
 import { fetchVodChat } from '../utils/clipping/twitchChat'
 import { getVodAudioPlaylistUrl, getVodVideoPlaylistUrl, VodPlaylistError } from '../utils/clipping/vodPlaylist'
 import { extractSources } from '../utils/clipping/sourceExtract'
-import { RESTRICTED_MESSAGE } from '../utils/clipping/vodAccess'
+import { describeVodError, RESTRICTED_MESSAGE } from '../utils/clipping/vodAccess'
 import { runFfmpeg } from '../utils/clipping/ffmpegRunner'
 import { dataDir } from '../utils/clipping/dataDir'
 import { sendAdminMessage } from './notify'
@@ -123,7 +123,7 @@ export async function analysisStep(): Promise<boolean> {
       return true
     }
     console.error(`[worker] analyse en echec pour la VOD ${vod.twitchVodId}`, error)
-    await store.setVodStatus(vod.id, 'failed', error instanceof Error ? error.message.slice(0, 300) : 'Erreur inconnue').catch(() => {})
+    await store.setVodStatus(vod.id, 'failed', describeVodError(error)).catch(() => {})
   }
   return true
 }

@@ -504,7 +504,8 @@ try {
   assert.equal(listedVods[0].durationSec, 3 * 3600)
   assert.deepEqual(listedVods[0].progress, { phase: 'waiting', estimateSec: 120 + 270, clipsTotal: 0, clipsInProgress: 0 })
   assert.equal((await call(`/api/admin/vods/${added.json.id}/retry`, { method: 'POST' })).status, 409)
-  await q(`UPDATE vods SET status = 'failed' WHERE id = $1`, [added.json.id])
+  await q(`UPDATE vods SET status = 'failed', error = 'VOD introuvable ou non publiée' WHERE id = $1`, [added.json.id])
+  assert.equal((await call('/api/admin/vods')).json.vods.find(v => v.id === added.json.id).error, 'VOD introuvable ou non publiée')
   assert.equal((await call(`/api/admin/vods/${added.json.id}/retry`, { method: 'POST' })).status, 200)
   assert.equal((await q(`SELECT status FROM vods WHERE id = $1`, [added.json.id]))[0].status, 'ended')
   await q(`UPDATE vods SET status = 'analyzing' WHERE id = $1`, [added.json.id])
@@ -543,6 +544,14 @@ try {
   assert.equal((await ack(sub2.json.id, as(sessionCookie.split('=')[1]))).status, 404)
   assert.equal((await ack(sub2.json.id)).status, 200)
   assert.equal(await stateOf(sub2.json.id), undefined)
+  // Essai du parcours avec une VOD publique : entre en attente, repart au test de lecture, puis meme parcours.
+  const simulated = await addVod({ channelId, url: '111111', simulateRestricted: true })
+  assert.equal(simulated.status, 200); assert.equal(simulated.json.blocked, true)
+  assert.equal((await q(`SELECT status FROM vods WHERE id = $1`, [simulated.json.id]))[0].status, 'blocked')
+  assert.equal((await call('/api/admin/vods', {})).json.vods.some(v => v.id === simulated.json.id && v.progress.phase === 'blocked'), true)
+  assert.equal((await rc(simulated.json.id)).json.state, 'readable')
+  assert.equal((await q(`SELECT status FROM vods WHERE id = $1`, [simulated.json.id]))[0].status, 'ended')
+  assert.equal((await addVod({ channelId, url: '222222', simulateRestricted: true })).status, 400)
   ok('VOD reservee aux abonnes : acceptee en attente (admin), carte « Action requise » du streamer, verification immediate, deblocage, carte « tu peux la remettre » puis confirmation ; autre chaine = 404')
 
 

@@ -2,7 +2,7 @@
 // La page n'est liee depuis nulle part : on y arrive en tapant l'adresse.
 
 export interface AdminInvite { id: string, login: string, note: string | null, connected: boolean, createdAt: string, lastLoginAt: string | null }
-export interface AdminVod { id: string, twitchVodId: string, url: string, title: string | null, status: string, createdAt: string, channel: string, moments: number, clips: number, durationSec: number, progress: { phase: 'blocked' | 'waiting' | 'analyzing' | 'rendering' | 'ready' | 'failed', estimateSec: number | null, clipsTotal: number, clipsInProgress: number } }
+export interface AdminVod { id: string, twitchVodId: string, url: string, title: string | null, status: string, error: string | null, createdAt: string, channel: string, moments: number, clips: number, durationSec: number, progress: { phase: 'blocked' | 'waiting' | 'analyzing' | 'rendering' | 'ready' | 'failed', estimateSec: number | null, clipsTotal: number, clipsInProgress: number } }
 export interface AdminChannel { id: string, login: string, displayName: string, demo: boolean }
 
 export function createAdmin() {
@@ -81,8 +81,8 @@ export function createAdmin() {
     vods.value = (await $fetch<{ vods: AdminVod[] }>('/api/admin/vods')).vods
   })
 
-  const addVod = (channelId: string, url: string) => run(async () => {
-    const r = await $fetch<{ title: string, owner: string, durationSec: number, channel: string, blocked: boolean }>('/api/admin/vods', { method: 'POST', body: { channelId, url } })
+  const addVod = (channelId: string, url: string, simulateRestricted = false) => run(async () => {
+    const r = await $fetch<{ title: string, owner: string, durationSec: number, channel: string, blocked: boolean }>('/api/admin/vods', { method: 'POST', body: { channelId, url, simulateRestricted: simulateRestricted || undefined } })
     vods.value = (await $fetch<{ vods: AdminVod[] }>('/api/admin/vods')).vods
     notice.value = r.blocked
       ? `VOD de ${r.owner} ajoutée à ${r.channel}, mais réservée aux abonnés : elle attend d’être rendue publique (le streamer voit « Action requise »).`

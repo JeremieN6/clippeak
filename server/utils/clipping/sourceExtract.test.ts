@@ -4,7 +4,8 @@ import { existsSync, mkdtempSync, utimesSync, writeFileSync, mkdirSync } from 'n
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { coversPlan, extractSources, purgeOldSources, sourceExtractArgs, sourceRelPath, sourceWindow } from './sourceExtract.ts'
-import { checkVodReadable } from './vodAccess.ts'
+import { checkVodReadable, describeVodError } from './vodAccess.ts'
+import { VodPlaylistError } from './vodPlaylist.ts'
 
 test('sourceWindow keeps 60 s each side of the peak and never starts before 0', () => {
   assert.deepEqual(sourceWindow(600), { startSec: 540, durationSec: 120 })
@@ -67,4 +68,13 @@ test('checkVodReadable tells readable, restricted and unknown apart', async () =
   assert.equal(unknown.state, 'unknown')
   const down = await checkVodReadable('1', (async () => { throw new Error('reseau') }) as typeof fetch, endpoints)
   assert.equal(down.state, 'unknown')
+})
+
+test('describeVodError explains why a VOD cannot be read', () => {
+  assert.match(describeVodError(new VodPlaylistError('x', 'restricted')), /abonnés/)
+  assert.match(describeVodError(new VodPlaylistError('x', 'token')), /introuvable ou non publiée/)
+  assert.match(describeVodError(new VodPlaylistError('x', 'shape')), /vidéo exploitable/)
+  assert.match(describeVodError(new VodPlaylistError('HTTP 500', 'http')), /Réessaie/)
+  assert.equal(describeVodError(new Error('boom')), 'boom')
+  assert.equal(describeVodError('autre chose'), 'Erreur inconnue pendant l’analyse.')
 })
