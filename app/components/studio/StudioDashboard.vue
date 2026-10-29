@@ -97,7 +97,7 @@ const navOpen = ref(false)
 const collapsed = ref(false)
 onMounted(() => { try { collapsed.value = localStorage.getItem('clippeak.nav') === '0' } catch {} })
 watch(collapsed, (v) => { try { localStorage.setItem('clippeak.nav', v ? '0' : '1') } catch {} })
-const selectClass = 'st-field !min-h-11 !w-full sm:!w-auto sm:min-w-[140px]'
+const selectClass = 'st-field !min-h-11 !w-full'
 </script>
 
 <template>
@@ -173,7 +173,7 @@ const selectClass = 'st-field !min-h-11 !w-full sm:!w-auto sm:min-w-[140px]'
       </div>
 
       <section aria-label="Filtres et tri" class="flex flex-col gap-3.5">
-        <div class="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap sm:gap-x-3.5">
+        <div class="grid grid-cols-2 items-end gap-3 sm:grid-cols-3 xl:grid-cols-6">
           <div class="flex flex-col gap-1.5"><label for="f-lot" class="text-xs font-bold text-st-dim">Lot</label>
             <select id="f-lot" v-model="filters.lot" :class="selectClass"><option value="all">Tous les lots</option><option v-for="n in lotOptions" :key="n" :value="String(n)">Lot {{ n || '-' }}</option></select></div>
           <div class="flex flex-col gap-1.5"><label for="f-note" class="text-xs font-bold text-st-dim">Note</label>
@@ -184,7 +184,7 @@ const selectClass = 'st-field !min-h-11 !w-full sm:!w-auto sm:min-w-[140px]'
             <select id="f-cat" v-model="filters.cat" :class="selectClass"><option value="all">Toutes</option><option v-for="c in categories" :key="c" :value="c">{{ c }}</option></select></div>
           <div class="flex flex-col gap-1.5"><label for="f-origin" class="text-xs font-bold text-st-dim">Origine du moment</label>
             <select id="f-origin" v-model="filters.origin" :class="selectClass"><option value="all">Toutes</option><option value="chat">Détecté par le chat</option><option value="ref">Ressemble à un de tes clips</option></select></div>
-          <div class="col-span-2 flex flex-col gap-1.5 sm:ml-auto"><label for="f-sort" class="text-xs font-bold text-st-dim">Trier par</label>
+          <div class="col-span-2 flex flex-col gap-1.5 sm:col-span-1"><label for="f-sort" class="text-xs font-bold text-st-dim">Trier par</label>
             <select id="f-sort" v-model="filters.sort" :class="selectClass"><option value="score">Meilleure note d’abord</option><option value="recent">Plus récent d’abord</option></select></div>
         </div>
         <div v-if="filtered"><button type="button" class="st-btn-quiet text-sm" @click="clearFilters">Effacer les filtres</button></div>
