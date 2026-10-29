@@ -4,7 +4,8 @@ import { dirname, join } from 'node:path'
 import { planCut } from './cutPlanner.ts'
 import type { CutPlan, KeepRange } from './cutPlanner.ts'
 import { buildTimeline } from './timeline.ts'
-import { buildAss, fitTitle, titleLayout } from './assBuilder.ts'
+import { buildAss, fitTitle } from './assBuilder.ts'
+import { fitTitleToBand } from './titleFit.ts'
 import type { TimedWord } from './assBuilder.ts'
 import { buildRenderArgs, splitZones } from './clipRender.ts'
 import { evaluateQc } from './clipQc.ts'
@@ -108,8 +109,13 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
     .map(w => ({ start: timeline.toClipTime(w.start), end: timeline.toClipTime(w.end), text: w.text }))
 
   const style = resolveStyle(ctx.style, ctx.settings, ctx.assets, durationFromRanges)
-  const layout = titleLayout(ctx.style.title.fontSize, ctx.style.title.maxLines)
-  const title = ctx.title?.trim() || defaultTitle(ctx.hook, 'hook' in plan ? plan as any : null, layout.maxLines, layout.maxCharsPerLine)
+  // Le titre (choisi par le streamer ou tire de l'accroche) doit toujours tenir dans la bande : police reduite si besoin, puis coupe
+  // au dernier mot. Un titre trop long ne fait jamais echouer le rendu.
+  const rawTitle = ctx.title?.trim() || defaultTitle(ctx.hook, 'hook' in plan ? plan as any : null, Number.MAX_SAFE_INTEGER)
+  const fitted = fitTitleToBand(rawTitle, ctx.style.title.fontSize, ctx.style.title.maxLines)
+  const layout = { maxLines: fitted.maxLines, maxCharsPerLine: fitted.maxCharsPerLine }
+  const title = fitted.text
+  const titleStyle = { ...style.title, fontSize: fitted.fontSize, maxLines: fitted.maxLines, maxCharsPerLine: fitted.maxCharsPerLine }
 
   const illustrations = style.illustrationsEnabled && style.maxIllustrations > 0
     ? placeIllustrations(words, timeline.totalSec, ctx.library, { maxCount: style.maxIllustrations })
@@ -145,7 +151,7 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
       title,
       words,
       durationSec: timeline.totalSec,
-      titleStyle: style.title,
+      titleStyle,
       subtitleStyle
     }))
 

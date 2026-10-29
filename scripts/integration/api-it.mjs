@@ -394,6 +394,30 @@ try {
   assert.equal((await call(`/api/studio/channels/${channelId}`, asAdmin())).status, 200)
   ok('remise a zero : fichiers, reglages et parcours effaces, clips d\'exemple recrees, les vraies chaines intactes')
 
+  // --- chaines de test (un ami = une chaine, rien ne se melange)
+  const createdTest = await call('/api/admin/test-channels', { ...asAdmin(), method: 'POST', body: { name: 'jeremfut7 - bmsjoel' } })
+  assert.equal(createdTest.status, 200)
+  const testChannel = createdTest.json.channel
+  assert.equal(testChannel.autoClip, false)
+  assert.equal((await call('/api/admin/test-channels', { ...asAdmin(), method: 'POST', body: { name: 'jeremfut7 - bmsjoel' } })).status, 409)
+  assert.equal((await call('/api/admin/test-channels', { ...asAdmin(), method: 'POST', body: { name: '!!' } })).status, 400)
+  const withTest = (await call('/api/studio/channels', asAdmin())).json.channels
+  assert.equal(withTest.find(c => c.id === testChannel.id).test, true)
+  assert.equal(withTest.find(c => c.id === testChannel.id).demo, false)
+  assert.equal(withTest.find(c => c.id === channelId).test, false)
+  // photo deposee dans la chaine de test, puis suppression de la chaine avec ses fichiers
+  const testUpload = await call(`/api/studio/channels/${testChannel.id}/assets`, { ...asAdmin(), method: 'POST', body: form('photo', 'ami.png', png) })
+  assert.equal(testUpload.status, 200)
+  const [{ path: photoPath }] = await q(`SELECT path FROM streamer_assets WHERE channel_id = $1`, [testChannel.id])
+  assert.equal(existsSync(join(DATA, photoPath)), true)
+  assert.equal((await call(`/api/admin/test-channels/${channelId}`, { ...asAdmin(), method: 'DELETE' })).status, 404)
+  assert.equal((await call(`/api/admin/test-channels/${demo.id}`, { ...asAdmin(), method: 'DELETE' })).status, 404)
+  assert.equal((await call(`/api/admin/test-channels/${testChannel.id}`, { ...asAdmin(), method: 'DELETE' })).status, 200)
+  assert.equal(existsSync(join(DATA, photoPath)), false)
+  assert.equal((await call(`/api/studio/channels/${testChannel.id}`, asAdmin())).status, 404)
+  assert.equal((await call('/api/admin/test-channels', { ...as(sessionCookie.split('=')[1]), method: 'POST', body: { name: 'pirate' } })).status, 401)
+  ok('chaines de test : creation (doublon 409, nom invalide 400), signalees test, photo separee, suppression avec les fichiers, jamais une vraie chaine ni la demo, admin seulement')
+
   // Un streamer connecte ne peut ni utiliser l'administration ni voir la demonstration
   assert.equal((await call('/api/admin/me', as(sessionCookie.split('=')[1]))).status, 401)
   assert.equal((await call('/api/admin/invites', as(sessionCookie.split('=')[1]))).status, 401)

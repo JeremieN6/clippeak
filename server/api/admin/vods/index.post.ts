@@ -5,6 +5,7 @@ import { requireStudioAdmin, uuidSchema } from '../../../utils/studioAuth'
 import { createTwitchApi, TwitchApiError } from '../../../utils/clipping/twitchApi'
 import { parseTwitchVodId } from '../../../utils/clipping/vodUrl'
 import { checkVodReadable, RESTRICTED_MESSAGE } from '../../../utils/clipping/vodAccess'
+import { isDemoTwitchId } from '../../../utils/demoChannel'
 
 // `simulateRestricted` : essai du parcours « VOD reservee aux abonnes » avec une VOD publique (la VOD d'un ami, par exemple) : elle entre en
 // attente comme si Twitch la refusait, puis repart des que le test de lecture reussit (ce qu'il fait tout de suite : elle est publique).
@@ -19,9 +20,9 @@ export default defineEventHandler(async (event) => {
   const twitchVodId = parseTwitchVodId(parsed.data.url)
   if (!twitchVodId) throw createError({ statusCode: 400, statusMessage: 'Ce n’est pas un lien de VOD Twitch (exemple : https://www.twitch.tv/videos/123456789)' })
 
-  const channel = await prisma.channel.findUnique({ where: { id: parsed.data.channelId }, select: { id: true, displayName: true, autoClip: true } })
+  const channel = await prisma.channel.findUnique({ where: { id: parsed.data.channelId }, select: { id: true, displayName: true, twitchId: true } })
   if (!channel) throw createError({ statusCode: 404, statusMessage: 'Chaîne introuvable' })
-  if (!channel.autoClip) throw createError({ statusCode: 400, statusMessage: 'La chaîne de démonstration n’analyse pas de VOD : choisis une vraie chaîne' })
+  if (isDemoTwitchId(channel.twitchId)) throw createError({ statusCode: 400, statusMessage: 'La chaîne de démonstration n’analyse pas de VOD : choisis une vraie chaîne ou une chaîne de test' })
 
   const known = await prisma.vod.findUnique({ where: { twitchVodId }, select: { status: true, channel: { select: { displayName: true } } } })
   if (known) throw createError({ statusCode: 409, statusMessage: `Cette VOD est déjà connue (chaîne ${known.channel.displayName}, statut ${known.status})` })

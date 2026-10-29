@@ -141,7 +141,8 @@ export function createPipelineStore(db: Db) {
     // pour le reste du stream ; les pics deja traites sont ecartes par existingPeaks.
     async claimVodToAnalyze(): Promise<VodToAnalyze | null> {
       const candidate = await db.vod.findFirst({
-        where: { status: 'ended', channel: { autoClip: true } },
+        // Une VOD ajoutee a la main est toujours analysee (chaines de test comprises) ; les autres seulement si la chaine est ecoutee.
+        where: { status: 'ended', OR: [{ channel: { autoClip: true } }, { source: 'manual' }] },
         orderBy: { createdAt: 'asc' },
         include: { channel: { include: { settings: true } } }
       })

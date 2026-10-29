@@ -3,7 +3,7 @@
 
 export interface AdminInvite { id: string, login: string, note: string | null, connected: boolean, createdAt: string, lastLoginAt: string | null }
 export interface AdminVod { id: string, twitchVodId: string, url: string, title: string | null, status: string, error: string | null, createdAt: string, channel: string, moments: number, clips: number, durationSec: number, progress: { phase: 'blocked' | 'waiting' | 'analyzing' | 'rendering' | 'ready' | 'failed', estimateSec: number | null, clipsTotal: number, clipsInProgress: number } }
-export interface AdminChannel { id: string, login: string, displayName: string, demo: boolean }
+export interface AdminChannel { id: string, login: string, displayName: string, demo: boolean, test: boolean }
 
 export function createAdmin() {
   const authed = ref(false)
@@ -99,12 +99,22 @@ export function createAdmin() {
     vods.value = (await $fetch<{ vods: AdminVod[] }>('/api/admin/vods')).vods
   }, 'VOD retirée.')
 
+  const addTestChannel = (name: string) => run(async () => {
+    await $fetch('/api/admin/test-channels', { method: 'POST', body: { name } })
+    await refresh()
+  }, 'Chaîne de test créée.')
+
+  const removeTestChannel = (id: string) => run(async () => {
+    await $fetch(`/api/admin/test-channels/${id}`, { method: 'DELETE' })
+    await refresh()
+  }, 'Chaîne de test supprimée avec ses clips, ses extraits et ses photos.')
+
   const resetDemo = () => run(async () => {
     await $fetch('/api/admin/demo/reset', { method: 'POST' })
     await refresh()
   }, 'Chaîne de démonstration remise à zéro.')
 
-  return { authed, checking, password, error, notice, busy, invites, channels, vods, loadVods, addVod, retryVod, removeVod, restore, login, logout, addInvite, removeInvite, resetDemo }
+  return { authed, checking, password, error, notice, busy, invites, channels, vods, loadVods, addVod, retryVod, removeVod, restore, login, logout, addInvite, removeInvite, resetDemo, addTestChannel, removeTestChannel }
 }
 
 export type Admin = ReturnType<typeof createAdmin>
