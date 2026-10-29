@@ -12,11 +12,11 @@ const count = (g: Group) => clips.value.filter(c => groupOf(c.status) === g).len
 const weekAgo = () => Date.now() - 7 * 24 * 3600 * 1000
 
 const counters = computed(() => ([
-  { key: 'review', label: 'À valider', fg: '#D6C7FF' },
-  { key: 'approved', label: 'Approuvés', fg: '#6EDDB8' },
-  { key: 'rejected', label: 'Refusés', fg: '#C9C3D6' },
-  { key: 'progress', label: 'En préparation', fg: '#8DB9FF' },
-  { key: 'failed', label: 'En échec', fg: '#FF9B8D' }
+  { key: 'review', label: 'À valider', fg: 'var(--st-accent-text)' },
+  { key: 'approved', label: 'Approuvés', fg: 'var(--st-ok)' },
+  { key: 'rejected', label: 'Refusés', fg: 'var(--st-soft)' },
+  { key: 'progress', label: 'En préparation', fg: 'var(--st-info)' },
+  { key: 'failed', label: 'En échec', fg: 'var(--st-error)' }
 ] as const).map(c => ({ ...c, n: count(c.key), selected: filters.status === c.key })))
 
 const lotOptions = computed(() => [...new Set(clips.value.map(c => c.batch ?? 0))].sort((a, b) => b - a))

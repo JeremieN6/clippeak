@@ -64,7 +64,7 @@ async function logout() {
         <span class="st-title text-lg font-bold">Clippeak</span>
       </NuxtLink>
 
-      <div v-if="connected && mode === 'admin'" class="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border px-2 py-1.5" :class="onDemo || onTest ? 'border-st-accentBorder bg-st-accentDeep' : 'border-st-error/40 bg-st-errorBg'" :title="onDemo ? 'Compte fictif : modifie tout ce que tu veux.' : onTest ? 'Photos et réglages à part. Ne publie pas les clips d’un ami.' : 'Vraie chaîne : tes modifications sont réelles.'">
+      <div v-if="connected && mode === 'admin'" class="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border px-2 py-1.5" :class="onDemo || onTest ? 'border-st-accentBorder bg-st-accentDeep' : 'border-st-errorBorder bg-st-errorBg'" :title="onDemo ? 'Compte fictif : modifie tout ce que tu veux.' : onTest ? 'Photos et réglages à part. Ne publie pas les clips d’un ami.' : 'Vraie chaîne : tes modifications sont réelles.'">
         <span class="st-badge" :class="onDemo || onTest ? 'st-badge-violet' : 'st-badge-error'">{{ onDemo ? 'Démonstration' : onTest ? 'Chaîne de test' : 'Vrai compte' }}</span>
         <select v-if="channels.length > 1" v-model="channelId" class="st-field !min-h-10 !w-auto max-w-[280px] !py-1" aria-label="Chaîne affichée" @change="switchChannel">
           <option v-for="c in channels" :key="c.id" :value="c.id">{{ c.demo ? 'Chaîne de démonstration' : c.test ? `${c.displayName} (test)` : c.displayName }}</option>
@@ -84,7 +84,7 @@ async function logout() {
     <!-- Message flottant : ne decale rien, se ferme tout seul (succes) ou a la demande (erreur). -->
     <div class="pointer-events-none fixed inset-x-4 top-[76px] z-50 flex justify-end sm:left-auto sm:right-6 sm:w-[420px]" aria-live="polite">
       <Transition name="st-step">
-        <div v-if="error || notice" :key="error || notice" class="st-alert pointer-events-auto w-full items-center border shadow-[0_8px_24px_rgba(0,0,0,.4)]" :class="error ? 'st-alert-error border-st-error/40' : 'st-alert-ok border-st-ok/40'" :role="error ? 'alert' : 'status'">
+        <div v-if="error || notice" :key="error || notice" class="st-alert pointer-events-auto w-full items-center border shadow-[0_8px_24px_rgba(0,0,0,.4)]" :class="error ? 'st-alert-error border-st-errorBorder' : 'st-alert-ok border-st-okBorder'" :role="error ? 'alert' : 'status'">
           <svg class="flex-none" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-if="error" d="M12 7v6M12 17h.01" /><path v-else d="M5 12.5l4.5 4.5L19 7.5" /></svg>
           <span class="min-w-0 flex-1">{{ error || notice }}</span>
           <button type="button" class="-my-2 -mr-2 flex h-11 w-11 flex-none items-center justify-center rounded-[10px] bg-transparent text-current hover:bg-white/10" aria-label="Fermer le message" @click="error = ''; notice = ''">

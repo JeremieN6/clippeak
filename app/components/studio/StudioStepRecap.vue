@@ -54,7 +54,7 @@ const blocking = computed(() => !(studio.bank.value?.items?.length))
         </div>
       </template>
       <template v-else>
-        <div class="st-alert st-alert-ok"><div><strong class="font-extrabold">Clippeak surveille ton prochain live.</strong> <span class="text-[#A5EBD2]">Tes premiers clips arriveront par lots de 4, à valider dans ton tableau de bord.</span></div></div>
+        <div class="st-alert st-alert-ok"><div><strong class="font-extrabold">Clippeak surveille ton prochain live.</strong> <span class="text-st-ok">Tes premiers clips arriveront par lots de 4, à valider dans ton tableau de bord.</span></div></div>
         <div><button type="button" class="st-btn-ghost" @click="studio.view.value = 'dashboard'">Aller au tableau de bord</button></div>
       </template>
     </section>

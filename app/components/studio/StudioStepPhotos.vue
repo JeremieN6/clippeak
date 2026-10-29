@@ -32,7 +32,7 @@ async function pick(event: Event) {
       </div>
 
       <div class="flex gap-1" aria-hidden="true">
-        <span v-for="i in MAX" :key="i" class="h-1.5 flex-1 rounded-[3px]" :style="{ background: i <= count ? (enough ? '#6EDDB8' : '#F6C260') : '#2C2837' }" />
+        <span v-for="i in MAX" :key="i" class="h-1.5 flex-1 rounded-[3px]" :style="{ background: i <= count ? (enough ? 'var(--st-ok)' : 'var(--st-warn)') : 'var(--st-border)' }" />
       </div>
 
       <div class="grid grid-cols-[repeat(auto-fill,minmax(min(140px,100%),1fr))] gap-3">
@@ -43,7 +43,7 @@ async function pick(event: Event) {
           </button>
           <div class="absolute bottom-2 left-2 rounded-full bg-[#0E0D12]/80 px-2.5 py-0.5 text-xs font-bold">Photo {{ i + 1 }}</div>
         </div>
-        <button v-if="count < MAX" type="button" class="flex aspect-[3/4] min-h-[132px] flex-col items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-st-borderStrong bg-[#12111A] p-2 text-sm font-bold text-st-accentText" :disabled="studio.busy.value" @click="input?.click()">
+        <button v-if="count < MAX" type="button" class="flex aspect-[3/4] min-h-[132px] flex-col items-center justify-center gap-2 rounded-xl border-[1.5px] border-dashed border-st-borderStrong bg-st-field p-2 text-sm font-bold text-st-accentText" :disabled="studio.busy.value" @click="input?.click()">
           <span class="flex h-10 w-10 items-center justify-center rounded-full bg-st-accentBg"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></span>
           Ajouter une photo
         </button>
@@ -51,10 +51,10 @@ async function pick(event: Event) {
       </div>
 
       <div v-if="!enough" class="st-alert st-alert-warn">
-        <div><strong class="font-extrabold">Encore {{ MIN - count }} photo(s).</strong> <span class="text-[#F8D590]">Sans elles, le cadrage automatique reste coupé : tu pourras cadrer à la main à l’étape suivante.</span></div>
+        <div><strong class="font-extrabold">Encore {{ MIN - count }} photo(s).</strong> <span class="text-st-warn">Sans elles, le cadrage automatique reste coupé : tu pourras cadrer à la main à l’étape suivante.</span></div>
       </div>
       <div v-else class="st-alert st-alert-ok">
-        <div><strong class="font-extrabold">C’est bon.</strong> <span class="text-[#A5EBD2]">Tu peux activer le cadrage automatique à l’étape 3.</span></div>
+        <div><strong class="font-extrabold">C’est bon.</strong> <span class="text-st-ok">Tu peux activer le cadrage automatique à l’étape 3.</span></div>
       </div>
     </section>
 

@@ -150,3 +150,9 @@
 **Cause racine** : Mes controles automatiques ne mesuraient que les tailles de texte et de zones cliquables, jamais la position des blocs ; les captures du navigateur integre sont petites et je ne les regardais pas vraiment. Je ne signalais pas ce que je voyais hors de la tache.
 **Solution** : Filtres en grille reguliere (3 colonnes, 6 sur grand ecran) ; barre du haut unique.
 **Regle** : Avant toute PR d'interface, mesurer la position de chaque bloc a 1440, 1024 et 390 px (trous, elements orphelins, debordements) et signaler au porteur tout defaut vu en passant, meme hors du perimetre de la tache.
+
+### [2026-10-29] Un modificateur d'opacite Tailwind sur une couleur `var()` ne genere rien
+**Probleme** : `border-st-error/40`, `border-st-ok/40` (couleurs definies par `var(--st-...)`) n'avaient aucun effet : bordures absentes sur le message flottant, le bloc admin et les cartes VOD.
+**Cause racine** : Tailwind ne peut pas appliquer `/40` a une couleur dont la valeur est une variable CSS opaque ; la classe n'est simplement pas generee, sans erreur.
+**Solution** : jetons dedies `--st-*-border` (color-mix) et classes `border-st-okBorder`, etc.
+**Regle** : apres avoir ajoute une classe Tailwind inedite, verifier qu'elle existe dans le CSS construit (ou mesurer le style calcule) ; ne pas supposer qu'une classe sans erreur de build fonctionne.

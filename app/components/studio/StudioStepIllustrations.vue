@@ -51,7 +51,7 @@ async function pick(event: Event) {
         <div v-if="edits[a.id]" class="flex flex-col gap-1.5">
           <label :for="`ill-c-${a.id}`" class="st-label">Crédit</label>
           <div class="st-hint">L’auteur ou le lien d’origine. Il est conservé avec chaque clip pour savoir d’où vient la vidéo.</div>
-          <input :id="`ill-c-${a.id}`" v-model="edits[a.id].source" class="st-field" placeholder="Exemple : Léa M. ou https://…" :style="!edits[a.id].source.trim() ? { borderColor: '#F6C260' } : {}">
+          <input :id="`ill-c-${a.id}`" v-model="edits[a.id].source" class="st-field" placeholder="Exemple : Léa M. ou https://…" :style="!edits[a.id].source.trim() ? { borderColor: 'var(--st-warn)' } : {}">
           <div v-if="!edits[a.id].source.trim()" class="flex gap-2 text-[13px] font-semibold leading-5 text-st-warn">Il manque le crédit. Tu pourras quand même l’utiliser, mais tu ne sauras plus d’où vient la vidéo.</div>
         </div>
         <div v-if="edits[a.id] && dirty(a)">

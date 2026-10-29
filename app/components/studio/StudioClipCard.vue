@@ -74,14 +74,14 @@ const redo = () => studio.reviewClip(props.clip, 'requeue', draft)
       <div class="flex flex-wrap items-center gap-x-2.5 gap-y-2">
         <span class="st-badge" :class="look.cls">{{ look.label }}</span>
         <span class="inline-flex min-h-7 items-center rounded-full border border-st-borderStrong px-3 py-0.5 text-xs font-bold text-st-soft">{{ originLabel }}</span>
-        <span v-if="clip.score != null" class="st-badge ml-auto !bg-st-accentBg !font-extrabold !text-[#E4D9FF]" :aria-label="`Note : ${clip.score} sur 10`">{{ clip.score }} / 10</span>
+        <span v-if="clip.score != null" class="st-badge ml-auto !bg-st-accentBg !font-extrabold !text-st-accentText" :aria-label="`Note : ${clip.score} sur 10`">{{ clip.score }} / 10</span>
       </div>
 
       <div class="flex flex-col gap-1.5">
         <label :for="`title-${clip.id}`" class="st-label">Titre en haut du clip</label>
         <input :id="`title-${clip.id}`" v-model="draft.title" class="st-field" :disabled="!titleEditable" placeholder="Laisse vide pour garder le titre">
         <div v-if="titleEdited" class="text-[13px] font-semibold leading-5 text-st-warn" aria-live="polite">Le rendu du clip sera relancé avec ce nouveau titre. Appuie sur « Refaire ».</div>
-        <div v-if="titleEditable && titleNote" class="st-hint" :class="titleFit?.truncated ? 'text-[#F3B2A6]' : ''" aria-live="polite">{{ titleNote }}</div>
+        <div v-if="titleEditable && titleNote" class="st-hint" :class="titleFit?.truncated ? 'text-st-error' : ''" aria-live="polite">{{ titleNote }}</div>
       </div>
 
       <div v-if="clip.status === 'review' || clip.status === 'approved'" class="flex flex-col gap-1.5">
@@ -129,9 +129,9 @@ const redo = () => studio.reviewClip(props.clip, 'requeue', draft)
       <!-- Actions -->
       <div v-if="clip.status === 'review'" class="flex flex-wrap gap-2 pt-1">
         <button type="button" class="st-btn" :disabled="studio.busy.value || titleEdited" @click="approve">Approuver</button>
-        <button v-if="titleEdited" type="button" class="st-btn-ghost !border-st-accentBorder !bg-st-accentBg !text-[#E4D9FF]" :disabled="studio.busy.value" @click="redo">Refaire avec ce titre</button>
+        <button v-if="titleEdited" type="button" class="st-btn-ghost !border-st-accentBorder !bg-st-accentBg !text-st-accentText" :disabled="studio.busy.value" @click="redo">Refaire avec ce titre</button>
         <button v-else type="button" class="st-btn-ghost" :disabled="studio.busy.value" @click="redo">Refaire le rendu</button>
-        <button type="button" class="st-btn-ghost !border-[#5A2E2B] !bg-transparent !text-st-error" :disabled="studio.busy.value" @click="reject">Refuser</button>
+        <button type="button" class="st-btn-ghost !border-st-errorBorder !bg-transparent !text-st-error" :disabled="studio.busy.value" @click="reject">Refuser</button>
       </div>
       <div v-else-if="clip.status === 'failed' || clip.status === 'rejected'" class="flex flex-wrap gap-2 pt-1">
         <button type="button" class="st-btn" :disabled="studio.busy.value" @click="redo">Refaire le rendu</button>
