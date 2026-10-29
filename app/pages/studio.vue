@@ -57,38 +57,29 @@ async function logout() {
 
 <template>
   <div class="st-root min-h-screen bg-st-bg">
-    <header class="sticky top-0 z-30 flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-st-border bg-st-bg px-5 py-2 sm:px-8">
+    <!-- Une seule barre : logo a gauche ; en admin, le compte affiche (pastille + choix de chaine) puis les actions. -->
+    <header class="sticky top-0 z-30 flex min-h-16 flex-wrap items-center gap-x-4 gap-y-2 border-b border-st-border bg-st-bg px-5 py-2 sm:px-8">
       <NuxtLink to="/" class="flex min-h-11 items-center gap-2.5 text-st-text no-underline" aria-label="Clippeak, accueil">
         <span class="flex h-8 w-8 items-center justify-center rounded-full bg-st-accent text-xs font-extrabold text-white" aria-hidden="true">CP</span>
         <span class="st-title text-lg font-bold">Clippeak</span>
       </NuxtLink>
-      <div v-if="connected" class="flex flex-wrap items-center justify-end gap-2">
+
+      <div v-if="connected && mode === 'admin'" class="flex min-w-0 flex-wrap items-center gap-2 rounded-xl border px-2 py-1.5" :class="onDemo || onTest ? 'border-st-accentBorder bg-st-accentDeep' : 'border-st-error/40 bg-st-errorBg'" :title="onDemo ? 'Compte fictif : modifie tout ce que tu veux.' : onTest ? 'Photos et réglages à part. Ne publie pas les clips d’un ami.' : 'Vraie chaîne : tes modifications sont réelles.'">
+        <span class="st-badge" :class="onDemo || onTest ? 'st-badge-violet' : 'st-badge-error'">{{ onDemo ? 'Démonstration' : onTest ? 'Chaîne de test' : 'Vrai compte' }}</span>
+        <select v-if="channels.length > 1" v-model="channelId" class="st-field !min-h-10 !w-auto max-w-[280px] !py-1" aria-label="Chaîne affichée" @change="switchChannel">
+          <option v-for="c in channels" :key="c.id" :value="c.id">{{ c.demo ? 'Chaîne de démonstration' : c.test ? `${c.displayName} (test)` : c.displayName }}</option>
+        </select>
+        <button v-if="onDemo" type="button" class="st-btn-quiet !min-h-10" :disabled="busy" @click="studio.resetDemo()">Remettre à zéro</button>
+      </div>
+
+      <div v-if="connected" class="ml-auto flex flex-wrap items-center justify-end gap-2">
         <span v-if="mode === 'streamer' && currentChannel" class="text-sm font-semibold st-muted">{{ currentChannel.displayName }}</span>
         <button v-if="view !== 'dashboard' && (studio.onboarding.value?.completed || studio.clips.value.length)" type="button" class="st-btn-ghost" @click="view = 'dashboard'">Tableau de bord</button>
-        <span v-else-if="view === 'onboarding'" class="hidden items-center gap-2 text-[13px] font-semibold st-muted sm:inline-flex">Enregistré à chaque étape</span>
+        <span v-else-if="view === 'onboarding'" class="hidden items-center gap-2 text-[13px] font-semibold st-muted lg:inline-flex">Enregistré à chaque étape</span>
         <button v-if="mode === 'streamer'" type="button" class="st-btn-quiet" :disabled="busy" @click="logout">Se déconnecter</button>
         <NuxtLink v-else-if="mode === 'admin'" to="/admin" class="st-btn-ghost no-underline">← Administration</NuxtLink>
       </div>
     </header>
-
-    <!-- Admin : on voit toujours quel compte on regarde, pour ne jamais confondre la demonstration et une vraie chaine. -->
-    <section
-      v-if="connected && mode === 'admin'"
-      class="flex flex-wrap items-center gap-x-4 gap-y-3 border-b px-5 py-3 sm:px-8"
-      :class="onDemo || onTest ? 'border-st-accentBorder bg-st-accentDeep' : 'border-st-error/40 bg-st-errorBg'"
-      aria-label="Compte affiché"
-    >
-      <span class="st-badge" :class="onDemo || onTest ? 'st-badge-violet' : 'st-badge-error'">{{ onDemo ? 'Démonstration' : onTest ? 'Chaîne de test' : 'Vrai compte' }}</span>
-      <p class="m-0 min-w-[220px] flex-1 text-[13px] leading-5 text-st-soft">
-        {{ onDemo ? 'Compte fictif : modifie tout ce que tu veux.' : onTest ? 'Photos et réglages à part. Ne publie pas les clips d’un ami.' : 'Vraie chaîne : tes modifications sont réelles.' }}
-      </p>
-      <div class="flex flex-wrap items-center gap-2">
-        <select v-if="channels.length > 1" v-model="channelId" class="st-field !w-auto" aria-label="Chaîne affichée" @change="switchChannel">
-          <option v-for="c in channels" :key="c.id" :value="c.id">{{ c.demo ? 'Chaîne de démonstration' : c.test ? `${c.displayName} (test)` : c.displayName }}</option>
-        </select>
-        <button v-if="onDemo" type="button" class="st-btn-ghost" :disabled="busy" @click="studio.resetDemo()">Remettre à zéro</button>
-      </div>
-    </section>
 
     <!-- Message flottant : ne decale rien, se ferme tout seul (succes) ou a la demande (erreur). -->
     <div class="pointer-events-none fixed inset-x-4 top-[76px] z-50 flex justify-end sm:left-auto sm:right-6 sm:w-[420px]" aria-live="polite">
@@ -102,8 +93,6 @@ async function logout() {
         </div>
       </Transition>
     </div>
-
-    <StudioVodAlerts v-if="connected && studio.detail.value" />
 
     <template v-if="connected && studio.detail.value">
       <StudioDashboard v-if="view === 'dashboard'" />

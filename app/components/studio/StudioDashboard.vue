@@ -93,12 +93,16 @@ const settingsNav = computed(() => STEPS.filter(s => s.n < 8).map((s) => {
 const dot = { ok: 'bg-st-okBg text-st-ok', warn: 'bg-st-warnBg text-st-warn', skip: 'bg-st-raised2 text-st-soft', todo: 'bg-st-raised2 text-st-soft' } as const
 
 const navOpen = ref(false)
-const selectClass = 'st-field !min-h-11 !w-full sm:!w-auto sm:min-w-[140px]'
+// Colonne de gauche repliable sur grand ecran ; le choix est garde dans le navigateur (facultatif).
+const collapsed = ref(false)
+onMounted(() => { try { collapsed.value = localStorage.getItem('clippeak.nav') === '0' } catch {} })
+watch(collapsed, (v) => { try { localStorage.setItem('clippeak.nav', v ? '0' : '1') } catch {} })
+const selectClass = 'st-field !min-h-11 !w-full'
 </script>
 
 <template>
   <div class="flex flex-wrap items-stretch">
-    <nav aria-label="Mes réglages" class="flex w-full flex-none flex-col gap-6 border-st-border p-4 lg:w-[280px] lg:border-r lg:py-6">
+    <nav aria-label="Mes réglages" class="flex w-full flex-none flex-col gap-6 border-st-border p-4 lg:w-[280px] lg:border-r lg:py-6" :class="collapsed ? 'lg:!hidden' : ''">
       <div class="hidden flex-col gap-0.5 lg:flex">
         <button type="button" class="st-nav-item !min-h-12 text-[15px] font-bold" aria-current="page">Tableau de bord</button>
       </div>
@@ -119,9 +123,16 @@ const selectClass = 'st-field !min-h-11 !w-full sm:!w-auto sm:min-w-[140px]'
 
     <main class="flex min-w-0 flex-[999_1_620px] flex-col gap-7 px-5 py-8 sm:px-10">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <h1 class="st-title m-0 text-[28px] font-bold leading-tight sm:text-[32px]">Tableau de bord</h1>
+        <div class="flex items-center gap-2">
+          <button type="button" class="hidden h-11 w-11 items-center justify-center rounded-[10px] border border-st-border bg-st-surface text-st-soft hover:bg-st-raised lg:flex" :aria-label="collapsed ? 'Afficher mes réglages' : 'Masquer mes réglages'" :aria-pressed="collapsed" @click="collapsed = !collapsed">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M9 4v16" /></svg>
+          </button>
+          <h1 class="st-title m-0 text-[28px] font-bold leading-tight sm:text-[32px]">Tableau de bord</h1>
+        </div>
         <button type="button" class="st-btn-ghost" :disabled="studio.busy.value" @click="studio.run(studio.loadClips)">Actualiser</button>
       </div>
+
+      <StudioVodAlerts />
 
       <p v-if="pubSummary" class="st-pop m-0 -mt-4 text-sm font-semibold text-st-ok">{{ pubSummary }}</p>
 
@@ -162,7 +173,7 @@ const selectClass = 'st-field !min-h-11 !w-full sm:!w-auto sm:min-w-[140px]'
       </div>
 
       <section aria-label="Filtres et tri" class="flex flex-col gap-3.5">
-        <div class="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap sm:gap-x-3.5">
+        <div class="grid grid-cols-2 items-end gap-3 sm:grid-cols-3 xl:grid-cols-6">
           <div class="flex flex-col gap-1.5"><label for="f-lot" class="text-xs font-bold text-st-dim">Lot</label>
             <select id="f-lot" v-model="filters.lot" :class="selectClass"><option value="all">Tous les lots</option><option v-for="n in lotOptions" :key="n" :value="String(n)">Lot {{ n || '-' }}</option></select></div>
           <div class="flex flex-col gap-1.5"><label for="f-note" class="text-xs font-bold text-st-dim">Note</label>
@@ -173,7 +184,7 @@ const selectClass = 'st-field !min-h-11 !w-full sm:!w-auto sm:min-w-[140px]'
             <select id="f-cat" v-model="filters.cat" :class="selectClass"><option value="all">Toutes</option><option v-for="c in categories" :key="c" :value="c">{{ c }}</option></select></div>
           <div class="flex flex-col gap-1.5"><label for="f-origin" class="text-xs font-bold text-st-dim">Origine du moment</label>
             <select id="f-origin" v-model="filters.origin" :class="selectClass"><option value="all">Toutes</option><option value="chat">Détecté par le chat</option><option value="ref">Ressemble à un de tes clips</option></select></div>
-          <div class="col-span-2 flex flex-col gap-1.5 sm:ml-auto"><label for="f-sort" class="text-xs font-bold text-st-dim">Trier par</label>
+          <div class="col-span-2 flex flex-col gap-1.5 sm:col-span-1"><label for="f-sort" class="text-xs font-bold text-st-dim">Trier par</label>
             <select id="f-sort" v-model="filters.sort" :class="selectClass"><option value="score">Meilleure note d’abord</option><option value="recent">Plus récent d’abord</option></select></div>
         </div>
         <div v-if="filtered"><button type="button" class="st-btn-quiet text-sm" @click="clearFilters">Effacer les filtres</button></div>
