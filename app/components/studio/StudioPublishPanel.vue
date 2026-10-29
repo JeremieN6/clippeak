@@ -62,7 +62,7 @@ async function schedule() {
         <div class="flex flex-col gap-2">
           <div class="st-label !text-[13px]">Ou programmer</div>
           <div class="flex flex-wrap gap-2">
-            <button v-for="(s, i) in slots" :key="s.toISOString()" type="button" class="st-chip !h-9 !px-3.5 !text-[13px]" :class="picked === i && !custom ? '!bg-st-accent !text-white' : ''" :aria-pressed="picked === i && !custom" @click="picked = i; custom = ''">{{ fmt(s) }}</button>
+            <button v-for="(s, i) in slots" :key="s.toISOString()" type="button" class="st-chip !h-11 !px-3.5 !text-[13px]" :class="picked === i && !custom ? '!bg-st-accent !text-white' : ''" :aria-pressed="picked === i && !custom" @click="picked = i; custom = ''">{{ fmt(s) }}</button>
           </div>
           <input v-model="custom" type="datetime-local" class="st-field !min-h-10 sm:!w-auto" aria-label="Autre date et heure">
           <div><button type="button" class="st-btn-ghost" :disabled="studio.busy.value || !when" @click="schedule">Programmer{{ when ? ` le ${fmt(when)}` : '' }}</button></div>

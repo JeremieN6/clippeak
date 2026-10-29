@@ -71,7 +71,6 @@ const settingsNav = computed(() => STEPS.filter(s => s.n < 8).map((s) => {
   return { ...s, ...st }
 }))
 const dot = { ok: 'bg-st-okBg text-st-ok', warn: 'bg-st-warnBg text-st-warn', skip: 'bg-st-raised2 text-st-soft', todo: 'bg-st-raised2 text-st-soft' } as const
-const dotIcon = { ok: '✓', warn: '!', skip: '–', todo: '–' } as const
 
 const navOpen = ref(false)
 const selectClass = 'st-field !min-h-11 !w-full sm:!w-auto sm:min-w-[140px]'
@@ -87,7 +86,10 @@ const selectClass = 'st-field !min-h-11 !w-full sm:!w-auto sm:min-w-[140px]'
       <div id="st-settings" class="flex-col gap-0.5 lg:flex" :class="navOpen ? 'flex' : 'hidden'">
         <div class="px-3 pb-2 text-xs font-extrabold uppercase tracking-widest text-st-dim">Mes réglages</div>
         <button v-for="s in settingsNav" :key="s.n" type="button" class="st-nav-item !min-h-11 text-sm font-semibold text-st-soft" @click="studio.goToStep(s.n)">
-          <span class="flex h-5 w-5 flex-none items-center justify-center rounded-full text-[11px] font-black" :class="dot[s.status]">{{ dotIcon[s.status] }}</span>
+          <span class="flex h-5 w-5 flex-none items-center justify-center rounded-full" :class="dot[s.status]" aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path v-if="s.status === 'ok'" d="M5 12.5l4.5 4.5L19 7.5" /><path v-else-if="s.status === 'warn'" d="M12 6v8M12 18h.01" /><path v-else d="M6 12h12" /></svg>
+          </span>
+          <span class="sr-only">{{ ({ ok: 'Terminée', warn: 'À revoir', skip: 'Passée', todo: 'À faire' } as const)[s.status] }}.</span>
           <span class="min-w-0 flex-1">{{ s.label }}</span>
           <span v-if="s.status === 'warn' || s.status === 'skip'" class="text-xs font-bold" :class="s.status === 'warn' ? 'text-st-warn' : 'text-st-soft'">{{ s.status === 'warn' ? 'À revoir' : 'Passée' }}</span>
         </button>

@@ -290,7 +290,7 @@ async function pickAvatar(event: Event) {
           </div>
           <div v-if="detail.style.overlay.enabled" :style="avatarStyle">Avatar</div>
         </div>
-        <label class="flex min-h-[44px] items-center gap-2 text-sm"><input v-model="showIllustration" type="checkbox" class="h-5 w-5 accent-[#7C3AED]"> Montrer une illustration</label>
+        <label class="flex min-h-[44px] items-center gap-2 text-sm"><input v-model="showIllustration" type="checkbox" class="h-5 w-5 accent-st-accent"> Montrer une illustration</label>
         <button v-if="detail.style.zoomIntro.enabled" type="button" class="st-btn-ghost" @click="replayIntro">Rejouer le zoom d’ouverture</button>
         <p class="st-hint m-0">Aperçu fidèle pour les positions, tailles, couleurs et lignes. L’image est un décor type : le rendu utilise ta vraie vidéo.</p>
       </div>

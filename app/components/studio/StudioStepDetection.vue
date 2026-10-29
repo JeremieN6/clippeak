@@ -27,8 +27,8 @@ defineExpose({ invalid })
       <div class="relative h-9" aria-hidden="true">
         <div class="absolute inset-x-0 top-3.5 h-2 rounded bg-st-border" />
         <div class="absolute top-3.5 h-2 rounded bg-st-accent" :style="{ left: `${(lo / 180) * 100}%`, width: `${((hi - lo) / 180) * 100}%` }" />
-        <div class="absolute left-0 top-[26px] text-[11px] text-st-dim">0 s</div>
-        <div class="absolute right-0 top-[26px] text-[11px] text-st-dim">180 s</div>
+        <div class="absolute left-0 top-[26px] text-xs text-st-dim">0 s</div>
+        <div class="absolute right-0 top-[26px] text-xs text-st-dim">180 s</div>
       </div>
       <div class="grid gap-x-7 gap-y-5 sm:grid-cols-2">
         <label class="flex flex-col gap-1.5">
