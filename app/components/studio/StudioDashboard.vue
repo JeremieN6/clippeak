@@ -58,6 +58,26 @@ const pubSummary = computed(() => {
   return [scheduled ? `${scheduled} programmé(s)` : '', published ? `${published} publié(s)` : ''].filter(Boolean).join(' · ')
 })
 
+// Analyse / rendu en cours : part des clips des lots concernes qui sont deja sortis du rendu.
+const progress = computed(() => {
+  const running = clips.value.filter(c => groupOf(c.status) === 'progress')
+  if (!running.length) return null
+  const batches = new Set(running.map(c => c.batch ?? 0))
+  const total = clips.value.filter(c => batches.has(c.batch ?? 0)).length
+  return { running: running.length, pct: Math.max(8, Math.round(((total - running.length) / total) * 100)) }
+})
+
+// Plateforme a reconnecter : un envoi a echoue parce que l'acces a expire, sans envoi reussi ou programme apres lui.
+const platformNames: Record<string, string> = { youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram' }
+const disconnected = computed(() => {
+  const all = clips.value.flatMap(c => c.publications)
+  const platforms = [...new Set(all.filter(p => p.status === 'failed' && /reconnecte/i.test(p.error ?? '')).map(p => p.platform))]
+  return platforms.filter((pl) => {
+    const failedAt = Math.max(...all.filter(p => p.platform === pl && p.status === 'failed').map(p => new Date(p.scheduledAt).getTime()))
+    return !all.some(p => p.platform === pl && ['published', 'scheduled', 'publishing'].includes(p.status) && new Date(p.scheduledAt).getTime() > failedAt)
+  }).map(pl => ({ id: pl, name: platformNames[pl] ?? pl }))
+})
+
 const reviewCount = computed(() => count('review'))
 const approvedCount = computed(() => count('approved'))
 const next = computed(() => reviewCount.value > 0
@@ -104,6 +124,26 @@ const selectClass = 'st-field !min-h-11 !w-full sm:!w-auto sm:min-w-[140px]'
       </div>
 
       <p v-if="pubSummary" class="st-pop m-0 -mt-4 text-sm font-semibold text-st-ok">{{ pubSummary }}</p>
+
+      <div v-if="progress" class="st-alert st-alert-info st-rise flex-col !gap-2.5" role="status">
+        <div class="flex items-center gap-2 font-bold">
+          <svg class="flex-none" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" opacity=".3" /><path d="M12 3a9 9 0 0 1 9 9" /></svg>
+          Clippeak prépare {{ progress.running }} clip{{ progress.running > 1 ? 's' : '' }}
+        </div>
+        <p class="m-0 text-[13px] opacity-90">Il cherche et monte les meilleurs moments. Les clips arrivent ici dès qu’ils sont prêts, tu peux fermer la page.</p>
+        <div class="h-1.5 w-full overflow-hidden rounded-[3px] bg-st-border" role="progressbar" aria-label="Préparation des clips" :aria-valuenow="progress.pct" aria-valuemin="0" aria-valuemax="100"><div class="st-bar st-bar-live" :style="{ width: `${progress.pct}%` }" /></div>
+      </div>
+
+      <div v-for="p in disconnected" :key="p.id" class="st-alert st-alert-warn st-rise flex-wrap items-center" role="alert">
+        <div class="min-w-[220px] flex-1">
+          <div class="font-bold">{{ p.name }} est déconnecté</div>
+          <div class="text-[13px] opacity-90">Une publication n’est pas partie : l’accès à ton compte a expiré. Tes clips sont gardés, rien n’est perdu.</div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <a :href="`/api/auth/${p.id}`" class="st-btn no-underline">Reconnecter</a>
+          <button type="button" class="st-btn-ghost" @click="filters.status = 'approved'">Télécharger les clips</button>
+        </div>
+      </div>
 
       <section class="flex flex-col justify-between gap-3.5 rounded-2xl border border-st-accentBorder bg-st-accentDeep p-6">
         <div class="flex flex-col gap-1.5">
@@ -152,9 +192,13 @@ const selectClass = 'st-field !min-h-11 !w-full sm:!w-auto sm:min-w-[140px]'
         </div>
       </section>
 
-      <div v-if="!clips.length" class="st-card flex flex-col items-center gap-2.5 !py-8 text-center">
+      <div v-if="!clips.length" class="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-st-borderStrong px-6 py-12 text-center">
+        <span class="flex h-14 w-14 items-center justify-center rounded-full bg-st-accentBg text-st-accentLight" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M10 9.5v5l4.5-2.5z" /></svg>
+        </span>
         <h2 class="st-title m-0 text-xl font-bold">Tes premiers clips arriveront après ton prochain live</h2>
         <p class="m-0 max-w-sm text-sm leading-relaxed st-muted">Clippeak surveille ton live et prépare les clips par lots de 4. Ils apparaîtront ici dès qu’ils sont prêts.</p>
+        <button type="button" class="st-btn-ghost" @click="studio.goToStep(1)">Revoir mes clips de référence</button>
       </div>
       <div v-else-if="!lots.length" class="st-card flex flex-col items-center gap-2.5 !py-8 text-center">
         <h2 class="st-title m-0 text-lg font-bold">Aucun clip ne correspond</h2>

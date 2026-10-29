@@ -100,6 +100,8 @@ select.st-field { min-height: 44px; font-weight: 600; background: var(--st-raise
 @keyframes st-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes st-pop { 0% { opacity: 0; transform: scale(.6); } 70% { transform: scale(1.12); } 100% { opacity: 1; transform: scale(1); } }
 @keyframes st-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+/* Squelette de chargement : aplat de la couleur des cartes qui respire doucement. */
+.st-skel { background: var(--st-surface); border: 1px solid var(--st-border); animation: st-pulse 1.6s ease-in-out infinite; }
 @keyframes st-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
 .st-rise { animation: st-rise .5s cubic-bezier(.2, .8, .2, 1) both; animation-delay: var(--d, 0s); }
 .st-pop { animation: st-pop .35s cubic-bezier(.2, .8, .2, 1) both; animation-delay: var(--d, 0s); }
@@ -132,6 +134,6 @@ select.st-field { min-height: 44px; font-weight: 600; background: var(--st-raise
 .st-dot.on { background: var(--st-ok); transform: scale(1.15); }
 
 @media (prefers-reduced-motion: reduce) {
-  .st-rise, .st-pop, .st-pulse, .st-dz-icon, .st-bar-live { animation: none; }
+  .st-rise, .st-pop, .st-pulse, .st-dz-icon, .st-bar-live, .st-skel { animation: none; }
   .st-step-enter-active, .st-step-leave-active, .st-list-enter-active, .st-list-leave-active, .st-bar, .st-btn, .st-btn-ghost, .st-dropzone, .st-dot { transition: none; }
 }
