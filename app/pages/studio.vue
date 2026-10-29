@@ -10,6 +10,14 @@ const { connected, error, notice, busy, channels, channelId, view, mode } = stud
 
 const route = useRoute()
 const checking = ref(true)
+
+// Un message de succes disparait seul apres 6 s ; une erreur reste jusqu'a ce qu'on la ferme.
+let noticeTimer: ReturnType<typeof setTimeout> | null = null
+watch(notice, (n) => {
+  if (noticeTimer) clearTimeout(noticeTimer)
+  if (n) noticeTimer = setTimeout(() => { notice.value = '' }, 6000)
+})
+onBeforeUnmount(() => { if (noticeTimer) clearTimeout(noticeTimer) })
 const currentChannel = computed(() => channels.value.find(c => c.id === channelId.value))
 const onDemo = computed(() => Boolean(currentChannel.value?.demo))
 const onTest = computed(() => Boolean(currentChannel.value?.test))
@@ -49,40 +57,50 @@ async function logout() {
 
 <template>
   <div class="st-root min-h-screen bg-st-bg">
-    <header class="flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-st-border px-5 py-2 sm:px-8">
-      <div class="flex items-center gap-2.5">
+    <header class="sticky top-0 z-30 flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-st-border bg-st-bg px-5 py-2 sm:px-8">
+      <NuxtLink to="/" class="flex min-h-11 items-center gap-2.5 text-st-text no-underline" aria-label="Clippeak, accueil">
         <span class="flex h-8 w-8 items-center justify-center rounded-full bg-st-accent text-xs font-extrabold text-white" aria-hidden="true">CP</span>
         <span class="st-title text-lg font-bold">Clippeak</span>
-      </div>
+      </NuxtLink>
       <div v-if="connected" class="flex flex-wrap items-center justify-end gap-2">
         <span v-if="mode === 'streamer' && currentChannel" class="text-sm font-semibold st-muted">{{ currentChannel.displayName }}</span>
         <button v-if="view !== 'dashboard' && (studio.onboarding.value?.completed || studio.clips.value.length)" type="button" class="st-btn-ghost" @click="view = 'dashboard'">Tableau de bord</button>
         <span v-else-if="view === 'onboarding'" class="hidden items-center gap-2 text-[13px] font-semibold st-muted sm:inline-flex">Enregistré à chaque étape</span>
         <button v-if="mode === 'streamer'" type="button" class="st-btn-quiet" :disabled="busy" @click="logout">Se déconnecter</button>
+        <NuxtLink v-else-if="mode === 'admin'" to="/admin" class="st-btn-ghost no-underline">← Administration</NuxtLink>
       </div>
     </header>
 
     <!-- Admin : on voit toujours quel compte on regarde, pour ne jamais confondre la demonstration et une vraie chaine. -->
-    <div
+    <section
       v-if="connected && mode === 'admin'"
-      class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-5 py-2.5 sm:px-8"
-      :class="onDemo || onTest ? 'border-[#3A2A66] bg-[#1A1530]' : 'border-[#6B2F26] bg-[#2A1512]'"
-      role="status"
+      class="flex flex-wrap items-center gap-x-4 gap-y-3 border-b px-5 py-3 sm:px-8"
+      :class="onDemo || onTest ? 'border-st-accentBorder bg-st-accentDeep' : 'border-st-error/40 bg-st-errorBg'"
+      aria-label="Compte affiché"
     >
       <span class="st-badge" :class="onDemo || onTest ? 'st-badge-violet' : 'st-badge-error'">{{ onDemo ? 'Démonstration' : onTest ? 'Chaîne de test' : 'Vrai compte' }}</span>
-      <span class="text-[13px] leading-5">
-        {{ onDemo ? 'Tu es en mode administrateur sur un compte fictif : modifie tout ce que tu veux.' : onTest ? 'Chaîne de test : ses photos et ses réglages sont à part. Ne publie pas les clips d’un ami.' : 'Tu es en mode administrateur sur une vraie chaîne : tes modifications sont réelles.' }}
-      </span>
-      <select v-if="channels.length > 1" v-model="channelId" class="st-field !w-auto" aria-label="Chaîne affichée" @change="switchChannel">
-        <option v-for="c in channels" :key="c.id" :value="c.id">{{ c.demo ? 'Chaîne de démonstration' : c.test ? `${c.displayName} (test)` : c.displayName }}</option>
-      </select>
-      <button v-if="onDemo" type="button" class="st-btn-ghost" :disabled="busy" @click="studio.resetDemo()">Remettre à zéro</button>
-      <NuxtLink to="/admin" class="st-btn-quiet no-underline sm:ml-auto">← Administration</NuxtLink>
-    </div>
+      <p class="m-0 min-w-[220px] flex-1 text-[13px] leading-5 text-st-soft">
+        {{ onDemo ? 'Compte fictif : modifie tout ce que tu veux.' : onTest ? 'Photos et réglages à part. Ne publie pas les clips d’un ami.' : 'Vraie chaîne : tes modifications sont réelles.' }}
+      </p>
+      <div class="flex flex-wrap items-center gap-2">
+        <select v-if="channels.length > 1" v-model="channelId" class="st-field !w-auto" aria-label="Chaîne affichée" @change="switchChannel">
+          <option v-for="c in channels" :key="c.id" :value="c.id">{{ c.demo ? 'Chaîne de démonstration' : c.test ? `${c.displayName} (test)` : c.displayName }}</option>
+        </select>
+        <button v-if="onDemo" type="button" class="st-btn-ghost" :disabled="busy" @click="studio.resetDemo()">Remettre à zéro</button>
+      </div>
+    </section>
 
-    <div v-if="error || notice" class="px-5 pt-4 sm:px-8">
-      <p v-if="error" class="st-alert st-alert-error m-0" role="alert">{{ error }}</p>
-      <p v-else class="st-alert st-alert-ok m-0" role="status">{{ notice }}</p>
+    <!-- Message flottant : ne decale rien, se ferme tout seul (succes) ou a la demande (erreur). -->
+    <div class="pointer-events-none fixed inset-x-4 top-[76px] z-50 flex justify-end sm:left-auto sm:right-6 sm:w-[420px]" aria-live="polite">
+      <Transition name="st-step">
+        <div v-if="error || notice" :key="error || notice" class="st-alert pointer-events-auto w-full items-center border shadow-[0_8px_24px_rgba(0,0,0,.4)]" :class="error ? 'st-alert-error border-st-error/40' : 'st-alert-ok border-st-ok/40'" :role="error ? 'alert' : 'status'">
+          <svg class="flex-none" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-if="error" d="M12 7v6M12 17h.01" /><path v-else d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+          <span class="min-w-0 flex-1">{{ error || notice }}</span>
+          <button type="button" class="-my-2 -mr-2 flex h-11 w-11 flex-none items-center justify-center rounded-[10px] bg-transparent text-current hover:bg-white/10" aria-label="Fermer le message" @click="error = ''; notice = ''">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+      </Transition>
     </div>
 
     <StudioVodAlerts v-if="connected && studio.detail.value" />
@@ -91,6 +109,6 @@ async function logout() {
       <StudioDashboard v-if="view === 'dashboard'" />
       <StudioOnboarding v-else />
     </template>
-    <p v-else-if="checking" class="px-5 py-16 text-center text-sm st-muted" role="status">Chargement…</p>
+    <StudioSkeleton v-else-if="checking" />
   </div>
 </template>
