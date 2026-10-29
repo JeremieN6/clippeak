@@ -11,8 +11,8 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 </script>
 
 <template>
-  <div v-if="alerts.length" class="flex flex-col gap-3 px-5 pt-4 sm:px-8" aria-label="VODs à surveiller">
-    <section v-for="a in alerts" :key="a.id" class="st-card st-rise flex flex-col gap-3 !p-5" :class="a.state === 'blocked' ? '!border-[#6B5420] !bg-[#1F1A0E]' : a.state === 'restore' ? '!border-[#1F5A47] !bg-[#0F1D19]' : ''" :role="a.state === 'blocked' ? 'alert' : 'status'">
+  <div v-if="alerts.length" class="flex flex-col gap-3" aria-label="VODs à surveiller">
+    <section v-for="a in alerts" :key="a.id" class="st-card st-rise flex flex-col gap-3 !p-5" :class="a.state === 'blocked' ? '!border-st-warn/40 !bg-st-warnBg' : a.state === 'restore' ? '!border-st-ok/40 !bg-st-okBg' : ''" :role="a.state === 'blocked' ? 'alert' : 'status'">
       <template v-if="a.state === 'blocked'">
         <div class="flex flex-wrap items-center gap-2"><span class="st-badge st-badge-warn">Action requise</span><h2 class="m-0 text-base font-bold">Passe ta VOD en public</h2></div>
         <p class="m-0 text-sm leading-relaxed">
