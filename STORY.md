@@ -77,6 +77,8 @@ Le produit reel de clipping n'existe pas encore : tout le "traitement" est simul
 
 - Decision du 2026-10-27 : acces des streamers par « Se connecter avec Twitch », SUR INVITATION du porteur (pas de parrainage entre streamers, pas d'inscription libre au debut) pour maitriser la charge du VPS ; la page a mot de passe devient strictement un acces administrateur. Chaque streamer ne voit que ses propres donnees.
 
+- Decision du 2026-10-29 : ajouter une page « Prochainement » (roadmap visible par les streamers, avec TikTok et les statistiques par plateforme) pour montrer que l'outil est vivant et reduire le churn ; premiere version en fichier, vote « Je veux ca » ensuite. Premier vrai envoi YouTube verifie le meme jour (prive). Backlog complet dans `BACKLOG.md`.
+
 ---
 
 ## Derniere mise a jour
