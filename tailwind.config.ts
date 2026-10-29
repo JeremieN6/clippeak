@@ -41,7 +41,10 @@ export default <Partial<Config>>{
         infoBg: 'var(--st-info-bg)',
         info: 'var(--st-info)',
         errorBg: 'var(--st-error-bg)',
-        error: 'var(--st-error)'
+        error: 'var(--st-error)',
+        okBorder: 'var(--st-ok-border)',
+        warnBorder: 'var(--st-warn-border)',
+        errorBorder: 'var(--st-error-border)'
         },
         clippeak: {
           bg: '#0a0a0f',

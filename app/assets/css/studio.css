@@ -28,6 +28,9 @@
   --st-info: #8DB9FF;
   --st-error-bg: #3A1A19;
   --st-error: #FF9B8D;
+  --st-ok-border: color-mix(in srgb, var(--st-ok) 40%, transparent);
+  --st-warn-border: color-mix(in srgb, var(--st-warn) 40%, transparent);
+  --st-error-border: color-mix(in srgb, var(--st-error) 40%, transparent);
   --st-radius-card: 16px;
   --st-radius-control: 10px;
   --st-control-h: 44px;

@@ -19,7 +19,7 @@ defineProps<{ title: string, updated: string }>()
     <main class="mx-auto flex max-w-[720px] flex-col gap-3 px-5 py-12 sm:px-8">
       <h1 class="st-title m-0 text-3xl font-bold leading-tight sm:text-4xl">{{ title }}</h1>
       <p class="st-hint m-0">Dernière mise à jour : {{ updated }}</p>
-      <div class="legal mt-4 flex flex-col gap-4 text-[15px] leading-7 text-[#D9D4E5]">
+      <div class="legal mt-4 flex flex-col gap-4 text-[15px] leading-7 text-st-soft">
         <slot />
       </div>
     </main>
@@ -30,5 +30,5 @@ defineProps<{ title: string, updated: string }>()
 .legal :deep(h2) { margin: 20px 0 0; font-family: 'Sora', 'Manrope', system-ui, sans-serif; font-size: 20px; font-weight: 700; color: #fff; }
 .legal :deep(p), .legal :deep(ul) { margin: 0; }
 .legal :deep(ul) { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
-.legal :deep(a) { color: #B9A0FF; text-decoration: underline; }
+.legal :deep(a) { color: var(--st-accent-light); text-decoration: underline; }
 </style>

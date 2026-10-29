@@ -46,7 +46,7 @@ defineExpose({ invalid })
     </section>
 
     <div class="st-alert st-alert-info">
-      <div><strong class="font-extrabold">À savoir.</strong> <span class="text-[#B9D2FF]">Ces réglages décident quels moments sont repérés et la longueur des clips. Ils ne changent pas leur apparence : pour ça, c’est l’étape 3.</span></div>
+      <div><strong class="font-extrabold">À savoir.</strong> <span class="text-st-info">Ces réglages décident quels moments sont repérés et la longueur des clips. Ils ne changent pas leur apparence : pour ça, c’est l’étape 3.</span></div>
     </div>
   </div>
 </template>
