@@ -41,11 +41,22 @@ export interface SfxRules {
   avatar?: SoundRef
 }
 
+// Ecran partage : ce que le streamer lit ou regarde en haut, sa camera en bas (voir layoutDetect.ts). Rectangles normalises (0..1)
+// par la taille de la source.
+export interface SplitLayout {
+  cam: { x: number, y: number, w: number, h: number }
+  content: { x: number, y: number, w: number, h: number }
+  // Hauteur du visage dans la camera (0 = haut, 1 = bas).
+  camFocusY: number
+}
+
 export interface RenderStyleOptions {
   bandHeight: number
   zoomIntro: { enabled: boolean, amount: number, durationSec: number }
   sfx: { enabled: boolean, volume: number, rules: SfxRules }
   framing: Framing
+  // Si present, remplace le cadrage 9:16 : contenu en haut, camera en bas.
+  split?: SplitLayout
   overlay?: OverlaySpec
 }
 
@@ -88,6 +99,19 @@ export function cropRect(sourceWidth: number, sourceHeight: number, framing: Fra
   const x = Math.min(Math.max(0, Math.round(framing.centerX * sourceWidth - w / 2)), sourceWidth - w)
   const y = Math.min(Math.max(0, Math.round(framing.centerY * sourceHeight - h / 2)), sourceHeight - h)
   return { w, h, x, y }
+}
+
+// Hauteurs des deux zones d'un ecran partage (sous la bande du titre) : camera incrustee 760 px, panneau camera pleine hauteur
+// 860 px (le visage y est plus grand), le contenu prend le reste.
+export function splitZones(split: SplitLayout, _sourceWidth: number, _sourceHeight: number, bandHeight: number): { camH: number, contentH: number } {
+  const camH = split.cam.h >= 0.9 ? 860 : 760
+  return { camH, contentH: OUT_HEIGHT - bandHeight - camH }
+}
+
+const rectPx = (rect: { x: number, y: number, w: number, h: number }, width: number, height: number) => {
+  const x = Math.min(width - 2, Math.max(0, Math.round(rect.x * width / 2) * 2))
+  const y = Math.min(height - 2, Math.max(0, Math.round(rect.y * height / 2) * 2))
+  return { x, y, w: Math.min(width - x, even(rect.w * width)), h: Math.min(height - y, even(rect.h * height)) }
 }
 
 function betweenExpr(windows: Array<{ start: number, end: number }>): string {
@@ -134,9 +158,29 @@ export function buildRenderArgs(spec: RenderSpec): { args: string[], filterCompl
     filters.push(`${ranges.map((_, i) => `[v${i}][a${i}]`).join('')}concat=n=${ranges.length}:v=1:a=1[vc][ac]`)
   }
 
-  // --- Cadrage 9:16 sur le streamer puis mise a l'echelle.
-  const crop = cropRect(spec.sourceWidth, spec.sourceHeight, style.framing)
-  filters.push(`[vc]crop=${crop.w}:${crop.h}:${crop.x}:${crop.y},scale=${OUT_WIDTH}:${OUT_HEIGHT}:flags=lanczos,setsar=1,fps=30[vf]`)
+  const bandH = style.bandHeight
+  const zones = style.split ? splitZones(style.split, spec.sourceWidth, spec.sourceHeight, bandH) : null
+  if (style.split && zones) {
+    // --- Ecran partage : contenu (image nette sur son propre decor flou) en haut, camera recadree sur le visage en bas.
+    const content = rectPx(style.split.content, spec.sourceWidth, spec.sourceHeight)
+    const cam = rectPx(style.split.cam, spec.sourceWidth, spec.sourceHeight)
+    // Camera mise a la largeur du clip puis recadree en hauteur autour du visage.
+    const camScaledH = Math.max(zones.camH, Math.round(OUT_WIDTH * cam.h / cam.w))
+    const camY = Math.min(camScaledH - zones.camH, Math.max(0, Math.round(style.split.camFocusY * camScaledH - zones.camH * 0.45)))
+    filters.push(
+      '[vc]split=2[sc][sm]',
+      `[sc]crop=${content.w}:${content.h}:${content.x}:${content.y},split=2[sb][sf]`,
+      `[sb]scale=${OUT_WIDTH}:${zones.contentH}:force_original_aspect_ratio=increase,crop=${OUT_WIDTH}:${zones.contentH},boxblur=30:3,eq=brightness=-0.12[sbg]`,
+      `[sf]scale=${OUT_WIDTH}:${zones.contentH}:force_original_aspect_ratio=decrease:flags=lanczos[sfg]`,
+      '[sbg][sfg]overlay=(W-w)/2:(H-h)/2[stop]',
+      `[sm]crop=${cam.w}:${cam.h}:${cam.x}:${cam.y},scale=${OUT_WIDTH}:${camScaledH}:flags=lanczos,crop=${OUT_WIDTH}:${zones.camH}:0:${camY}[sbot]`,
+      `[stop][sbot]vstack=inputs=2,pad=${OUT_WIDTH}:${OUT_HEIGHT}:0:${bandH}:black,setsar=1,fps=30[vf]`
+    )
+  } else {
+    // --- Cadrage 9:16 sur le streamer puis mise a l'echelle.
+    const crop = cropRect(spec.sourceWidth, spec.sourceHeight, style.framing)
+    filters.push(`[vc]crop=${crop.w}:${crop.h}:${crop.x}:${crop.y},scale=${OUT_WIDTH}:${OUT_HEIGHT}:flags=lanczos,setsar=1,fps=30[vf]`)
+  }
 
   // --- Zoom d'ouverture : zoompan sur la seule premiere fraction du clip.
   let current = 'vf'
@@ -155,8 +199,7 @@ export function buildRenderArgs(spec: RenderSpec): { args: string[], filterCompl
   // --- Illustrations : ecran scinde (illustration en haut, streamer en bas) pendant leur fenetre.
   const inputs: Array<{ kind: 'sfx' | 'overlay' | 'illustration', index: number }> = []
   let nextInput = 1
-  const bandH = style.bandHeight
-  const topH = 800
+  const topH = zones ? zones.contentH : 800
   const bottomY = bandH + topH
   const bottomH = OUT_HEIGHT - bottomY
   ;(spec.illustrations ?? []).forEach((ill, k) => {
@@ -164,13 +207,19 @@ export function buildRenderArgs(spec: RenderSpec): { args: string[], filterCompl
     inputs.push({ kind: 'illustration', index: idx })
     args.push('-stream_loop', '-1', '-i', ill.path)
     const enable = `between(t,${num(ill.start)},${num(ill.end)})`
-    filters.push(
-      `[${current}]split=2[ib${k}][ic${k}]`,
-      `[ic${k}]crop=${OUT_WIDTH}:${bottomH}:0:${Math.round((OUT_HEIGHT - bottomH) / 2)}[ibot${k}]`,
-      `[${idx}:v]scale=${OUT_WIDTH}:${topH}:force_original_aspect_ratio=increase,crop=${OUT_WIDTH}:${topH},setsar=1,fps=30,setpts=PTS-STARTPTS+${num(ill.start)}/TB[itop${k}]`,
-      `[ib${k}][itop${k}]overlay=0:${bandH}:enable='${enable}':eof_action=pass[io${k}]`,
-      `[io${k}][ibot${k}]overlay=0:${bottomY}:enable='${enable}'[iz${k}]`
-    )
+    const illustrationTop = `[${idx}:v]scale=${OUT_WIDTH}:${topH}:force_original_aspect_ratio=increase,crop=${OUT_WIDTH}:${topH},setsar=1,fps=30,setpts=PTS-STARTPTS+${num(ill.start)}/TB[itop${k}]`
+    if (zones) {
+      // Ecran partage : l'illustration remplace le contenu, la camera reste en bas.
+      filters.push(illustrationTop, `[${current}][itop${k}]overlay=0:${bandH}:enable='${enable}':eof_action=pass[iz${k}]`)
+    } else {
+      filters.push(
+        `[${current}]split=2[ib${k}][ic${k}]`,
+        `[ic${k}]crop=${OUT_WIDTH}:${bottomH}:0:${Math.round((OUT_HEIGHT - bottomH) / 2)}[ibot${k}]`,
+        illustrationTop,
+        `[ib${k}][itop${k}]overlay=0:${bandH}:enable='${enable}':eof_action=pass[io${k}]`,
+        `[io${k}][ibot${k}]overlay=0:${bottomY}:enable='${enable}'[iz${k}]`
+      )
+    }
     current = `iz${k}`
   })
 

@@ -20,6 +20,12 @@ const fontFaces = computed(() => (detail.value?.fonts ?? [])
   .join('\n'))
 useHead(() => ({ style: fontFaces.value ? [{ key: 'studio-fonts', innerHTML: fontFaces.value }] : [] }))
 
+// Ecran partage automatique : camera incrustee ou a cote du contenu -> contenu en haut, camera en bas.
+const splitAuto = computed({
+  get: () => detail.value?.style.layout?.split !== 'off',
+  set: (on: boolean) => { if (detail.value) detail.value.style.layout = { split: on ? 'auto' : 'off' } }
+})
+
 const sceneStyle = computed(() => {
   const f = detail.value?.style.framing
   if (!f) return {}
@@ -218,6 +224,14 @@ async function pickAvatar(event: Event) {
         <label class="flex flex-col gap-1.5"><span class="flex items-center justify-between"><span class="st-label">{{ detail.style.framing.auto ? 'Repli : ' : '' }}Gauche ou droite</span><span class="st-badge st-badge-violet">{{ detail.style.framing.centerX }}</span></span><input v-model.number="detail.style.framing.centerX" type="range" step="0.05" min="0" max="1" class="st-range"></label>
         <label class="flex flex-col gap-1.5"><span class="flex items-center justify-between"><span class="st-label">Haut ou bas</span><span class="st-badge st-badge-violet">{{ detail.style.framing.centerY }}</span></span><input v-model.number="detail.style.framing.centerY" type="range" step="0.05" min="0" max="1" class="st-range"></label>
         <label class="flex flex-col gap-1.5"><span class="flex items-center justify-between"><span class="st-label">Zoom</span><span class="st-badge st-badge-violet">{{ detail.style.framing.zoom }}</span></span><input v-model.number="detail.style.framing.zoom" type="range" step="0.1" min="1" max="3" class="st-range"></label>
+      </section>
+
+      <!-- Ecran partage -->
+      <section class="st-card flex flex-col gap-3">
+        <div class="flex items-center justify-between gap-4">
+          <div><h2 class="m-0 text-[17px] font-bold">Écran partagé</h2><div class="st-hint">Quand ta caméra est dans un coin de l’écran ou à côté de ce que tu regardes, le clip montre ce que tu regardes en haut et toi en bas.</div></div>
+          <StudioSwitch v-model="splitAuto" label="Écran partagé automatique" />
+        </div>
       </section>
 
       <!-- Avatar -->

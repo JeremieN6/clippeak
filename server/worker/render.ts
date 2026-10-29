@@ -8,7 +8,8 @@ import { existsSync } from 'node:fs'
 import { getVodVideoPlaylistUrl } from '../utils/clipping/vodPlaylist'
 import { coversPlan, sourceRelPath, sourceWindow } from '../utils/clipping/sourceExtract'
 import { detectFraming, frameExtractor, runLocateScript } from '../utils/clipping/framingDetect'
-import { join } from 'node:path'
+import { detectLayout } from '../utils/clipping/layoutDetect'
+import { join, resolve } from 'node:path'
 import type { ClipJobToRender } from '../utils/clipping/clipQueue'
 import { prisma } from '../utils/prisma'
 import { retrying } from '../utils/clipping/dbRetry'
@@ -33,6 +34,12 @@ export async function renderClip(job: ClipJobToRender): Promise<{ outputPath: st
       detectFraming: input => detectFraming(input, {
         extractFrame: frameExtractor(runFfmpeg),
         locate: runLocateScript,
+        modelsDir: process.env.VISION_MODELS_DIR || join(dataDir(), 'models')
+      }),
+      // Ecran partage : ne bloque jamais le rendu (en cas d'erreur, le clip est rendu en plein cadre).
+      detectLayout: input => detectLayout(input, {
+        extractFrame: frameExtractor(runFfmpeg),
+        analyse: request => runLocateScript(request, { script: resolve(process.cwd(), 'scripts/vision/detect_layout.py') }),
         modelsDir: process.env.VISION_MODELS_DIR || join(dataDir(), 'models')
       }),
       runFfmpeg,
