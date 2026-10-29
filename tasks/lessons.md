@@ -144,3 +144,9 @@
 **Cause racine** : Fonction ajoutee a l'interface sans verifier qu'elle etait branchee jusqu'au rendu, et libelles ecrits du point de vue du code, pas de celui du streamer.
 **Solution** : Polices rangees dans leur dossier et transmises au rendu ; une section par type avec son usage ; champs reserves aux illustrations et renommes (mots declencheurs, credit).
 **Regle** : Pour chaque champ ou fichier propose a l'utilisateur, retrouver dans le code qui le lit ; sinon le retirer ou le brancher. Nommer les champs d'apres ce qu'ils font pour l'utilisateur.
+
+### [2026-10-29] Un defaut de mise en page visible sur mes propres captures, ni corrige ni signale
+**Probleme** : Sur le tableau de bord, le filtre « Trier par » passait seul sur une 2e ligne avec un grand vide a cote ; present depuis plusieurs PR, le porteur l'a releve. Meme chose pour l'empilement bandeau admin + barre + alertes en haut du studio.
+**Cause racine** : Mes controles automatiques ne mesuraient que les tailles de texte et de zones cliquables, jamais la position des blocs ; les captures du navigateur integre sont petites et je ne les regardais pas vraiment. Je ne signalais pas ce que je voyais hors de la tache.
+**Solution** : Filtres en grille reguliere (3 colonnes, 6 sur grand ecran) ; barre du haut unique.
+**Regle** : Avant toute PR d'interface, mesurer la position de chaque bloc a 1440, 1024 et 390 px (trous, elements orphelins, debordements) et signaler au porteur tout defaut vu en passant, meme hors du perimetre de la tache.
