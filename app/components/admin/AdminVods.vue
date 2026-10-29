@@ -60,7 +60,7 @@ const date = (value: string) => new Date(value).toLocaleString('fr-FR', { day: '
         <input v-model="url" class="st-field" placeholder="https://www.twitch.tv/videos/123456789" autocomplete="off" aria-label="Lien de la VOD">
       </label>
       <label class="flex items-start gap-2.5 text-sm leading-relaxed st-muted">
-        <input v-model="simulate" type="checkbox" class="mt-1 h-4 w-4 accent-[#7C3AED]">
+        <input v-model="simulate" type="checkbox" class="mt-0.5 h-5 w-5 flex-none accent-st-accent">
         <span><strong class="text-white">Essai du parcours « VOD d’abonnés »</strong> : fait comme si Twitch refusait cette VOD publique. Le streamer voit la carte « Action requise », puis les extraits sont récupérés et la carte « Tu peux la remettre comme avant » apparaît.</span>
       </label>
       <div><button type="submit" class="st-btn" :disabled="admin.busy.value || !channelId || !url.trim()">Ajouter la VOD</button></div>

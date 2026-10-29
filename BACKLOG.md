@@ -25,6 +25,12 @@
 - Tables : blocs de vote, fonctions, votes, idees (migration a appliquer par le porteur).
 - Ordre : apres le recadrage UI (1.4), pour la construire avec les composants propres.
 
+### 1.5 Refonte de l'onboarding (colonne de droite immersive) — P2, M a L
+**Demande du porteur (2026-10-29)** : la colonne de gauche (suivi des etapes) est correcte et reste ; la partie droite doit devenir plus **immersive**, comme **une conversation**, avec une trame et un suivi : Clippeak « parle », le streamer repond, une question a la fois, au lieu d'un formulaire par etape.
+- Reference : le porteur donnera l'exemple du site **rustine.io** au moment de s'y mettre ; ne rien concevoir avant.
+- Garde : les 8 etapes, l'enregistrement a chaque reponse, « plus tard », le retour a une etape depuis la colonne de gauche, l'apercu en direct de l'etape « look ».
+- A traiter apres le recadrage UI (composants propres) et avant l'ouverture aux streamers : c'est la premiere impression.
+
 ### 1.2 Statistiques des videos par plateforme dans le tableau de bord — P2, L
 - YouTube : vues, J'aime, commentaires par video publiee (YouTube Data API, lecture). Ajoute une portee OAuth de lecture : les streamers deja connectes devront reautoriser, et cela entre dans le dossier d'audit Google.
 - TikTok / Instagram : seulement apres obtention des acces (voir 1.3 et 2.3).

@@ -6,13 +6,13 @@ defineProps<{ title: string, updated: string }>()
 <template>
   <div class="st-root min-h-screen bg-st-bg">
     <header class="flex min-h-16 items-center justify-between gap-4 border-b border-st-border px-5 py-2 sm:px-8">
-      <NuxtLink to="/" class="flex items-center gap-2.5 no-underline">
+      <NuxtLink to="/" class="flex min-h-11 items-center gap-2.5 no-underline">
         <span class="flex h-8 w-8 items-center justify-center rounded-full bg-st-accent text-xs font-extrabold text-white" aria-hidden="true">CP</span>
         <span class="st-title text-lg font-bold">Clippeak</span>
       </NuxtLink>
       <nav class="flex gap-4 text-sm" aria-label="Pages légales">
-        <NuxtLink to="/confidentialite" class="st-muted hover:text-white">Confidentialité</NuxtLink>
-        <NuxtLink to="/conditions" class="st-muted hover:text-white">Conditions</NuxtLink>
+        <NuxtLink to="/confidentialite" class="st-muted inline-flex min-h-11 items-center hover:text-white">Confidentialité</NuxtLink>
+        <NuxtLink to="/conditions" class="st-muted inline-flex min-h-11 items-center hover:text-white">Conditions</NuxtLink>
       </nav>
     </header>
 
