@@ -105,3 +105,21 @@ test('planCut leaves a breathing tail after the punchline, bounded by the next w
   assert.ok(tight.endSec < end + 0.35)
   assert.ok(tight.endSec - end >= 0.15)
 })
+
+test('planCut keeps up to two more phrases after the punchline when they follow without a break, never past maxSec', () => {
+  const segs = [
+    ...speech(words(['Alors', 'hier', 'je', 'suis', 'alle', 'au', 'marche.'], 100)),
+    ...speech(words(['Et', 'la', 'le', 'mec', 'me', 'dit', 'rien', 'mdr.'], 103.5)),
+    ...speech(words(['Bref', 'on', 'a', 'ri.'], 107.4)),
+    ...speech(words(['Et', 'voila', 'la', 'suite.'], 109.3)),
+    ...speech(words(['Troisieme', 'phrase', 'en', 'trop.'], 111.2))
+  ]
+  const plan = planCut(segs, 106.5, { minSec: 6, maxSec: 40 })!
+  assert.ok(/suite\.$/.test(plan.lastWords), plan.lastWords)
+  assert.equal(plan.lastWords.includes('trop'), false)
+  // Le plafond de duree brute reste respecte.
+  const capped = planCut(segs, 106.5, { minSec: 6, maxSec: 9.5 })!
+  assert.ok(capped.endSec - capped.startSec <= 9.5)
+  // Desactivable.
+  assert.ok(/mdr\.$/.test(planCut(segs, 106.5, { minSec: 6, maxSec: 40, afterPhrases: 0 })!.lastWords))
+})

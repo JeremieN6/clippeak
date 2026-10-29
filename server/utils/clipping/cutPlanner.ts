@@ -9,6 +9,9 @@ export interface CutSettings {
   // Marge MAXIMALE gardee apres le dernier mot : on laisse respirer la fin (le clip ne s'arrete pas net), sans jamais
   // empieter sur le mot suivant ni garder plus de silence que necessaire.
   tailSec?: number
+  // Nombre de phrases gardees apres la chute (2 par defaut) et duree maximale de parole ajoutee ainsi (10 s par defaut).
+  afterPhrases?: number
+  afterMaxSec?: number
   // Marge avant la premiere syllabe de l'accroche.
   headSec?: number
   // Le chat reagit apres la chute : on accepte des mots finissant jusqu'a graceSec apres le pic.
@@ -141,6 +144,25 @@ export function planCut(segments: TranscriptSegment[], peakSec: number, settings
       durationSec = keepRanges.reduce((sum, r) => sum + (r.end - r.start), 0)
       if (durationSec >= settings.minSec) break
     }
+  }
+  // Fin qui respire : on garde jusqu'a afterPhrases phrases de plus apres la chute (la suite de l'histoire, la reaction du streamer),
+  // seulement si elles s'enchainent sans coupure (pause <= 1,5 s), dans la limite de afterMaxSec de parole et de maxSec au total.
+  let lastIdx = -1
+  words.forEach((w, i) => { if (w.end <= finalEnd - 0.1) lastIdx = i })
+  const anchorEnd = lastIdx >= 0 ? words[lastIdx].end : finalEnd
+  let phrases = 0
+  for (let i = lastIdx + 1; i < words.length && phrases < (settings.afterPhrases ?? 2); i++) {
+    const previous = words[i - 1]
+    if (!previous || words[i].start - previous.end > 1.5) break
+    if (!ends.has(words[i]) || i === words.length - 1) continue
+    const candidateEnd = words[i].end + tailAfter(words[i])
+    if (words[i].end - anchorEnd > (settings.afterMaxSec ?? 10) || candidateEnd - startSec > settings.maxSec) break
+    finalEnd = candidateEnd
+    phrases++
+  }
+  if (phrases) {
+    keepRanges = trimSilences(words, startSec, finalEnd, settings)
+    durationSec = keepRanges.reduce((sum, r) => sum + (r.end - r.start), 0)
   }
   const hookWords = words.filter(w => w.start >= startSec).slice(0, 12).map(w => w.text)
   const lastWords = words.filter(w => w.end <= finalEnd).slice(-8).map(w => w.text)
