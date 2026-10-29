@@ -2,7 +2,7 @@
 // La page n'est liee depuis nulle part : on y arrive en tapant l'adresse.
 
 export interface AdminInvite { id: string, login: string, note: string | null, connected: boolean, createdAt: string, lastLoginAt: string | null }
-export interface AdminVod { id: string, twitchVodId: string, url: string, title: string | null, status: string, error: string | null, createdAt: string, channel: string, moments: number, clips: number, durationSec: number, progress: { phase: 'blocked' | 'waiting' | 'analyzing' | 'rendering' | 'ready' | 'failed', estimateSec: number | null, clipsTotal: number, clipsInProgress: number } }
+export interface AdminVod { id: string, twitchVodId: string, url: string, title: string | null, status: string, error: string | null, createdAt: string, channel: string, channelId: string, moments: number, clips: number, durationSec: number, progress: { phase: 'blocked' | 'waiting' | 'analyzing' | 'rendering' | 'ready' | 'failed', estimateSec: number | null, clipsTotal: number, clipsInProgress: number } }
 export interface AdminChannel { id: string, login: string, displayName: string, demo: boolean, test: boolean }
 
 export function createAdmin() {
@@ -94,6 +94,11 @@ export function createAdmin() {
     vods.value = (await $fetch<{ vods: AdminVod[] }>('/api/admin/vods')).vods
   }, 'Analyse relancée.')
 
+  const moveVod = (id: string, channelId: string) => run(async () => {
+    await $fetch(`/api/admin/vods/${id}/move`, { method: 'POST', body: { channelId } })
+    vods.value = (await $fetch<{ vods: AdminVod[] }>('/api/admin/vods')).vods
+  }, 'VOD déplacée, avec ses clips : ils se refont dans le studio de la nouvelle chaîne (« Refaire le rendu »).')
+
   const removeVod = (id: string) => run(async () => {
     await $fetch(`/api/admin/vods/${id}`, { method: 'DELETE' })
     vods.value = (await $fetch<{ vods: AdminVod[] }>('/api/admin/vods')).vods
@@ -114,7 +119,7 @@ export function createAdmin() {
     await refresh()
   }, 'Chaîne de démonstration remise à zéro.')
 
-  return { authed, checking, password, error, notice, busy, invites, channels, vods, loadVods, addVod, retryVod, removeVod, restore, login, logout, addInvite, removeInvite, resetDemo, addTestChannel, removeTestChannel }
+  return { authed, checking, password, error, notice, busy, invites, channels, vods, loadVods, addVod, retryVod, moveVod, removeVod, restore, login, logout, addInvite, removeInvite, resetDemo, addTestChannel, removeTestChannel }
 }
 
 export type Admin = ReturnType<typeof createAdmin>

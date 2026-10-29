@@ -11,6 +11,7 @@ export default defineEventHandler(async (event) => {
     take: 50,
     select: {
       id: true, twitchVodId: true, url: true, title: true, status: true, error: true, createdAt: true, startedAt: true, endedAt: true,
+      channelId: true,
       channel: { select: { displayName: true } },
       moments: { select: { jobs: { select: { status: true } } } }
     }
@@ -29,6 +30,7 @@ export default defineEventHandler(async (event) => {
       error: v.status === 'failed' || v.status === 'blocked' ? v.error : null,
       createdAt: v.createdAt,
       channel: v.channel.displayName,
+      channelId: v.channelId,
       moments: v.moments.length,
       clips: v.moments.reduce((sum, m) => sum + m.jobs.length, 0),
       durationSec: Math.round(durationSec),

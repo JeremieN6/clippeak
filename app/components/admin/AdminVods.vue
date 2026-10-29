@@ -35,6 +35,7 @@ function detail(v: AdminVod): string {
   if (p.phase === 'ready') return `${v.clips} clip(s) issus de ${v.moments} moment(s)`
   return ''
 }
+const moveTo = reactive<Record<string, string>>({})
 const date = (value: string) => new Date(value).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 </script>
 
@@ -43,6 +44,10 @@ const date = (value: string) => new Date(value).toLocaleString('fr-FR', { day: '
     <p class="m-0 text-sm leading-relaxed st-muted">
       Colle le lien d’une VOD Twitch <strong class="text-white">publique</strong> (pas réservée aux abonnés), même d’un autre streamer. Clippeak l’analyse comme si c’était une VOD de la chaîne choisie : ses clips arrivent dans le studio de cette chaîne, à valider comme les autres.
     </p>
+
+    <!-- Le message d'erreur ou de succes de la page est tout en haut : on le repete ici pour qu'un doublon ne passe pas inapercu. -->
+    <p v-if="admin.error.value" class="st-alert st-alert-error m-0" role="alert">{{ admin.error.value }}</p>
+    <p v-else-if="admin.notice.value" class="st-alert st-alert-ok m-0" role="status">{{ admin.notice.value }}</p>
 
     <form class="st-card flex flex-col gap-4" @submit.prevent="add">
       <h2 class="m-0 text-[17px] font-bold">Ajouter une VOD</h2>
@@ -74,6 +79,12 @@ const date = (value: string) => new Date(value).toLocaleString('fr-FR', { day: '
         </div>
         <p v-if="v.error && v.progress.phase === 'failed'" class="m-0 basis-full text-[13px] text-[#FF9B8D]">{{ v.error }}</p>
         <span class="st-badge" :class="phaseLook[v.progress.phase].cls">{{ phaseLook[v.progress.phase].label }}</span>
+        <div v-if="v.status !== 'analyzing' && realChannels.length > 1" class="flex items-center gap-2">
+          <select v-model="moveTo[v.id]" class="st-field !w-auto" :aria-label="`Déplacer la VOD ${v.twitchVodId} vers`">
+            <option v-for="c in realChannels.filter(x => x.id !== v.channelId)" :key="c.id" :value="c.id">{{ c.displayName }}{{ c.test ? ' (test)' : '' }}</option>
+          </select>
+          <button type="button" class="st-btn-ghost" :disabled="admin.busy.value || !moveTo[v.id]" @click="admin.moveVod(v.id, moveTo[v.id])">Déplacer</button>
+        </div>
         <button v-if="v.status === 'failed'" type="button" class="st-btn-ghost" :disabled="admin.busy.value" @click="admin.retryVod(v.id)">Relancer</button>
         <button v-if="v.status !== 'analyzing' && !v.moments" type="button" class="st-btn-quiet !text-[#FF9B8D] text-sm" :disabled="admin.busy.value" :aria-label="`Retirer la VOD ${v.twitchVodId}`" @click="admin.removeVod(v.id)">Retirer</button>
       </div>
