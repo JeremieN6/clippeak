@@ -7,16 +7,23 @@
 
 ## 1. Demandes du porteur
 
-### 1.1 Page « Prochainement » pour les streamers — P1, M
-**But** (decision marketing du 2026-10-29) : montrer que l'outil est vivant, que l'equipe continue de travailler, que la fonction attendue arrive bientot. Reduit le churn, augmente la satisfaction.
-- Page `/studio/roadmap` (ou onglet du studio), lisible par tout streamer connecte, avec un lien dans le tableau de bord (et une pastille « nouveau » quand une ligne change).
-- Chaque ligne : titre, une phrase de benefice, statut (**En cours** / **Prochainement** / **A l'etude** / **Livre**), eventuellement un trimestre indicatif (jamais de date ferme).
-- Section « Livre recemment » avec les 3 a 5 dernieres nouveautes : c'est ce qui prouve que l'outil vit.
-- Premieres lignes demandees : **publication automatique vers TikTok**, **statistiques des videos par plateforme dans le tableau de bord**.
-- Autres lignes possibles a afficher (voir sections suivantes) : Instagram, notifications par e-mail, YouTube en public.
-- Etape 1 : contenu dans un fichier du depot (`app/data/roadmap.ts`), aucun risque, aucune migration. Etape 2 (facultative) : tables `roadmap_items` et `roadmap_votes` + edition dans `/admin`.
-- **Bouton « Je veux ca »** (vote, un par streamer et par ligne) : donne un vrai signal de priorite et fait participer le streamer. Demande une table (migration a appliquer par le porteur).
-- Piege a eviter : promettre une fonction qui depend d'un acces API pas encore obtenu (TikTok, Instagram). Utiliser « A l'etude » tant que l'acces n'est pas accorde.
+### 1.1 Page « Prochainement » avec vote des streamers — P1, M
+**But** (decision du 2026-10-29) : **prioriser les fonctions avec les streamers eux-memes** et montrer que l'outil est vivant (reduit le churn). Ce n'est PAS une liste de chantiers internes : pas d'audit Google, pas de relecture juridique, rien de technique.
+- Page `/studio/roadmap`, lien dans le tableau de bord, pastille « nouveau » quand le bloc change.
+- **Lignes de depart** : Acces TikTok, Acces Instagram, Statistiques des clips par plateforme.
+- **Vote par blocs de 2 fonctions**, avec une echeance (2 semaines pour commencer) :
+  - un vote = +1 pour la fonction choisie ; un vote par streamer et par bloc, modifiable jusqu'a l'echeance ;
+  - les totaux ne s'affichent qu'apres le vote (pas d'effet de suiveur) ;
+  - a l'echeance, la fonction la plus votee est developpee en priorite ; la perdante revient dans le bloc suivant avec ses votes conserves ;
+  - egalite ou zero vote : l'admin tranche, et l'ecran le dit ;
+  - un backlog cache (table en base) dit quelle fonction entre dans le bloc suivant ;
+  - premier bloc : TikTok contre Instagram ; deuxieme : la perdante contre les statistiques.
+- Statuts affiches : **En vote**, **En cours**, **En attente d'acces** (API de la plateforme pas encore accordee), **Livre**. Formulation « en priorite », jamais « on developpera ».
+- Section « Livre grace a vos votes » pour montrer que le vote sert.
+- **Champ « Propose une idee »** : les idees arrivent dans une section de `/admin` (table en base) et alimentent les prochains blocs.
+- **Notifications** : message dans l'outil (pastille + bandeau) quand le vote du streamer gagne et quand la fonction sort ; Telegram/e-mail par streamer ensuite (voir 2.2).
+- Tables : blocs de vote, fonctions, votes, idees (migration a appliquer par le porteur).
+- Ordre : apres le recadrage UI (1.4), pour la construire avec les composants propres.
 
 ### 1.2 Statistiques des videos par plateforme dans le tableau de bord — P2, L
 - YouTube : vues, J'aime, commentaires par video publiee (YouTube Data API, lecture). Ajoute une portee OAuth de lecture : les streamers deja connectes devront reautoriser, et cela entre dans le dossier d'audit Google.
@@ -33,7 +40,7 @@
 
 ### 1.4 Recadrage de l'interface avec le kit — P1, M a L
 Constat du porteur : tout n'est pas propre ni a 100 % conforme au kit (maquettes Claude Design, `BRIEF-UI-ONBOARDING.md`).
-- **Etape 0 : audit** (une demi-journee) : capturer chaque ecran bureau + telephone (connexion, 8 etapes, tableau de bord, cartes de clip, `/admin` et ses onglets, pages legales, landing) et lister les ecarts avec les maquettes : couleurs, rayons, espacements, typographies, etats (vide, chargement, erreur), boutons, libelles.
+- **Etape 0 : audit — FAIT le 2026-10-29, voir `AUDIT-UI.md`** (ecarts mesures, plan en 6 etapes, 4 decisions a prendre). Etape initialement prevue : capturer chaque ecran bureau + telephone (connexion, 8 etapes, tableau de bord, cartes de clip, `/admin` et ses onglets, pages legales, landing) et lister les ecarts avec les maquettes : couleurs, rayons, espacements, typographies, etats (vide, chargement, erreur), boutons, libelles.
 - **Etape 1 : jeu de composants** : regrouper les classes `st-*` en composants communs (bouton, carte, champ, badge, onglets, alerte, modale) avec des variables de design uniques ; supprimer les doublons et les styles ecrits en dur.
 - **Etape 2 : passage ecran par ecran**, en commencant par ce que voit un nouveau streamer (connexion, etape 1, tableau de bord).
 - Inclut : accessibilite (contrastes, focus visible, libelles), etats vides soignes, messages d'erreur lisibles, coherence du francais (accents, tutoiement).
