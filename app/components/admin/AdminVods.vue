@@ -72,12 +72,12 @@ const date = (value: string) => new Date(value).toLocaleString('fr-FR', { day: '
         <button type="button" class="st-btn-quiet" :disabled="admin.busy.value" @click="admin.loadVods()">Actualiser</button>
       </div>
       <p v-if="!admin.vods.value.length" class="st-muted m-0 pb-4 text-sm">Aucune VOD ajoutée pour l’instant.</p>
-      <div v-for="v in admin.vods.value" :key="v.id" class="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-[#2C2837] py-3.5">
+      <div v-for="v in admin.vods.value" :key="v.id" class="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-st-border py-3.5">
         <div class="min-w-0 flex-1 basis-52">
           <a :href="v.url" target="_blank" rel="noopener" class="break-words text-[15px] font-bold text-white no-underline hover:underline">{{ v.title || `VOD ${v.twitchVodId}` }}</a>
           <div class="text-[13px] st-muted">Pour {{ v.channel }} · ajoutée {{ date(v.createdAt) }}<template v-if="detail(v)"> · {{ detail(v) }}</template></div>
         </div>
-        <p v-if="v.error && v.progress.phase === 'failed'" class="m-0 basis-full text-[13px] text-[#FF9B8D]">{{ v.error }}</p>
+        <p v-if="v.error && v.progress.phase === 'failed'" class="m-0 basis-full text-[13px] text-st-error">{{ v.error }}</p>
         <span class="st-badge" :class="phaseLook[v.progress.phase].cls">{{ phaseLook[v.progress.phase].label }}</span>
         <div v-if="v.status !== 'analyzing' && realChannels.length > 1" class="flex items-center gap-2">
           <select v-model="moveTo[v.id]" class="st-field !w-auto" :aria-label="`Déplacer la VOD ${v.twitchVodId} vers`">
@@ -86,7 +86,7 @@ const date = (value: string) => new Date(value).toLocaleString('fr-FR', { day: '
           <button type="button" class="st-btn-ghost" :disabled="admin.busy.value || !moveTo[v.id]" @click="admin.moveVod(v.id, moveTo[v.id])">Déplacer</button>
         </div>
         <button v-if="v.status === 'failed'" type="button" class="st-btn-ghost" :disabled="admin.busy.value" @click="admin.retryVod(v.id)">Relancer</button>
-        <button v-if="v.status !== 'analyzing' && !v.moments" type="button" class="st-btn-quiet !text-[#FF9B8D] text-sm" :disabled="admin.busy.value" :aria-label="`Retirer la VOD ${v.twitchVodId}`" @click="admin.removeVod(v.id)">Retirer</button>
+        <button v-if="v.status !== 'analyzing' && !v.moments" type="button" class="st-btn-quiet !text-st-error text-sm" :disabled="admin.busy.value" :aria-label="`Retirer la VOD ${v.twitchVodId}`" @click="admin.removeVod(v.id)">Retirer</button>
       </div>
     </section>
   </div>

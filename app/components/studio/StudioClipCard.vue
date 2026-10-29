@@ -46,7 +46,7 @@ const redo = () => studio.reviewClip(props.clip, 'requeue', draft)
   <article class="st-card flex flex-col gap-4 !p-4 sm:flex-row" :aria-label="clip.title || clip.hook || 'Clip'">
     <div class="mx-auto w-full max-w-[260px] flex-none sm:mx-0 sm:w-[190px] sm:max-w-none">
       <video v-if="clip.videoUrl" :src="clip.videoUrl" controls playsinline preload="metadata" class="aspect-[9/16] w-full rounded-xl bg-black" />
-      <div v-else class="flex aspect-[9/16] w-full items-center justify-center rounded-xl bg-[#100F15] p-3 text-center text-[13px] leading-5 st-muted">
+      <div v-else class="flex aspect-[9/16] w-full items-center justify-center rounded-xl bg-st-field p-3 text-center text-[13px] leading-5 st-muted">
         {{ clip.error || (clip.status === 'queued' || clip.status === 'rendering' ? 'Le clip est en cours de préparation.' : 'Pas encore de vidéo') }}
       </div>
     </div>
@@ -59,7 +59,7 @@ const redo = () => studio.reviewClip(props.clip, 'requeue', draft)
       </div>
       <h3 class="m-0 break-words text-base font-bold leading-snug">{{ clip.title || clip.hook || 'Sans titre' }}</h3>
       <div class="text-[13px] st-muted">{{ originLabel }}<span v-if="clip.category"> · {{ clip.category }}</span></div>
-      <p v-if="clip.rationale" class="m-0 rounded-[10px] bg-[#100F15] p-2.5 text-[13px] leading-5">
+      <p v-if="clip.rationale" class="m-0 rounded-[10px] bg-st-field p-2.5 text-[13px] leading-5">
         <strong>Pourquoi cette note :</strong> {{ clip.rationale }}
         <span v-if="clip.scorer" class="st-muted"> ({{ clip.scorer === 'claude' ? 'notée par IA' : 'note locale' }})</span>
       </p>

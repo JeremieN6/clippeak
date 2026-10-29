@@ -70,7 +70,7 @@ const settingsNav = computed(() => STEPS.filter(s => s.n < 8).map((s) => {
   const st = studio.stepStatus(s.n)
   return { ...s, ...st }
 }))
-const dot = { ok: 'bg-[#12302A] text-[#6EDDB8]', warn: 'bg-[#33280F] text-[#F6C260]', skip: 'bg-[#25212F] text-[#C9C3D6]', todo: 'bg-[#25212F] text-[#C9C3D6]' } as const
+const dot = { ok: 'bg-st-okBg text-st-ok', warn: 'bg-st-warnBg text-st-warn', skip: 'bg-st-raised2 text-st-soft', todo: 'bg-st-raised2 text-st-soft' } as const
 const dotIcon = { ok: '✓', warn: '!', skip: '–', todo: '–' } as const
 
 const navOpen = ref(false)
@@ -79,20 +79,20 @@ const selectClass = 'st-field !min-h-11 !w-full sm:!w-auto sm:min-w-[140px]'
 
 <template>
   <div class="flex flex-wrap items-stretch">
-    <nav aria-label="Mes réglages" class="flex w-full flex-none flex-col gap-6 border-[#2C2837] p-4 lg:w-[280px] lg:border-r lg:py-6">
+    <nav aria-label="Mes réglages" class="flex w-full flex-none flex-col gap-6 border-st-border p-4 lg:w-[280px] lg:border-r lg:py-6">
       <div class="hidden flex-col gap-0.5 lg:flex">
         <button type="button" class="st-nav-item !min-h-12 text-[15px] font-bold" aria-current="page">Tableau de bord</button>
       </div>
       <button type="button" class="st-btn-ghost w-full lg:hidden" :aria-expanded="navOpen" aria-controls="st-settings" @click="navOpen = !navOpen">{{ navOpen ? 'Masquer mes réglages' : 'Mes réglages' }}</button>
       <div id="st-settings" class="flex-col gap-0.5 lg:flex" :class="navOpen ? 'flex' : 'hidden'">
-        <div class="px-3 pb-2 text-xs font-extrabold uppercase tracking-widest text-[#928BA2]">Mes réglages</div>
-        <button v-for="s in settingsNav" :key="s.n" type="button" class="st-nav-item !min-h-11 text-sm font-semibold text-[#C9C3D6]" @click="studio.goToStep(s.n)">
+        <div class="px-3 pb-2 text-xs font-extrabold uppercase tracking-widest text-st-dim">Mes réglages</div>
+        <button v-for="s in settingsNav" :key="s.n" type="button" class="st-nav-item !min-h-11 text-sm font-semibold text-st-soft" @click="studio.goToStep(s.n)">
           <span class="flex h-5 w-5 flex-none items-center justify-center rounded-full text-[11px] font-black" :class="dot[s.status]">{{ dotIcon[s.status] }}</span>
           <span class="min-w-0 flex-1">{{ s.label }}</span>
-          <span v-if="s.status === 'warn' || s.status === 'skip'" class="text-xs font-bold" :class="s.status === 'warn' ? 'text-[#F6C260]' : 'text-[#C9C3D6]'">{{ s.status === 'warn' ? 'À revoir' : 'Passée' }}</span>
+          <span v-if="s.status === 'warn' || s.status === 'skip'" class="text-xs font-bold" :class="s.status === 'warn' ? 'text-st-warn' : 'text-st-soft'">{{ s.status === 'warn' ? 'À revoir' : 'Passée' }}</span>
         </button>
       </div>
-      <div class="mt-auto hidden items-center gap-2 lg:flex px-2 text-[13px] leading-[18px] st-muted"><span class="h-2 w-2 flex-none rounded-full bg-[#6EDDB8]" />Clippeak surveille ton prochain live</div>
+      <div class="mt-auto hidden items-center gap-2 lg:flex px-2 text-[13px] leading-[18px] st-muted"><span class="h-2 w-2 flex-none rounded-full bg-st-ok" />Clippeak surveille ton prochain live</div>
     </nav>
 
     <main class="flex min-w-0 flex-[999_1_620px] flex-col gap-7 px-5 py-8 sm:px-10">
@@ -101,19 +101,19 @@ const selectClass = 'st-field !min-h-11 !w-full sm:!w-auto sm:min-w-[140px]'
         <button type="button" class="st-btn-ghost" :disabled="studio.busy.value" @click="studio.run(studio.loadClips)">Actualiser</button>
       </div>
 
-      <p v-if="pubSummary" class="st-pop m-0 -mt-4 text-sm font-semibold text-[#6EDDB8]">{{ pubSummary }}</p>
+      <p v-if="pubSummary" class="st-pop m-0 -mt-4 text-sm font-semibold text-st-ok">{{ pubSummary }}</p>
 
-      <section class="flex flex-col justify-between gap-3.5 rounded-2xl border border-[#4B3A86] bg-[#1E1833] p-6">
+      <section class="flex flex-col justify-between gap-3.5 rounded-2xl border border-st-accentBorder bg-st-accentDeep p-6">
         <div class="flex flex-col gap-1.5">
           <div class="st-eyebrow">Prochaine action</div>
           <h2 class="st-title m-0 text-[22px] font-bold leading-7">{{ next.title }}</h2>
-          <div class="text-sm leading-relaxed text-[#C9BBF2]">{{ next.text }}</div>
+          <div class="text-sm leading-relaxed text-st-accentSoft">{{ next.text }}</div>
         </div>
         <div v-if="next.cta"><button type="button" class="st-btn" @click="filters.status = next.status">{{ next.cta }}</button></div>
       </section>
 
       <div role="group" aria-label="Filtrer par statut" class="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(min(170px,100%),1fr))]">
-        <button v-for="c in counters" :key="c.key" type="button" :aria-pressed="c.selected" class="flex min-h-[72px] flex-col gap-1 rounded-[14px] p-3.5 sm:min-h-[84px] sm:p-4 text-left text-[#F3F1F7]" :class="c.selected ? 'border-[1.5px] border-[#B9A0FF] bg-[#2A1F4A]' : 'border border-[#2C2837] bg-[#16141C] hover:bg-[#1D1A25]'" @click="filters.status = c.selected ? 'all' : c.key">
+        <button v-for="c in counters" :key="c.key" type="button" :aria-pressed="c.selected" class="flex min-h-[72px] flex-col gap-1 rounded-[14px] p-3.5 sm:min-h-[84px] sm:p-4 text-left text-st-text" :class="c.selected ? 'border-[1.5px] border-st-accentLight bg-st-accentBg' : 'border border-st-border bg-st-surface hover:bg-st-raised'" @click="filters.status = c.selected ? 'all' : c.key">
           <span class="st-title text-3xl font-bold leading-9">{{ c.n }}</span>
           <span class="text-sm font-bold" :style="{ color: c.fg }">{{ c.label }}</span>
         </button>
@@ -121,17 +121,17 @@ const selectClass = 'st-field !min-h-11 !w-full sm:!w-auto sm:min-w-[140px]'
 
       <section aria-label="Filtres et tri" class="flex flex-col gap-3.5">
         <div class="grid grid-cols-2 items-end gap-3 sm:flex sm:flex-wrap sm:gap-x-3.5">
-          <div class="flex flex-col gap-1.5"><label for="f-lot" class="text-xs font-bold text-[#928BA2]">Lot</label>
+          <div class="flex flex-col gap-1.5"><label for="f-lot" class="text-xs font-bold text-st-dim">Lot</label>
             <select id="f-lot" v-model="filters.lot" :class="selectClass"><option value="all">Tous les lots</option><option v-for="n in lotOptions" :key="n" :value="String(n)">Lot {{ n || '-' }}</option></select></div>
-          <div class="flex flex-col gap-1.5"><label for="f-note" class="text-xs font-bold text-[#928BA2]">Note</label>
+          <div class="flex flex-col gap-1.5"><label for="f-note" class="text-xs font-bold text-st-dim">Note</label>
             <select id="f-note" v-model="filters.note" :class="selectClass"><option value="all">Toutes les notes</option><option value="8">8 et plus</option><option value="7">7 et plus</option><option value="6">6 et plus</option></select></div>
-          <div class="flex flex-col gap-1.5"><label for="f-date" class="text-xs font-bold text-[#928BA2]">Date</label>
+          <div class="flex flex-col gap-1.5"><label for="f-date" class="text-xs font-bold text-st-dim">Date</label>
             <select id="f-date" v-model="filters.date" :class="selectClass"><option value="all">Toutes les dates</option><option value="week">Cette semaine</option></select></div>
-          <div class="flex flex-col gap-1.5"><label for="f-cat" class="text-xs font-bold text-[#928BA2]">Catégorie</label>
+          <div class="flex flex-col gap-1.5"><label for="f-cat" class="text-xs font-bold text-st-dim">Catégorie</label>
             <select id="f-cat" v-model="filters.cat" :class="selectClass"><option value="all">Toutes</option><option v-for="c in categories" :key="c" :value="c">{{ c }}</option></select></div>
-          <div class="flex flex-col gap-1.5"><label for="f-origin" class="text-xs font-bold text-[#928BA2]">Origine du moment</label>
+          <div class="flex flex-col gap-1.5"><label for="f-origin" class="text-xs font-bold text-st-dim">Origine du moment</label>
             <select id="f-origin" v-model="filters.origin" :class="selectClass"><option value="all">Toutes</option><option value="chat">Détecté par le chat</option><option value="ref">Ressemble à un de tes clips</option></select></div>
-          <div class="col-span-2 flex flex-col gap-1.5 sm:ml-auto"><label for="f-sort" class="text-xs font-bold text-[#928BA2]">Trier par</label>
+          <div class="col-span-2 flex flex-col gap-1.5 sm:ml-auto"><label for="f-sort" class="text-xs font-bold text-st-dim">Trier par</label>
             <select id="f-sort" v-model="filters.sort" :class="selectClass"><option value="score">Meilleure note d’abord</option><option value="recent">Plus récent d’abord</option></select></div>
         </div>
         <div v-if="filtered"><button type="button" class="st-btn-quiet text-sm" @click="clearFilters">Effacer les filtres</button></div>

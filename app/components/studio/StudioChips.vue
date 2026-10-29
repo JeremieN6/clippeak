@@ -22,7 +22,7 @@ function onKey(event: KeyboardEvent) {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-2 rounded-[10px] border border-[#2C2837] bg-[#100F15] p-2.5">
+  <div class="flex flex-wrap items-center gap-2 rounded-[10px] border border-st-border bg-st-field p-2.5">
     <span v-for="word in modelValue" :key="word" class="st-chip">
       {{ word }}
       <button type="button" :aria-label="`Retirer ${word}`" @click="emit('update:modelValue', modelValue.filter(w => w !== word))">

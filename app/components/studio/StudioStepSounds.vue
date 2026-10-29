@@ -50,10 +50,10 @@ const situationDesc: Record<string, string> = {
         <div><h2 class="m-0 text-[17px] font-bold">Ajouter des bruitages</h2><div class="st-hint">Interrupteur général : coupé, aucun son n’est ajouté.</div></div>
         <StudioSwitch v-model="detail.style.sfx.enabled" label="Ajouter des bruitages" />
       </div>
-      <label v-if="detail.style.sfx.enabled" class="flex flex-col gap-1.5 border-t border-[#2C2837] pt-5 pb-2">
+      <label v-if="detail.style.sfx.enabled" class="flex flex-col gap-1.5 border-t border-st-border pt-5 pb-2">
         <span class="flex items-center justify-between"><span class="st-label">Volume des bruitages</span><span class="st-badge st-badge-violet">{{ Math.round(detail.style.sfx.volume * 100) }} %</span></span>
         <input v-model.number="detail.style.sfx.volume" type="range" step="0.05" min="0" max="1" class="st-range">
-        <span class="flex justify-between text-xs text-[#928BA2]"><span>Discret</span><span>Fort</span></span>
+        <span class="flex justify-between text-xs text-st-dim"><span>Discret</span><span>Fort</span></span>
       </label>
     </section>
 
@@ -67,16 +67,16 @@ const situationDesc: Record<string, string> = {
           <div><h2 class="m-0 text-[17px] font-bold">{{ situationTitle[situation.id] ?? situation.label }}</h2><div class="st-hint">{{ situationDesc[situation.id] ?? '' }}</div></div>
           <StudioSwitch v-model="detail.style.sfx[situation.id].enabled" :label="situationTitle[situation.id] ?? situation.label" />
         </div>
-        <div v-if="detail.style.sfx[situation.id].enabled" class="grid gap-2 border-t border-[#2C2837] pt-4 pb-2 sm:grid-cols-2" role="radiogroup" :aria-label="`Son : ${situationTitle[situation.id] ?? situation.label}`">
-          <div v-for="s in detail.sounds.builtin" :key="s.id" class="flex items-center rounded-xl border pr-1.5" :class="detail.style.sfx[situation.id].sound === s.id ? 'border-[#B9A0FF] bg-[#2A1F4A]' : 'border-[#2C2837] bg-[#100F15]'">
+        <div v-if="detail.style.sfx[situation.id].enabled" class="grid gap-2 border-t border-st-border pt-4 pb-2 sm:grid-cols-2" role="radiogroup" :aria-label="`Son : ${situationTitle[situation.id] ?? situation.label}`">
+          <div v-for="s in detail.sounds.builtin" :key="s.id" class="flex items-center rounded-xl border pr-1.5" :class="detail.style.sfx[situation.id].sound === s.id ? 'border-st-accentLight bg-st-accentBg' : 'border-st-border bg-st-field'">
             <button type="button" role="radio" :aria-checked="detail.style.sfx[situation.id].sound === s.id" class="flex min-h-[52px] min-w-0 flex-1 items-center gap-3 border-0 bg-transparent px-3.5 text-left" @click="detail.style.sfx[situation.id].sound = s.id">
-              <span class="flex h-5 w-5 flex-none items-center justify-center rounded-full border-2" :class="detail.style.sfx[situation.id].sound === s.id ? 'border-[#B9A0FF] bg-[#B9A0FF]' : 'border-[#6A6280]'" />
+              <span class="flex h-5 w-5 flex-none items-center justify-center rounded-full border-2" :class="detail.style.sfx[situation.id].sound === s.id ? 'border-st-accentLight bg-st-accentLight' : 'border-[#6A6280]'" />
               <span class="flex min-w-0 flex-col"><span class="truncate text-[15px] font-bold">{{ s.label }}</span><span class="text-xs st-muted">{{ optionHint[s.id] ?? '' }}</span></span>
             </button>
           </div>
-          <div v-for="a in customs" :key="a.id" class="flex items-center rounded-xl border pr-1.5" :class="detail.style.sfx[situation.id].sound === `asset:${a.id}` ? 'border-[#B9A0FF] bg-[#2A1F4A]' : 'border-[#2C2837] bg-[#100F15]'">
+          <div v-for="a in customs" :key="a.id" class="flex items-center rounded-xl border pr-1.5" :class="detail.style.sfx[situation.id].sound === `asset:${a.id}` ? 'border-st-accentLight bg-st-accentBg' : 'border-st-border bg-st-field'">
             <button type="button" role="radio" :aria-checked="detail.style.sfx[situation.id].sound === `asset:${a.id}`" class="flex min-h-[52px] min-w-0 flex-1 items-center gap-3 border-0 bg-transparent px-3.5 text-left" @click="detail.style.sfx[situation.id].sound = `asset:${a.id}`">
-              <span class="flex h-5 w-5 flex-none items-center justify-center rounded-full border-2" :class="detail.style.sfx[situation.id].sound === `asset:${a.id}` ? 'border-[#B9A0FF] bg-[#B9A0FF]' : 'border-[#6A6280]'" />
+              <span class="flex h-5 w-5 flex-none items-center justify-center rounded-full border-2" :class="detail.style.sfx[situation.id].sound === `asset:${a.id}` ? 'border-st-accentLight bg-st-accentLight' : 'border-[#6A6280]'" />
               <span class="flex min-w-0 flex-col"><span class="truncate text-[15px] font-bold">{{ a.filename }}</span><span class="text-xs st-muted">Mon son</span></span>
             </button>
           </div>
@@ -86,12 +86,12 @@ const situationDesc: Record<string, string> = {
 
     <section class="st-card flex flex-col gap-3.5">
       <div><h2 class="m-0 text-[17px] font-bold">Mes sons</h2><div class="st-hint">Tes propres sons, 5 Mo maximum chacun. Ils s’ajoutent aux 5 sons proposés et se choisissent ci-dessus.</div></div>
-      <div v-for="a in customs" :key="a.id" class="flex min-h-14 items-center gap-3 rounded-xl border border-[#2C2837] bg-[#100F15] py-1.5 pl-3.5 pr-1.5">
+      <div v-for="a in customs" :key="a.id" class="flex min-h-14 items-center gap-3 rounded-xl border border-st-border bg-st-field py-1.5 pl-3.5 pr-1.5">
         <div class="min-w-0 flex-1 truncate text-sm font-bold">{{ a.filename }}</div>
-        <button type="button" class="flex h-11 w-11 items-center justify-center rounded-[10px] border-0" :class="playing === a.id ? 'bg-[#7C3AED] text-white' : 'bg-[#1D1A25] text-[#D6C7FF]'" :aria-label="`Écouter ${a.filename}`" @click="listen(a)">
+        <button type="button" class="flex h-11 w-11 items-center justify-center rounded-[10px] border-0" :class="playing === a.id ? 'bg-st-accent text-white' : 'bg-st-raised text-st-accentText'" :aria-label="`Écouter ${a.filename}`" @click="listen(a)">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v4h4l5 4V6L8 10zM16.5 9a4 4 0 010 6M19 7a7 7 0 010 10" /></svg>
         </button>
-        <button type="button" class="flex h-11 w-11 items-center justify-center rounded-[10px] border-0 bg-transparent text-[#ABA5BA]" :aria-label="`Supprimer ${a.filename}`" :disabled="studio.busy.value" @click="removeSound(a)">
+        <button type="button" class="flex h-11 w-11 items-center justify-center rounded-[10px] border-0 bg-transparent text-st-muted" :aria-label="`Supprimer ${a.filename}`" :disabled="studio.busy.value" @click="removeSound(a)">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg>
         </button>
       </div>

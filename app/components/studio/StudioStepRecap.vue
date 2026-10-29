@@ -4,10 +4,10 @@ const studio = useStudio()
 const rows = computed(() => STEPS.filter(s => s.n < 8).map(s => ({ ...s, ...studio.stepStatus(s.n) })))
 const count = (status: string) => rows.value.filter(r => r.status === status).length
 const look = {
-  ok: { cls: 'bg-[#12302A] text-[#6EDDB8]', tag: 'RÉGLÉE', go: 'Modifier' },
-  warn: { cls: 'bg-[#33280F] text-[#F6C260]', tag: 'À COMPLÉTER', go: 'Compléter' },
-  skip: { cls: 'bg-[#25212F] text-[#C9C3D6]', tag: 'PASSÉE', go: 'Reprendre' },
-  todo: { cls: 'bg-[#25212F] text-[#C9C3D6]', tag: 'PAS FAITE', go: 'Faire' }
+  ok: { cls: 'bg-st-okBg text-st-ok', tag: 'RÉGLÉE', go: 'Modifier' },
+  warn: { cls: 'bg-st-warnBg text-st-warn', tag: 'À COMPLÉTER', go: 'Compléter' },
+  skip: { cls: 'bg-st-raised2 text-st-soft', tag: 'PASSÉE', go: 'Reprendre' },
+  todo: { cls: 'bg-st-raised2 text-st-soft', tag: 'PAS FAITE', go: 'Faire' }
 } as const
 const started = computed(() => !!studio.onboarding.value?.completed)
 const blocking = computed(() => !(studio.bank.value?.items?.length))
@@ -26,7 +26,7 @@ const blocking = computed(() => !(studio.bank.value?.items?.length))
     </div>
 
     <section class="st-card !py-0">
-      <div v-for="(r, i) in rows" :key="r.n" class="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 py-3.5" :class="i ? 'border-t border-[#2C2837]' : ''">
+      <div v-for="(r, i) in rows" :key="r.n" class="flex flex-wrap items-center gap-x-3.5 gap-y-1.5 py-3.5" :class="i ? 'border-t border-st-border' : ''">
         <span class="flex h-8 w-8 flex-none items-center justify-center rounded-full text-sm font-extrabold" :class="look[r.status].cls">
           {{ r.status === 'ok' ? '✓' : r.status === 'warn' ? '!' : '–' }}
         </span>

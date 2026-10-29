@@ -108,7 +108,7 @@ const withStats = computed(() => items.value.filter((i: any) => i.status === 'do
       </div>
       <template v-if="analyzing">
         <p class="st-pulse m-0 text-sm st-muted">Analyse en cours : {{ analyzed }} clip(s) sur {{ items.length }}. Tu peux continuer, ça se fait en arrière-plan.</p>
-        <div class="h-1.5 overflow-hidden rounded-[3px] bg-[#2C2837]" role="progressbar" aria-label="Analyse des clips" :aria-valuenow="analysisPct" aria-valuemin="0" aria-valuemax="100">
+        <div class="h-1.5 overflow-hidden rounded-[3px] bg-st-border" role="progressbar" aria-label="Analyse des clips" :aria-valuenow="analysisPct" aria-valuemin="0" aria-valuemax="100">
           <div class="st-bar st-bar-live" :style="{ width: `${Math.max(analysisPct, 6)}%` }" />
         </div>
       </template>
@@ -118,10 +118,10 @@ const withStats = computed(() => items.value.filter((i: any) => i.status === 'do
       <p v-else class="st-muted m-0 text-sm">Dès qu’un clip est analysé, ce que Clippeak en retient apparaît ici.</p>
 
       <TransitionGroup name="st-list" tag="ul" class="m-0 flex list-none flex-col p-0">
-        <li v-for="item in items" :key="item.id" class="flex items-center gap-3 border-t border-[#2C2837] py-2.5">
+        <li v-for="item in items" :key="item.id" class="flex items-center gap-3 border-t border-st-border py-2.5">
           <span class="min-w-0 flex-1 truncate text-sm font-semibold" :title="item.title || item.url">{{ item.kind === 'account' ? 'Compte : ' : '' }}{{ item.title || item.url || 'sans titre' }}</span>
           <span class="st-badge" :class="(statusLook[item.status] ?? statusLook.pending).cls" :title="item.status === 'failed' ? item.error || 'Impossible de lire cette vidéo.' : undefined">{{ (statusLook[item.status] ?? statusLook.pending).label }}</span>
-          <button type="button" class="st-btn-quiet !min-h-9 !px-2 !text-[#ABA5BA]" :disabled="studio.busy.value" :aria-label="`Retirer ${item.title || item.url || 'ce clip'}`" @click="studio.removeReference(item.id)">✕</button>
+          <button type="button" class="st-btn-quiet !min-h-9 !px-2 !text-st-muted" :disabled="studio.busy.value" :aria-label="`Retirer ${item.title || item.url || 'ce clip'}`" @click="studio.removeReference(item.id)">✕</button>
         </li>
       </TransitionGroup>
     </section>

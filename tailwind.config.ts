@@ -13,6 +13,36 @@ export default <Partial<Config>>{
   theme: {
     extend: {
       colors: {
+        // Couleurs du kit du studio (valeurs dans studio.css, variables --st-*).
+        st: {
+        bg: 'var(--st-bg)',
+        surface: 'var(--st-surface)',
+        border: 'var(--st-border)',
+        borderStrong: 'var(--st-border-strong)',
+        raised: 'var(--st-raised)',
+        raised2: 'var(--st-raised-2)',
+        field: 'var(--st-field)',
+        accent: 'var(--st-accent)',
+        accentHover: 'var(--st-accent-hover)',
+        accentLight: 'var(--st-accent-light)',
+        accentBg: 'var(--st-accent-bg)',
+        accentText: 'var(--st-accent-text)',
+        accentSoft: 'var(--st-accent-soft)',
+        accentBorder: 'var(--st-accent-border)',
+        accentDeep: 'var(--st-accent-deep)',
+        text: 'var(--st-text)',
+        muted: 'var(--st-muted)',
+        dim: 'var(--st-dim)',
+        soft: 'var(--st-soft)',
+        okBg: 'var(--st-ok-bg)',
+        ok: 'var(--st-ok)',
+        warnBg: 'var(--st-warn-bg)',
+        warn: 'var(--st-warn)',
+        infoBg: 'var(--st-info-bg)',
+        info: 'var(--st-info)',
+        errorBg: 'var(--st-error-bg)',
+        error: 'var(--st-error)'
+        },
         clippeak: {
           bg: '#0a0a0f',
           violet: '#7c3aed',

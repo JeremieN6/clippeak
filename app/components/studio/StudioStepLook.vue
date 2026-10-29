@@ -192,7 +192,7 @@ async function pickAvatar(event: Event) {
             <StudioChips v-model="detail.style.subtitles.keywords" input-id="st-always" />
           </div>
         </template>
-        <div class="flex flex-col gap-1.5 border-t border-[#2C2837] pt-4">
+        <div class="flex flex-col gap-1.5 border-t border-st-border pt-4">
           <label for="st-names" class="st-label">Noms à écrire exactement (facultatif)</label>
           <span class="st-hint">Ton pseudo, celui de tes amis, un jeu : Clippeak prévient si un nom est mal écrit dans un clip.</span>
           <StudioChips v-model="detail.style.names" input-id="st-names" placeholder="Ajouter un nom, puis Entrée" />
@@ -242,7 +242,7 @@ async function pickAvatar(event: Event) {
         </div>
         <template v-if="detail.style.overlay.enabled">
           <div v-if="avatars.length" class="flex flex-wrap gap-3" role="radiogroup" aria-label="Fichier d’avatar">
-            <button v-for="a in avatars" :key="a.id" type="button" role="radio" :aria-checked="detail.style.overlay.assetId === a.id" class="overflow-hidden rounded-xl border-2 bg-[#100F15] p-0" :class="detail.style.overlay.assetId === a.id ? 'border-[#B9A0FF]' : 'border-[#2C2837]'" @click="detail.style.overlay.assetId = a.id">
+            <button v-for="a in avatars" :key="a.id" type="button" role="radio" :aria-checked="detail.style.overlay.assetId === a.id" class="overflow-hidden rounded-xl border-2 bg-st-field p-0" :class="detail.style.overlay.assetId === a.id ? 'border-st-accentLight' : 'border-st-border'" @click="detail.style.overlay.assetId = a.id">
               <img :src="a.previewUrl" :alt="a.filename" class="h-20 w-20 object-cover">
             </button>
           </div>

@@ -26,7 +26,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
         <p class="m-0 text-sm leading-relaxed">
           « <strong>{{ a.title }}</strong> » est lisible : Clippeak analyse ton live et enregistre les moments forts. <strong>Garde-la publique encore un peu.</strong> Cette carte te dira quand tu pourras la remettre comme avant.
         </p>
-        <div class="h-1.5 overflow-hidden rounded-[3px] bg-[#2C2837]" role="progressbar" aria-label="Récupération des extraits"><div class="st-bar st-bar-live" style="width: 60%" /></div>
+        <div class="h-1.5 overflow-hidden rounded-[3px] bg-st-border" role="progressbar" aria-label="Récupération des extraits"><div class="st-bar st-bar-live" style="width: 60%" /></div>
       </template>
       <template v-else>
         <div class="flex flex-wrap items-center gap-2"><span class="st-badge st-badge-ok st-pop">Terminé</span><h2 class="m-0 text-base font-bold">Tu peux remettre ta VOD comme avant</h2></div>
