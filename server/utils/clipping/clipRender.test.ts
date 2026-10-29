@@ -209,3 +209,14 @@ test('real ffmpeg synthesises every built-in sound and mixes them with the voice
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('split screen: a 16:9 camera keeps its proportions (cropped on the sides, never stretched in height)', () => {
+  const { filterComplex } = buildRenderArgs({
+    input: 'v.mp4', sourceStartSec: 0, sourceDurationSec: 30, sourceWidth: 1280, sourceHeight: 720,
+    keepRanges: [{ start: 0, end: 30 }], assFile: 'c.ass', outPath: 'o.mp4', illustrations: [],
+    style: { ...DEFAULT_RENDER_STYLE, sfx: { enabled: false, volume: 0.5, rules: {} }, zoomIntro: { enabled: false, amount: 0, durationSec: 0 },
+      split: { kind: 'pip', content: { x: 0, y: 0, w: 1, h: 1 }, cam: { x: 0.38, y: 0.75, w: 0.24, h: 0.24 }, camFocusY: 0.5 } as any }
+  })
+  // Camera de 308x172 px : agrandie pour couvrir la zone de 760 px de haut (1361x760, meme proportions), puis recadree sur 1080 px de large (decalage 141).
+  assert.match(filterComplex, /crop=308:172:486:540,scale=1361:760:flags=lanczos,crop=1080:760:141:0\[sbot\]/)
+})

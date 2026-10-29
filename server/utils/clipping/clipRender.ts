@@ -164,8 +164,12 @@ export function buildRenderArgs(spec: RenderSpec): { args: string[], filterCompl
     // --- Ecran partage : contenu (image nette sur son propre decor flou) en haut, camera recadree sur le visage en bas.
     const content = rectPx(style.split.content, spec.sourceWidth, spec.sourceHeight)
     const cam = rectPx(style.split.cam, spec.sourceWidth, spec.sourceHeight)
-    // Camera mise a la largeur du clip puis recadree en hauteur autour du visage.
-    const camScaledH = Math.max(zones.camH, Math.round(OUT_WIDTH * cam.h / cam.w))
+    // Camera agrandie SANS deformation jusqu'a couvrir toute la zone (largeur du clip x hauteur de la zone), puis recadree autour du visage.
+    // Une camera plus large que la zone (16:9) est donc recadree sur les cotes au lieu d'etre etiree en hauteur.
+    const camScale = Math.max(OUT_WIDTH / cam.w, zones.camH / cam.h)
+    const camScaledW = Math.max(OUT_WIDTH, Math.round(cam.w * camScale))
+    const camScaledH = Math.max(zones.camH, Math.round(cam.h * camScale))
+    const camX = Math.round((camScaledW - OUT_WIDTH) / 2)
     const camY = Math.min(camScaledH - zones.camH, Math.max(0, Math.round(style.split.camFocusY * camScaledH - zones.camH * 0.45)))
     filters.push(
       '[vc]split=2[sc][sm]',
@@ -173,7 +177,7 @@ export function buildRenderArgs(spec: RenderSpec): { args: string[], filterCompl
       `[sb]scale=${OUT_WIDTH}:${zones.contentH}:force_original_aspect_ratio=increase,crop=${OUT_WIDTH}:${zones.contentH},boxblur=30:3,eq=brightness=-0.12[sbg]`,
       `[sf]scale=${OUT_WIDTH}:${zones.contentH}:force_original_aspect_ratio=decrease:flags=lanczos[sfg]`,
       '[sbg][sfg]overlay=(W-w)/2:(H-h)/2[stop]',
-      `[sm]crop=${cam.w}:${cam.h}:${cam.x}:${cam.y},scale=${OUT_WIDTH}:${camScaledH}:flags=lanczos,crop=${OUT_WIDTH}:${zones.camH}:0:${camY}[sbot]`,
+      `[sm]crop=${cam.w}:${cam.h}:${cam.x}:${cam.y},scale=${camScaledW}:${camScaledH}:flags=lanczos,crop=${OUT_WIDTH}:${zones.camH}:${camX}:${camY}[sbot]`,
       `[stop][sbot]vstack=inputs=2,pad=${OUT_WIDTH}:${OUT_HEIGHT}:0:${bandH}:black,setsar=1,fps=30[vf]`
     )
   } else {
