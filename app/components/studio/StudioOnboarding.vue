@@ -21,7 +21,7 @@ const navSteps = computed(() => STEPS.map((s) => {
   return {
     ...s, current, done, skipped,
     tag: current ? 'En cours' : done ? 'Fait' : skipped ? 'Passée : à reprendre' : s.tag,
-    tagClass: current ? 'text-[#B9A0FF]' : done ? 'text-[#6EDDB8]' : skipped ? 'text-[#F6C260]' : 'text-[#928BA2]'
+    tagClass: current ? 'text-st-accentLight' : done ? 'text-st-ok' : skipped ? 'text-st-warn' : 'text-st-dim'
   }
 }))
 
@@ -36,17 +36,17 @@ watch(step, () => nextTick(() => main.value?.scrollIntoView({ block: 'start' }))
 
 <template>
   <div class="flex flex-wrap items-stretch">
-    <nav aria-label="Étapes de l’onboarding" class="flex w-full flex-none flex-col gap-5 border-[#2C2837] p-5 lg:w-[300px] lg:border-r lg:py-7">
+    <nav aria-label="Étapes de l’onboarding" class="flex w-full flex-none flex-col gap-5 border-st-border p-5 lg:w-[300px] lg:border-r lg:py-7">
       <div class="flex flex-col gap-2.5 px-2.5">
         <div class="flex justify-between text-[13px] font-bold"><span>Étape {{ step }} sur 8</span><span class="st-muted">{{ pct }} %</span></div>
-        <div class="h-1.5 overflow-hidden rounded-[3px] bg-[#2C2837]"><div class="st-bar" :style="{ width: `${pct}%` }" /></div>
+        <div class="h-1.5 overflow-hidden rounded-[3px] bg-st-border"><div class="st-bar" :style="{ width: `${pct}%` }" /></div>
       </div>
       <button type="button" class="st-btn-ghost w-full lg:hidden" :aria-expanded="navOpen" aria-controls="st-steps" @click="navOpen = !navOpen">{{ navOpen ? 'Masquer les étapes' : `Étapes : ${currentLabel}` }}</button>
       <div id="st-steps" class="flex-col gap-0.5 lg:flex" :class="navOpen ? 'flex' : 'hidden'">
         <button v-for="s in navSteps" :key="s.n" type="button" class="st-nav-item" :aria-current="s.current ? 'step' : undefined" @click="pick(s.n)">
-          <span class="flex h-7 w-7 flex-none items-center justify-center rounded-full text-[13px] font-extrabold" :class="s.current ? 'bg-[#7C3AED] text-white' : s.done ? 'bg-[#12302A] text-[#6EDDB8]' : s.skipped ? 'border border-dashed border-[#6A6280] text-[#ABA5BA]' : 'border border-[#4B4560] text-[#ABA5BA]'"><span v-if="s.done" class="st-pop">✓</span><template v-else>{{ s.n }}</template></span>
+          <span class="flex h-7 w-7 flex-none items-center justify-center rounded-full text-[13px] font-extrabold" :class="s.current ? 'bg-st-accent text-white' : s.done ? 'bg-st-okBg text-st-ok' : s.skipped ? 'border border-dashed border-[#6A6280] text-st-muted' : 'border border-[#4B4560] text-st-muted'"><span v-if="s.done" class="st-pop">✓</span><template v-else>{{ s.n }}</template></span>
           <span class="flex min-w-0 flex-col">
-            <span class="text-[15px] leading-5" :class="s.current ? 'font-bold text-white' : s.done ? 'font-semibold text-[#C9C3D6]' : 'font-semibold text-[#ABA5BA]'">{{ s.label }}</span>
+            <span class="text-[15px] leading-5" :class="s.current ? 'font-bold text-white' : s.done ? 'font-semibold text-st-soft' : 'font-semibold text-st-muted'">{{ s.label }}</span>
             <span class="text-xs font-bold leading-4" :class="s.tagClass">{{ s.tag }}</span>
           </span>
         </button>
@@ -73,9 +73,9 @@ watch(step, () => nextTick(() => main.value?.scrollIntoView({ block: 'start' }))
         </Transition>
       </div>
 
-      <div class="sticky bottom-0 z-10 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-[#2C2837] bg-[#0E0D12] px-4 py-3 sm:px-10 sm:py-3.5">
+      <div class="sticky bottom-0 z-10 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-st-border bg-st-bg px-4 py-3 sm:px-10 sm:py-3.5">
         <span v-if="step === 1 && !hasReference" class="basis-full text-[13px] st-muted">Ajoute au moins un clip pour continuer.</span>
-        <span v-if="detectionInvalid" class="basis-full text-[13px] text-[#FF9B8D]">La durée minimale doit être plus courte que la maximale.</span>
+        <span v-if="detectionInvalid" class="basis-full text-[13px] text-st-error">La durée minimale doit être plus courte que la maximale.</span>
         <button type="button" class="st-btn-ghost !bg-transparent sm:!min-h-[52px] sm:!px-7" :disabled="step === 1" @click="back">Retour</button>
         <template v-if="step < 8">
           <button v-if="step >= 2 && step <= 7" type="button" class="st-btn-quiet sm:ml-auto" :disabled="studio.busy.value" @click="later">Plus tard</button>

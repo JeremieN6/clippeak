@@ -48,10 +48,10 @@ async function logout() {
 </script>
 
 <template>
-  <div class="st-root min-h-screen bg-[#0E0D12]">
-    <header class="flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-[#2C2837] px-5 py-2 sm:px-8">
+  <div class="st-root min-h-screen bg-st-bg">
+    <header class="flex min-h-16 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-st-border px-5 py-2 sm:px-8">
       <div class="flex items-center gap-2.5">
-        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-[#7C3AED] text-xs font-extrabold text-white" aria-hidden="true">CP</span>
+        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-st-accent text-xs font-extrabold text-white" aria-hidden="true">CP</span>
         <span class="st-title text-lg font-bold">Clippeak</span>
       </div>
       <div v-if="connected" class="flex flex-wrap items-center justify-end gap-2">

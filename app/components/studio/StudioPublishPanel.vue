@@ -31,7 +31,7 @@ async function schedule() {
 </script>
 
 <template>
-  <section class="flex flex-col gap-3 rounded-[10px] bg-[#100F15] p-3" aria-label="Publication">
+  <section class="flex flex-col gap-3 rounded-[10px] bg-st-field p-3" aria-label="Publication">
     <h4 class="m-0 text-sm font-bold">Publier</h4>
 
     <p v-if="!connected.length" class="m-0 text-[13px] leading-5 st-muted">
@@ -49,9 +49,9 @@ async function schedule() {
             {{ p.status === 'published' ? 'Publié' : p.status === 'failed' ? 'Échec' : p.status === 'publishing' ? 'En cours…' : 'Programmé' }}
           </span>
           <span class="st-muted">{{ platformName[p.platform] }}<template v-if="p.status === 'scheduled'"> · {{ fmt(p.scheduledAt) }}</template></span>
-          <a v-if="p.url" :href="p.url" target="_blank" rel="noopener" class="font-semibold text-[#B9A0FF]">Voir</a>
+          <a v-if="p.url" :href="p.url" target="_blank" rel="noopener" class="font-semibold text-st-accentLight">Voir</a>
           <button v-if="p.status === 'scheduled' || p.status === 'failed'" type="button" class="st-btn-quiet !min-h-8 !px-2 text-[13px]" :disabled="studio.busy.value" @click="studio.cancelPublication(p.id)">{{ p.status === 'failed' ? 'Abandonner' : 'Annuler' }}</button>
-          <span v-if="p.status === 'failed' && p.error" class="basis-full text-[#FF9B8D]">{{ p.error }}</span>
+          <span v-if="p.status === 'failed' && p.error" class="basis-full text-st-error">{{ p.error }}</span>
         </li>
       </ul>
 
@@ -62,7 +62,7 @@ async function schedule() {
         <div class="flex flex-col gap-2">
           <div class="st-label !text-[13px]">Ou programmer</div>
           <div class="flex flex-wrap gap-2">
-            <button v-for="(s, i) in slots" :key="s.toISOString()" type="button" class="st-chip !h-9 !px-3.5 !text-[13px]" :class="picked === i && !custom ? '!bg-[#7C3AED] !text-white' : ''" :aria-pressed="picked === i && !custom" @click="picked = i; custom = ''">{{ fmt(s) }}</button>
+            <button v-for="(s, i) in slots" :key="s.toISOString()" type="button" class="st-chip !h-9 !px-3.5 !text-[13px]" :class="picked === i && !custom ? '!bg-st-accent !text-white' : ''" :aria-pressed="picked === i && !custom" @click="picked = i; custom = ''">{{ fmt(s) }}</button>
           </div>
           <input v-model="custom" type="datetime-local" class="st-field !min-h-10 sm:!w-auto" aria-label="Autre date et heure">
           <div><button type="button" class="st-btn-ghost" :disabled="studio.busy.value || !when" @click="schedule">Programmer{{ when ? ` le ${fmt(when)}` : '' }}</button></div>

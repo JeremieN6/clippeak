@@ -51,7 +51,7 @@ async function removeTest(admin: Admin, id: string) {
         </label>
         <button type="submit" class="st-btn" :disabled="admin.busy.value || testName.trim().length < 2">Créer</button>
       </form>
-      <div v-for="c in admin.channels.value.filter(x => x.test)" :key="c.id" class="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-[#2C2837] pt-3.5">
+      <div v-for="c in admin.channels.value.filter(x => x.test)" :key="c.id" class="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-st-border pt-3.5">
         <div class="min-w-0 flex-1 basis-44 break-words text-[15px] font-bold">{{ c.displayName }} <span class="st-badge st-badge-info ml-1">Test</span></div>
         <NuxtLink :to="`/studio?channel=${c.id}`" class="st-btn-ghost no-underline">Ouvrir son studio</NuxtLink>
         <button type="button" class="st-btn-quiet" :disabled="admin.busy.value" @click="removeTest(admin, c.id)">{{ confirming === c.id ? 'Confirmer la suppression' : 'Supprimer' }}</button>
@@ -62,7 +62,7 @@ async function removeTest(admin: Admin, id: string) {
       <h2 class="m-0 mb-1 text-[17px] font-bold">Chaînes inscrites ({{ admin.channels.value.filter(x => !x.demo && !x.test).length }})</h2>
       <p class="m-0 mb-3 text-[13px] leading-5 st-muted">Ouvrir le studio d’une vraie chaîne affiche ses vraies données : ce que tu modifies là-bas est modifié pour de vrai.</p>
       <p v-if="!admin.channels.value.some(x => !x.demo && !x.test)" class="st-muted m-0 pb-4 text-sm">Aucune chaîne inscrite pour l’instant.</p>
-      <div v-for="c in admin.channels.value.filter(x => !x.demo && !x.test)" :key="c.id" class="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-[#2C2837] py-3.5">
+      <div v-for="c in admin.channels.value.filter(x => !x.demo && !x.test)" :key="c.id" class="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-st-border py-3.5">
         <div class="min-w-0 flex-1 basis-44 break-words text-[15px] font-bold">{{ c.displayName }}</div>
         <NuxtLink :to="`/studio?channel=${c.id}`" class="st-btn-ghost no-underline">Ouvrir son studio</NuxtLink>
       </div>

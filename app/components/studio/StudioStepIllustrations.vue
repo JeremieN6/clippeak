@@ -41,7 +41,7 @@ async function pick(event: Event) {
         <div class="flex flex-wrap items-center gap-3.5">
           <video :src="a.previewUrl" controls muted playsinline preload="metadata" class="aspect-video w-48 flex-none rounded-[10px] bg-black" />
           <div class="min-w-0 flex-1 basis-40 break-words text-[15px] font-bold">{{ a.filename }}</div>
-          <button type="button" class="st-btn-quiet !text-[#ABA5BA] text-sm" :disabled="studio.busy.value" @click="studio.removeAsset(a.id)">Retirer</button>
+          <button type="button" class="st-btn-quiet !text-st-muted text-sm" :disabled="studio.busy.value" @click="studio.removeAsset(a.id)">Retirer</button>
         </div>
         <div v-if="edits[a.id]" class="flex flex-col gap-1.5">
           <label :for="`ill-w-${a.id}`" class="st-label">Mots qui déclenchent cette illustration</label>
@@ -52,7 +52,7 @@ async function pick(event: Event) {
           <label :for="`ill-c-${a.id}`" class="st-label">Crédit</label>
           <div class="st-hint">L’auteur ou le lien d’origine. Il est conservé avec chaque clip pour savoir d’où vient la vidéo.</div>
           <input :id="`ill-c-${a.id}`" v-model="edits[a.id].source" class="st-field" placeholder="Exemple : Léa M. ou https://…" :style="!edits[a.id].source.trim() ? { borderColor: '#F6C260' } : {}">
-          <div v-if="!edits[a.id].source.trim()" class="flex gap-2 text-[13px] font-semibold leading-5 text-[#F6C260]">Il manque le crédit. Tu pourras quand même l’utiliser, mais tu ne sauras plus d’où vient la vidéo.</div>
+          <div v-if="!edits[a.id].source.trim()" class="flex gap-2 text-[13px] font-semibold leading-5 text-st-warn">Il manque le crédit. Tu pourras quand même l’utiliser, mais tu ne sauras plus d’où vient la vidéo.</div>
         </div>
         <div v-if="edits[a.id] && dirty(a)">
           <button type="button" class="st-btn" :disabled="studio.busy.value" @click="studio.saveAsset(a.id, edits[a.id].tags, edits[a.id].source)">Enregistrer cette illustration</button>

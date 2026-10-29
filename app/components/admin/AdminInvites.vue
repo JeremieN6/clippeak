@@ -30,13 +30,13 @@ const date = (value: string | null) => value ? new Date(value).toLocaleDateStrin
     <section class="st-card flex flex-col gap-1 !pb-2">
       <h2 class="m-0 mb-3 text-[17px] font-bold">Chaînes invitées ({{ admin.invites.value.length }})</h2>
       <p v-if="!admin.invites.value.length" class="st-muted m-0 pb-4 text-sm">Personne n’est invité pour l’instant.</p>
-      <div v-for="i in admin.invites.value" :key="i.id" class="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-[#2C2837] py-3.5">
+      <div v-for="i in admin.invites.value" :key="i.id" class="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-st-border py-3.5">
         <div class="min-w-0 flex-1 basis-44">
           <div class="break-words text-[15px] font-bold">{{ i.login }}</div>
           <div class="text-[13px] st-muted">{{ i.note || 'Sans note' }}<span v-if="i.lastLoginAt"> · dernière connexion le {{ date(i.lastLoginAt) }}</span></div>
         </div>
         <span class="st-badge" :class="i.connected ? 'st-badge-ok' : 'st-badge-neutral'">{{ i.connected ? 'Inscrit' : 'Pas encore inscrit' }}</span>
-        <button type="button" class="st-btn-quiet !text-[#FF9B8D] text-sm" :disabled="admin.busy.value" :aria-label="`Retirer l’invitation de ${i.login}`" @click="admin.removeInvite(i.id)">Retirer</button>
+        <button type="button" class="st-btn-quiet !text-st-error text-sm" :disabled="admin.busy.value" :aria-label="`Retirer l’invitation de ${i.login}`" @click="admin.removeInvite(i.id)">Retirer</button>
       </div>
     </section>
   </div>
