@@ -14,7 +14,7 @@ const login = computed(() => {
 <template>
   <div class="st-root min-h-screen bg-st-bg">
     <header class="flex min-h-16 items-center justify-between gap-4 border-b border-st-border px-5 py-2 sm:px-8">
-      <NuxtLink to="/" class="flex items-center gap-2.5 no-underline">
+      <NuxtLink to="/" class="flex min-h-11 items-center gap-2.5 text-st-text no-underline">
         <span class="flex h-8 w-8 items-center justify-center rounded-full bg-st-accent text-xs font-extrabold text-white" aria-hidden="true">CP</span>
         <span class="st-title text-lg font-bold">Clippeak</span>
       </NuxtLink>
