@@ -54,7 +54,7 @@ export function buildCaption(input: CaptionInput): { caption: string, hashtags: 
     add(candidate)
   }
 
-  const hook = input.hook?.trim()
-  const lines = [input.title.trim(), hook && hook.toLowerCase() !== input.title.trim().toLowerCase() ? hook : ''].filter(Boolean)
-  return { caption: `${lines.join('\n')}\n\n${hashtags.join(' ')}`.trim(), hashtags }
+  // Legende = le titre du clip puis les hashtags. L'accroche (phrase dite) ne sert qu'a trouver des hashtags : l'afficher sous un titre
+  // modifie par le streamer montrerait l'ancien titre a cote du nouveau.
+  return { caption: `${input.title.trim()}\n\n${hashtags.join(' ')}`.trim(), hashtags }
 }

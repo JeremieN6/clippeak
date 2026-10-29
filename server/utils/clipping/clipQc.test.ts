@@ -47,7 +47,8 @@ test('checkNames flags near misses of the streamer dictionary but not exact spel
 test('buildCaption: streamer tags first, then clip tags, never the channel name nor generic tags', () => {
   const { caption, hashtags } = buildCaption({ title: 'Il a retrouve son pere', hook: 'Hier je suis alle au marche', channelName: 'Jeremie_F7', category: 'Just Chatting', streamerTags: ['#Team_F7', 'gaming', 'troisieme'] })
   assert.deepEqual(hashtags, ['#teamf7', '#gaming', '#justchatting', '#retrouve', '#marche'])
-  assert.ok(caption.startsWith('Il a retrouve son pere\nHier je suis alle au marche\n\n#teamf7 #gaming'))
+  // Le titre puis les hashtags : l'accroche n'est jamais affichee a cote d'un titre modifie.
+  assert.equal(caption, 'Il a retrouve son pere\n\n#teamf7 #gaming #justchatting #retrouve #marche')
   for (const banned of ['#jeremief7', '#twitch', '#fyp', '#clip']) assert.ok(!hashtags.includes(banned), banned)
   assert.ok(!buildCaption({ title: 'Jeremief7 arrive', channelName: 'Jeremie_F7', category: 'general' }).hashtags.some(t => t === '#jeremief7' || t === '#general'))
   assert.ok(buildCaption({ title: 'Titre long avec plusieurs sujets differents ici', channelName: 'x', maxClipTags: 2 }).hashtags.length <= 2)

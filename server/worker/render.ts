@@ -41,6 +41,10 @@ export async function renderClip(job: ClipJobToRender): Promise<{ outputPath: st
         extractFrame: frameExtractor(runFfmpeg),
         analyse: request => runLocateScript(request, { script: resolve(process.cwd(), 'scripts/vision/detect_layout.py') }),
         modelsDir: process.env.VISION_MODELS_DIR || join(dataDir(), 'models')
+      }).catch((error) => {
+        // Le clip est rendu en plein cadre, mais on garde la raison dans le journal du worker.
+        console.warn(`[render] ecran partage : detection impossible (${error instanceof Error ? error.message : error})`)
+        return null
       }),
       runFfmpeg,
       collectMetrics: collectClipMetrics,
