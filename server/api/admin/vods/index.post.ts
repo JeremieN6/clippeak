@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
   if (isDemoTwitchId(channel.twitchId)) throw createError({ statusCode: 400, statusMessage: 'La chaîne de démonstration n’analyse pas de VOD : choisis une vraie chaîne ou une chaîne de test' })
 
   const known = await prisma.vod.findUnique({ where: { twitchVodId }, select: { status: true, channel: { select: { displayName: true } } } })
-  if (known) throw createError({ statusCode: 409, statusMessage: `Cette VOD est déjà connue (chaîne ${known.channel.displayName}, statut ${known.status})` })
+  if (known) throw createError({ statusCode: 409, statusMessage: `Cette VOD est déjà connue (chaîne ${known.channel.displayName}, statut ${known.status}). Pour l’essayer sur une autre chaîne, utilise « Déplacer » dans la liste des VODs ajoutées.` })
 
   const clientId = readEnv('TWITCH_CLIENT_ID')
   const clientSecret = readEnv('TWITCH_CLIENT_SECRET')
