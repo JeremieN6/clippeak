@@ -12,6 +12,7 @@ const route = useRoute()
 const checking = ref(true)
 const currentChannel = computed(() => channels.value.find(c => c.id === channelId.value))
 const onDemo = computed(() => Boolean(currentChannel.value?.demo))
+const onTest = computed(() => Boolean(currentChannel.value?.test))
 
 // Retour d'une connexion de plateforme (voir /api/auth/youtube) : message, puis retour a l'etape des plateformes.
 const connectMessages: Record<string, string> = {
@@ -65,15 +66,15 @@ async function logout() {
     <div
       v-if="connected && mode === 'admin'"
       class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-5 py-2.5 sm:px-8"
-      :class="onDemo ? 'border-[#3A2A66] bg-[#1A1530]' : 'border-[#6B2F26] bg-[#2A1512]'"
+      :class="onDemo || onTest ? 'border-[#3A2A66] bg-[#1A1530]' : 'border-[#6B2F26] bg-[#2A1512]'"
       role="status"
     >
-      <span class="st-badge" :class="onDemo ? 'st-badge-violet' : 'st-badge-error'">{{ onDemo ? 'Démonstration' : 'Vrai compte' }}</span>
+      <span class="st-badge" :class="onDemo || onTest ? 'st-badge-violet' : 'st-badge-error'">{{ onDemo ? 'Démonstration' : onTest ? 'Chaîne de test' : 'Vrai compte' }}</span>
       <span class="text-[13px] leading-5">
-        {{ onDemo ? 'Tu es en mode administrateur sur un compte fictif : modifie tout ce que tu veux.' : 'Tu es en mode administrateur sur une vraie chaîne : tes modifications sont réelles.' }}
+        {{ onDemo ? 'Tu es en mode administrateur sur un compte fictif : modifie tout ce que tu veux.' : onTest ? 'Chaîne de test : ses photos et ses réglages sont à part. Ne publie pas les clips d’un ami.' : 'Tu es en mode administrateur sur une vraie chaîne : tes modifications sont réelles.' }}
       </span>
       <select v-if="channels.length > 1" v-model="channelId" class="st-field !w-auto" aria-label="Chaîne affichée" @change="switchChannel">
-        <option v-for="c in channels" :key="c.id" :value="c.id">{{ c.demo ? 'Chaîne de démonstration' : c.displayName }}</option>
+        <option v-for="c in channels" :key="c.id" :value="c.id">{{ c.demo ? 'Chaîne de démonstration' : c.test ? `${c.displayName} (test)` : c.displayName }}</option>
       </select>
       <button v-if="onDemo" type="button" class="st-btn-ghost" :disabled="busy" @click="studio.resetDemo()">Remettre à zéro</button>
       <NuxtLink to="/admin" class="st-btn-quiet no-underline sm:ml-auto">← Administration</NuxtLink>

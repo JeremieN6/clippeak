@@ -48,7 +48,7 @@ const date = (value: string) => new Date(value).toLocaleString('fr-FR', { day: '
       <h2 class="m-0 text-[17px] font-bold">Ajouter une VOD</h2>
       <label class="flex flex-col gap-1.5"><span class="st-label">Chaîne qui reçoit les clips</span>
         <select v-model="channelId" class="st-field" aria-label="Chaîne">
-          <option v-for="c in realChannels" :key="c.id" :value="c.id">{{ c.displayName }}</option>
+          <option v-for="c in realChannels" :key="c.id" :value="c.id">{{ c.displayName }}{{ c.test ? ' (test)' : '' }}</option>
         </select>
       </label>
       <label class="flex flex-col gap-1.5"><span class="st-label">Lien de la VOD</span>

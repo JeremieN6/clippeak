@@ -1,7 +1,7 @@
 // Etat et actions du studio, partages entre le parcours guide (8 etapes) et le tableau de bord. Le streamer est identifie par son cookie
 // de session Twitch, l'admin par le cookie de session pose sur /admin : aucun mot de passe ne circule ici.
 
-export interface StudioChannel { id: string, login: string, displayName: string, autoClip: boolean, demo: boolean }
+export interface StudioChannel { id: string, login: string, displayName: string, autoClip: boolean, demo: boolean, test?: boolean }
 
 export interface StudioClip {
   id: string, batch: number | null, status: string, title: string | null, caption: string | null, hashtags: string | null

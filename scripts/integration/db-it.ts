@@ -33,6 +33,17 @@ async function main() {
   assert.equal((await prisma.vod.findUniqueOrThrow({ where: { id: live.id } })).status, 'live')
   log('claimVodToAnalyze : une seule prise, VOD live ignoree')
 
+  // Chaine non ecoutee (test, demo) : une VOD ajoutee a la main est analysee, une VOD automatique ne l'est pas.
+  const quiet = await prisma.channel.create({ data: { twitchId: 'test-ami', login: 'test-ami', displayName: 'Ami (test)', autoClip: false, settings: { create: {} } } })
+  const autoVod = await prisma.vod.create({ data: { channelId: quiet.id, twitchVodId: '999101', url: 'https://twitch.tv/videos/999101', status: 'ended' } })
+  assert.equal(await store.claimVodToAnalyze(), null)
+  const manualVod = await prisma.vod.create({ data: { channelId: quiet.id, twitchVodId: '999102', url: 'https://twitch.tv/videos/999102', status: 'ended', source: 'manual' } })
+  assert.equal((await store.claimVodToAnalyze())?.id, manualVod.id)
+  assert.equal((await prisma.vod.findUniqueOrThrow({ where: { id: autoVod.id } })).status, 'ended')
+  await prisma.vod.deleteMany({ where: { id: { in: [autoVod.id, manualVod.id] } } })
+  await prisma.channel.delete({ where: { id: quiet.id } })
+  log('chaine non ecoutee : seule la VOD ajoutee a la main est analysee')
+
   // 2. Enregistrement de l'analyse : 6 moments -> 6 clips en file, lots de 4 puis 2
   const mk = (peakSec: number, score: number) => ({
     peak: { startSec: peakSec - 10, endSec: peakSec + 5, peakSec, score: 7, signals: { messages: 12, rateZ: 3, keywordShare: 0.3, capsShare: 0.1 } },

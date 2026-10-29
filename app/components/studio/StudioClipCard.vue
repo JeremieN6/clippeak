@@ -4,6 +4,8 @@
 const props = defineProps<{ clip: StudioClip }>()
 const studio = useStudio()
 
+import { fitTitleToBand } from '~~/server/utils/clipping/titleFit'
+
 const draft = reactive({ caption: props.clip.caption ?? '', title: props.clip.title ?? '', note: '' })
 const redoOpen = ref(false)
 
@@ -19,6 +21,21 @@ const look = computed(() => statusLook[props.clip.status] ?? statusLook.review)
 const issues = computed(() => props.clip.qc?.issues ?? [])
 const minutes = computed(() => props.clip.durationSec == null ? '' : `${Math.floor(props.clip.durationSec / 60)}:${String(props.clip.durationSec % 60).padStart(2, '0')}`)
 const originLabel = computed(() => props.clip.origin === 'ref' ? 'Ressemble à un de tes clips' : 'Détecté par le chat')
+
+// Meme calcul que le rendu : le titre ne fait jamais echouer le clip, il est reduit puis coupe si besoin.
+const titleFit = computed(() => {
+  const text = draft.title.trim()
+  const style = studio.detail.value?.style.title
+  if (!text || !style) return null
+  return fitTitleToBand(text, style.fontSize ?? 68, style.maxLines ?? 3)
+})
+const titleNote = computed(() => {
+  const fit = titleFit.value
+  if (!fit) return ''
+  if (fit.truncated) return 'Trop long : il sera coupé au dernier mot entier, avec « … ».'
+  if (fit.shrunk) return `Un peu long : la police sera réduite (taille ${fit.fontSize}) pour que tout tienne.`
+  return `${fit.lines} ligne${fit.lines > 1 ? 's' : ''} sur ${fit.maxLines}.`
+})
 
 const approve = () => studio.reviewClip(props.clip, 'approve', draft)
 const reject = () => studio.reviewClip(props.clip, 'reject', draft)
@@ -73,6 +90,7 @@ const redo = () => studio.reviewClip(props.clip, 'requeue', draft)
       <div v-if="redoOpen || ['failed', 'rejected'].includes(clip.status)" class="flex flex-col gap-2">
         <label :for="`title-${clip.id}`" class="st-label">Nouveau titre (facultatif)</label>
         <input :id="`title-${clip.id}`" v-model="draft.title" class="st-field" placeholder="Laisse vide pour garder le titre">
+        <div v-if="titleNote" class="st-hint" :class="titleFit?.truncated ? 'text-[#F3B2A6]' : ''" aria-live="polite">{{ titleNote }}</div>
         <div><button type="button" class="st-btn-ghost" :disabled="studio.busy.value" @click="redo">Refaire le rendu</button></div>
       </div>
 

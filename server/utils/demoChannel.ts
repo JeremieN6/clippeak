@@ -1,4 +1,5 @@
-import { unlink } from 'node:fs/promises'
+import { rm, unlink } from 'node:fs/promises'
+import { join } from 'node:path'
 import { prisma } from './prisma'
 import { dataDir, safeResolve } from './clipping/dataDir'
 
@@ -56,6 +57,41 @@ export async function resetDemoChannel() {
     if (i === 3) batch = 2
   }
   return channel
+}
+
+// Chaines de TEST de l'admin : une par ami dont on essaie les VODs (photos, style et hashtags separes, rien ne se melange). Comme la demo,
+// ce ne sont pas des chaines Twitch ecoutees (autoClip desactive : pas d'EventSub, pas de rattrapage, pas d'analyse en direct), mais leurs
+// VODs AJOUTEES A LA MAIN sont analysees et rendues comme celles d'un vrai streamer.
+export const TEST_TWITCH_PREFIX = 'test-'
+export const isTestTwitchId = (twitchId: string) => twitchId.startsWith(TEST_TWITCH_PREFIX)
+
+export function testSlug(name: string): string {
+  return name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
+}
+
+export async function createTestChannel(name: string) {
+  const slug = testSlug(name)
+  if (slug.length < 2) return null
+  const twitchId = `${TEST_TWITCH_PREFIX}${slug}`
+  if (await prisma.channel.findUnique({ where: { twitchId }, select: { id: true } })) return 'duplicate' as const
+  return prisma.channel.create({
+    data: { twitchId, login: slug, displayName: name.trim().slice(0, 60), autoClip: false, settings: { create: {} } },
+    select: { id: true, login: true, displayName: true, autoClip: true }
+  })
+}
+
+// Supprime une chaine de test avec tout ce qu'elle contient : clips, extraits de video, photos et fichiers deposes (visages d'amis).
+export async function deleteTestChannel(id: string): Promise<boolean> {
+  const channel = await prisma.channel.findUnique({
+    where: { id },
+    include: { assets: true, referenceItems: true, vods: { select: { id: true, moments: { select: { jobs: { select: { outputPath: true } } } } } } }
+  })
+  if (!channel || !isTestTwitchId(channel.twitchId)) return false
+  await prisma.channel.delete({ where: { id } })
+  const clipFiles = channel.vods.flatMap(v => v.moments.flatMap(m => m.jobs.map(j => j.outputPath)))
+  await removeFiles([...channel.assets.map(a => a.path), ...channel.referenceItems.map(r => r.filePath), ...clipFiles])
+  for (const vod of channel.vods) await rm(join(dataDir(), 'sources', vod.id), { recursive: true, force: true }).catch(() => {})
+  return true
 }
 
 // Chaine de demonstration existante, ou creee au premier appel.
