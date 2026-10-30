@@ -144,3 +144,13 @@ Constat du porteur : tout n'est pas propre ni a 100 % conforme au kit (maquettes
 2. **Court terme** : audit UI (1.4 etape 0), page « Prochainement » en version fichier (1.1), notifications par streamer (2.2), parcours Twitch reel (5).
 3. **Avant l'ouverture** : recadrage UI, sauvegardes, suppression de compte, revue de securite, mesure de charge (2.6).
 4. **Ensuite** : statistiques par plateforme (1.2), TikTok (1.3), liste d'attente, offres et quotas.
+
+
+## Etat des P1 au 2026-10-30 (branche `feat/p1-data-account`)
+- **2.1 Audit Google** : tout est prepare dans `GOOGLE-AUDIT.md` (2 demarches : verification OAuth puis audit « YouTube API Services », textes en anglais prets). A faire par le porteur : domaine dans Search Console, ecran de consentement complet, VIDEO de demonstration (a tourner apres la mise en ligne de « Mes donnees »), passage en Production, formulaire d'audit.
+- **2.2 Notifications** : cloche « Ton lot N est pret » ajoutee (`server/worker/bell.ts`, une fois par chaine et par lot). E-mail / Telegram par streamer : attendent la lecture des reponses du formulaire de la landing.
+- **2.6 Charge VPS** : mesure du 2026-10-30 = 2 coeurs, 8 Go (5,2 Go disponibles), disque 46 %, charge 0,07 au repos, 16 applications. Delai honnete affiche (« Compte environ N min »). PAS encore mesure sous charge reelle (2-3 streamers en meme temps) : a faire quand plusieurs streamers sont actifs ; alerte de file non faite.
+- **3.1 Sauvegardes** : `scripts/ops/backup-data.sh` pret (archive datee, 7 jours, base si pg_dump) ; PAS installe sur le VPS ; copie hors serveur = decision du porteur (RCLONE_REMOTE). Duree de conservation : videos des clips refuses ou en echec supprimees apres 14 jours (`server/worker/retention.ts`).
+- **3.2 Suppression de compte et export** : fait (vue « Mes donnees » dans le menu du compte ; `GET /api/studio/account/export`, `POST /api/studio/account/delete` avec nom de chaine retape ; retire l'autorisation Google et l'ecoute Twitch au mieux, efface base + fichiers + invitation).
+- **3.3 Relecture juridique** : faite par le porteur le 2026-10-30.
+- **3.4 Revue de securite** : fait. Trouve et corrige : la limite d'essais lisait `X-Forwarded-For` que nginx transmet sans le reecrire (falsifiable : contournement de la limite sur le mot de passe admin) -> lecture de `X-Real-IP` ; ancienne route `/api/admin/twitch/channels` (comparaison non constante, sans limite) -> `requireStudioAdmin` ; formulaire public de feedback sans limite -> 5 envois par minute. Reste : supprimer `.env.local.bak-20261024` sur le VPS (accord du porteur).

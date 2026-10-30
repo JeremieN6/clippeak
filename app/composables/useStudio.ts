@@ -66,7 +66,7 @@ export function createStudio() {
   const vodAlerts = ref<VodAlert[]>([])
 
   // 'onboarding' tant que le parcours n'est pas termine, puis 'dashboard' ; le streamer peut revenir a une etape depuis le tableau de bord.
-  const view = ref<'onboarding' | 'dashboard' | 'roadmap'>('onboarding')
+  const view = ref<'onboarding' | 'dashboard' | 'roadmap' | 'account'>('onboarding')
 
   // 'streamer' = connecte avec Twitch (ne voit que sa chaine) ; 'admin' = session de /admin (voit la chaine de demonstration et les autres).
   const mode = ref<'streamer' | 'admin' | null>(null)

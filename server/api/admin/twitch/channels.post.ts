@@ -1,13 +1,10 @@
 import { readEnv } from '../../../utils/env'
+import { requireStudioAdmin } from '../../../utils/studioAuth'
 import { createTwitchApi, TwitchApiError } from '../../../utils/clipping/twitchApi'
 import { prisma } from '../../../utils/prisma'
 
 export default defineEventHandler(async (event) => {
-  const expected = (useRuntimeConfig(event).adminPassword || readEnv('ADMIN_PASSWORD')).trim()
-  const provided = (getHeader(event, 'x-admin-password') ?? '').trim()
-  if (!expected || provided !== expected) {
-    throw createError({ statusCode: 401, statusMessage: 'Acces refuse' })
-  }
+  requireStudioAdmin(event)
 
   const body = await readBody<{ login?: unknown }>(event)
   const login = typeof body?.login === 'string' ? body.login.trim().toLowerCase() : ''

@@ -64,7 +64,8 @@ const progress = computed(() => {
   if (!running.length) return null
   const batches = new Set(running.map(c => c.batch ?? 0))
   const total = clips.value.filter(c => batches.has(c.batch ?? 0)).length
-  return { running: running.length, pct: Math.max(8, Math.round(((total - running.length) / total) * 100)) }
+  // Estimation grossiere : ~40 s par clip (rendu + controle) ; on arrondit a la minute, jamais moins d'une minute.
+  return { running: running.length, minutes: Math.max(1, Math.ceil(running.length * 40 / 60)), pct: Math.max(8, Math.round(((total - running.length) / total) * 100)) }
 })
 
 // Plateforme a reconnecter : un envoi a echoue parce que l'acces a expire, sans envoi reussi ou programme apres lui.
@@ -141,7 +142,7 @@ const selectClass = 'st-field !min-h-11 !w-full'
           <svg class="flex-none" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" opacity=".3" /><path d="M12 3a9 9 0 0 1 9 9" /></svg>
           Clippeak prépare {{ progress.running }} clip{{ progress.running > 1 ? 's' : '' }}
         </div>
-        <p class="m-0 text-[13px] opacity-90">Il cherche et monte les meilleurs moments. Les clips arrivent ici dès qu’ils sont prêts, tu peux fermer la page.</p>
+        <p class="m-0 text-[13px] opacity-90">Il cherche et monte les meilleurs moments. Compte environ {{ progress.minutes }} min. Les clips arrivent ici dès qu’ils sont prêts, tu peux fermer la page.</p>
         <div class="h-1.5 w-full overflow-hidden rounded-[3px] bg-st-border" role="progressbar" aria-label="Préparation des clips" :aria-valuenow="progress.pct" aria-valuemin="0" aria-valuemax="100"><div class="st-bar st-bar-live" :style="{ width: `${progress.pct}%` }" /></div>
       </div>
 
