@@ -81,5 +81,8 @@ Le produit reel de clipping n'existe pas encore : tout le "traitement" est simul
 
 ---
 
+## 2026-10-30 -- Clippeak demande l'ouverture publique a Google
+Pour que les clips publies sur YouTube soient visibles de tous (et pas seulement en prive), l'application doit etre verifiee par Google puis auditee par YouTube. Le porteur a passe l'application en production, fait declarer l'acces « envoyer des videos », tourne une video de demonstration de 3 minutes et soumis la verification. L'audit YouTube (le vrai verrou « prive / public ») est le formulaire suivant. C'est le dernier obstacle externe avant d'ouvrir Clippeak a d'autres streamers : les delais ne dependent plus du projet mais de Google.
+
 ## Derniere mise a jour
 2026-10-25 -- Banque de reference redefinie (base de tout). 2026-10-24 -- Ajout du bilan du pipeline de clips (verifie en local, non deploye). Pivot V2 du 2026-10-23 conserve. Creation initiale du fichier le 2026-08-27 a partir de l'historique git et de `tasks/lessons.md`.

@@ -21,7 +21,7 @@
 - Statuts affiches : **En vote**, **En cours**, **En attente d'acces** (API de la plateforme pas encore accordee), **Livre**. Formulation « en priorite », jamais « on developpera ».
 - Section « Livre grace a vos votes » pour montrer que le vote sert.
 - **Champ « Propose une idee »** : les idees arrivent dans une section de `/admin` (table en base) et alimentent les prochains blocs.
-- **Notifications** : message dans l'outil (pastille + bandeau) quand le vote du streamer gagne et quand la fonction sort ; Telegram/e-mail par streamer ensuite (voir 2.2).
+- **Notifications** : message dans l'outil (pastille + bandeau) quand le vote du streamer gagne et quand la fonction sort.
 - Tables : blocs de vote, fonctions, votes, idees (migration a appliquer par le porteur).
 - Ordre : apres le recadrage UI (1.4), pour la construire avec les composants propres.
 
@@ -61,10 +61,6 @@ Constat du porteur : tout n'est pas propre ni a 100 % conforme au kit (maquettes
 - A faire : verification OAuth du projet Google (page de confidentialite et conditions deja en ligne, video de demonstration, justification de la portee), puis audit de conformite de l'API YouTube pour lever la restriction « prive ».
 - A lancer **des maintenant** : les delais de Google sont longs et ne dependent pas de nous. C'est le vrai chemin critique.
 
-### 2.2 Notifications pour chaque streamer — P1, M
-- **Constat** : Telegram/Discord envoient aujourd'hui vers le bot du porteur, pas vers chaque streamer. Un streamer invite ne saurait pas qu'un lot est pret.
-- A faire : canal de notification par chaine (e-mail en priorite, puis Discord/Telegram au choix dans les reglages), message « ton lot est pret » avec lien vers le studio.
-- E-mail : ajouter une dependance d'envoi (SMTP ou service transactionnel) : decision a prendre.
 
 ### 2.3 Publication Instagram — P3, L
 - Application Meta a creer ; compte du porteur utilisable en mode developpement, revue Meta necessaire pour les autres comptes. Compte professionnel requis cote streamer.
@@ -141,12 +137,24 @@ Constat du porteur : tout n'est pas propre ni a 100 % conforme au kit (maquettes
 ## Ordre conseille
 
 1. **Maintenant, sans code** : lancer l'audit Google (2.1), les acces TikTok et Instagram (1.3, 2.3), faire relire les pages legales (3.3).
-2. **Court terme** : audit UI (1.4 etape 0), page « Prochainement » en version fichier (1.1), notifications par streamer (2.2), parcours Twitch reel (5).
+2. **Court terme** : audit UI (1.4 etape 0), page « Prochainement » en version fichier (1.1), parcours Twitch reel (5).
 3. **Avant l'ouverture** : recadrage UI, sauvegardes, suppression de compte, revue de securite, mesure de charge (2.6).
 4. **Ensuite** : statistiques par plateforme (1.2), TikTok (1.3), liste d'attente, offres et quotas.
 
 
 ## Decisions du 2026-10-30
 - **Onboarding conversationnel (1.5)** : conversation ECRITE A L'AVANCE, sans IA (le streamer repond avec des elements places dans le fil : depot, boutons, curseurs). Pas d'exemple externe (rustine.io abandonne). Le porteur veut une MAQUETTE Claude Design avant de coder : brief dans `BRIEF-UI-ONBOARDING-CONVERSATION.md` (4 ecrans). Ensuite : prototype des etapes 1 et 2, puis les 8.
-- **Notifications Telegram / e-mail par streamer (2.2)** : la question « comment veux-tu etre prevenu » existe deja dans le formulaire de la landing (`plateformeReception` : Discord / Telegram / Mail / Autre). On ne construit aucun envoi par streamer avant d'avoir lu les reponses ; la preference sera aussi demandee a l'etape 7 du nouvel onboarding.
-- **Feedback dans le studio** : garder le formulaire de la landing (visiteurs, liste d'attente) ET ajouter une carte de feedback DANS le studio apres le PREMIER CLIP APPROUVE (moment de satisfaction), jamais obligatoire pour recuperer ses clips, 3-4 questions (ce qui manque, satisfaction, canal de notification), stockees avec la chaine (migration a prevoir).
+- **Feedback dans le studio** : garder le formulaire de la landing (visiteurs, liste d'attente) ET ajouter une carte de feedback DANS le studio apres le PREMIER CLIP APPROUVE (moment de satisfaction), jamais obligatoire pour recuperer ses clips, 3-4 questions (ce qui manque, satisfaction), stockees avec la chaine (migration a prevoir).
+
+## Etat des P1 au 2026-10-30 (branche `feat/p1-data-account`)
+- **2.1 Audit Google** : tout est prepare dans `GOOGLE-AUDIT.md` (2 demarches : verification OAuth puis audit « YouTube API Services », textes en anglais prets). A faire par le porteur : domaine dans Search Console, ecran de consentement complet, VIDEO de demonstration (a tourner apres la mise en ligne de « Mes donnees »), passage en Production, formulaire d'audit.
+- **2.2 Notifications** : cloche « Ton lot N est pret » ajoutee (`server/worker/bell.ts`, une fois par chaine et par lot). Telegram / e-mail par streamer : retire du backlog le 2026-10-30 (decision du porteur : outil pas encore public, rien a mesurer ; a rouvrir quand il y aura des streamers).
+- **2.6 Charge VPS** : mesure du 2026-10-30 = 2 coeurs, 8 Go (5,2 Go disponibles), disque 46 %, charge 0,07 au repos, 16 applications. Delai honnete affiche (« Compte environ N min »). PAS encore mesure sous charge reelle (2-3 streamers en meme temps) : a faire quand plusieurs streamers sont actifs ; alerte de file non faite.
+- **3.1 Sauvegardes** : `scripts/ops/backup-data.sh` pret (archive datee, 7 jours, base si pg_dump) ; PAS installe sur le VPS ; copie hors serveur = decision du porteur (RCLONE_REMOTE). Duree de conservation : videos des clips refuses ou en echec supprimees apres 14 jours (`server/worker/retention.ts`).
+- **3.2 Suppression de compte et export** : fait (vue « Mes donnees » dans le menu du compte ; `GET /api/studio/account/export`, `POST /api/studio/account/delete` avec nom de chaine retape ; retire l'autorisation Google et l'ecoute Twitch au mieux, efface base + fichiers + invitation).
+- **3.3 Relecture juridique** : faite par le porteur le 2026-10-30.
+- **3.4 Revue de securite** : fait. Trouve et corrige : la limite d'essais lisait `X-Forwarded-For` que nginx transmet sans le reecrire (falsifiable : contournement de la limite sur le mot de passe admin) -> lecture de `X-Real-IP` ; ancienne route `/api/admin/twitch/channels` (comparaison non constante, sans limite) -> `requireStudioAdmin` ; formulaire public de feedback sans limite -> 5 envois par minute. Reste : supprimer `.env.local.bak-20261024` sur le VPS (accord du porteur).
+
+## 3.1 Sauvegardes : etat du 2026-10-30
+- INSTALLEES sur le VPS (fichiers + base, chiffrees, copie sur Mega, cron 3 h 30) ; voir `OPS-SAUVEGARDES.md`.
+- Decision du porteur (2026-10-30) : pas de surveillance du journal pour le moment, l'outil n'est pas public ; on s'en occupera quand il y aura des streamers. L'essai de restauration de la base dans une branche Neon vide reste a faire avant l'ouverture.

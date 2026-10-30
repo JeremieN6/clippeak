@@ -9,6 +9,8 @@ import { analysisStep, liveAnalysisStep } from './analysis'
 import { notifyStep } from './notify'
 import { publishStep } from './publish'
 import { purgeSourcesStep, vodAccessStep } from './vodAccess'
+import { bellStep } from './bell'
+import { retentionStep } from './retention'
 import { referenceStep } from './reference'
 import { similarityScanStep } from './similarityScan'
 import { renderClip } from './render'
@@ -61,7 +63,7 @@ async function main() {
     store: retrying(createPrismaClipQueueStore(prisma), { onRetry: (error, attempt) => console.warn(`[worker] base injoignable (tentative ${attempt}), nouvel essai`) }),
     render: renderClip,
     // Quand la file de rendu est vide : publication echue, VOD terminee, puis tranche de live, puis notification de lot.
-    idleTask: async () => (await publishStep()) || (await vodAccessStep()) || (await referenceStep()) || (await analysisStep()) || (await liveAnalysisStep()) || (await notifyStep()) || (await similarityScanStep()) || (await purgeSourcesStep()),
+    idleTask: async () => (await publishStep()) || (await vodAccessStep()) || (await referenceStep()) || (await analysisStep()) || (await liveAnalysisStep()) || (await bellStep()) || (await notifyStep()) || (await similarityScanStep()) || (await purgeSourcesStep()) || (await retentionStep()),
     pollMs,
     shouldStop: () => stopping,
     log: (message, detail) => (detail === undefined ? console.info('[worker]', message) : console.error('[worker]', message, detail))

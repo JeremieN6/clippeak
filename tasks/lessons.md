@@ -162,3 +162,27 @@
 **Cause racine** : `studio.css` (charge apres Tailwind) donne `display:inline-flex` aux boutons, ce qui bat `hidden`/`lg:hidden` a specificite egale.
 **Solution** : regles de rattrapage `.st-btn.lg\:hidden` etc. en fin de `studio.css`.
 **Regle** : pour tout element cense etre cache selon la largeur, lire son `display` calcule a 1440 et 390 px, ne pas se fier a la classe.
+
+### [2026-10-30] Une section cachee quand elle est vide est invisible pour celui qui teste
+**Probleme** : La page « Prochainement » n'affichait « En preparation » et « Livre » que si elles contenaient quelque chose. Le porteur, sans donnees, ne voyait rien et a cru la fonction absente.
+**Cause racine** : j'avais ecrit la page pour le cas rempli et je ne l'avais regardee qu'avec des donnees partielles ; aucun etat vide explicite.
+**Solution** : onglets En vote / En cours / Livre toujours visibles, avec un message dans chaque etat vide.
+**Regle** : une zone d'ecran qu'on a promise doit toujours exister, meme vide, avec un message qui dit quand elle se remplira. Verifier chaque etat : vide, partiel, plein.
+
+### [2026-10-30] Deux fusions rapprochees = deux deploiements qui se marchent dessus
+**Probleme** : fusion de 2 PR a quelques secondes d'ecart ; le 2e deploiement a echoue (`manifest.json` introuvable dans le cache du build sur le VPS).
+**Cause racine** : les deux workflows construisent dans le meme dossier en meme temps.
+**Solution** : `gh run rerun <id>` du deploiement echoue, une fois l'autre termine.
+**Regle** : fusionner une PR, attendre la fin de son deploiement, puis la suivante ; verifier le resultat de CHAQUE deploiement.
+
+### [2026-10-30] Une limite d'essais basee sur un en-tete que le client peut inventer
+**Probleme** : la limite de 10 essais par minute sur le mot de passe admin lisait `X-Forwarded-For`. Le nginx de ce serveur ne le reecrit pas (il ne pose que `X-Real-IP`), donc un client peut en envoyer un different a chaque essai et contourner la limite.
+**Cause racine** : la reserve etait notee depuis 2026-10-24 (« a proteger cote reverse proxy ») mais jamais verifiee ni traitee.
+**Solution** : `clientIp()` lit `X-Real-IP`, que nginx ecrase avec l'adresse reelle ; meme fonction pour le formulaire public.
+**Regle** : une reserve de securite notee doit avoir une date et un proprietaire ; verifier la vraie configuration du proxy (lecture seule) avant de se fier a un en-tete d'adresse.
+
+### [2026-10-30] Guider le porteur dans une console externe sans tenir compte de ce qui est deja fait
+**Probleme** : pour l'audit Google, j'ai demande au porteur de refaire l'ecran de consentement (deja configure le 2026-10-28 pour le test YouTube) et j'ai liste des ecrans de Clippeak sans dire POURQUOI (la video de demonstration), ce qui l'a fait douter de tout le guide.
+**Cause racine** : checklist generique recopiee sans la confronter aux notes du projet ; libelles de console donnes de memoire.
+**Solution** : guide reecrit avec « ce qui est fait » et « ou trouver chaque ecran » ; une etape a la fois, sur captures du porteur ; texte pret a coller pour chaque champ.
+**Regle** : avant de donner une marche a suivre au porteur, relire CLAUDE.md pour retirer ce qui est deja fait, dire a quoi sert chaque action, et ne decrire une interface externe que sur capture ou source verifiee.

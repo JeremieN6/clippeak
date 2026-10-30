@@ -1,5 +1,9 @@
 import { z } from 'zod'
 import { prisma } from '../utils/prisma'
+import { clientIp } from '../utils/studioAuth'
+import { createRateLimiter } from '../utils/clipping/adminAuth'
+
+const limiter = createRateLimiter(5, 60_000)
 
 const feedbackSchema = z.object({
   version: z.string().default('v1'),
@@ -13,6 +17,7 @@ const feedbackSchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
+  if (!limiter.attempt(clientIp(event))) throw createError({ statusCode: 429, statusMessage: 'Trop d’envois. Réessaie dans une minute.' })
   const body = await readBody(event)
   const parsed = feedbackSchema.safeParse(body)
 

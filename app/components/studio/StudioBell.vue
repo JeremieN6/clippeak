@@ -33,6 +33,7 @@ async function toggle() {
 
 function go(n: Item) {
   if (n.kind.startsWith('roadmap')) studio.view.value = 'roadmap'
+  else if (n.kind === 'batch_ready') studio.view.value = 'dashboard'
   open.value = false
 }
 

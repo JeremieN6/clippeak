@@ -677,6 +677,29 @@ try {
   assert.ok((await call('/api/studio/notifications', voterB)).json.unread > 0, 'lire les siennes ne touche pas celles des autres')
   ok('cloche : vote lance, resultat selon le vote, fonction livree ; lues a l ouverture ; chaque chaine ne voit que les siennes')
 
+
+  // --- Mes donnees : export sans jeton, suppression protegee (confirmation du nom, jamais l'admin, jamais une autre chaine)
+  const [{ id: gdprId }] = await q(`INSERT INTO channels (id, twitch_id, login, display_name) VALUES (gen_random_uuid(), '777000', 'efface_moi', 'EffaceMoi') RETURNING id`)
+  await q(`INSERT INTO streamer_settings (id, channel_id, updated_at) VALUES (gen_random_uuid(), $1, now())`, [gdprId])
+  await q(`INSERT INTO channel_invites (id, twitch_login, twitch_id) VALUES (gen_random_uuid(), 'efface_moi', '777000')`)
+  await q(`INSERT INTO platform_connections (id, channel_id, platform, access_token_enc, refresh_token_enc, updated_at) VALUES (gen_random_uuid(), $1, 'youtube', 'secret-token-ne-doit-pas-sortir', 'secret-refresh', now())`, [gdprId])
+  await q(`INSERT INTO studio_sessions (id, channel_id, token_hash, expires_at) VALUES (gen_random_uuid(), $1, $2, now() + interval '1 day')`, [gdprId, sha('jeton-gdpr')])
+  const me2 = as('jeton-gdpr')
+  assert.equal((await call('/api/studio/account/export', { auth: false })).status, 401)
+  const exp = await call('/api/studio/account/export', me2)
+  assert.equal(exp.status, 200); assert.ok(!JSON.stringify(exp.json).includes('secret-token'), 'aucun jeton dans l export')
+  assert.equal(JSON.parse(typeof exp.json === 'string' ? exp.json : JSON.stringify(exp.json)).channel.login, 'efface_moi')
+  assert.equal((await call('/api/studio/account/delete', { method: 'POST', body: { confirm: 'efface_moi' } })).status, 403, 'l admin ne supprime pas un compte')
+  assert.equal((await call('/api/studio/account/delete', { ...me2, method: 'POST', body: { confirm: 'autre' } })).status, 400)
+  assert.equal((await q(`SELECT count(*)::int AS n FROM channels WHERE id = $1`, [gdprId]))[0].n, 1)
+  const gdprDel = await call('/api/studio/account/delete', { ...me2, method: 'POST', body: { confirm: 'Efface_Moi' } })
+  assert.equal(gdprDel.status, 200)
+  assert.equal((await q(`SELECT count(*)::int AS n FROM channels WHERE id = $1`, [gdprId]))[0].n, 0)
+  assert.equal((await q(`SELECT count(*)::int AS n FROM platform_connections WHERE channel_id = $1`, [gdprId]))[0].n, 0)
+  assert.equal((await q(`SELECT count(*)::int AS n FROM channel_invites WHERE twitch_login = 'efface_moi'`))[0].n, 0)
+  assert.equal((await call('/api/auth/me', me2)).status, 401, 'la session disparait avec le compte')
+  ok('mes donnees : export sans jeton, suppression refusee a l admin et sans confirmation, puis chaine, connexions, invitation et session effacees')
+
   console.log('API_IT_OK')
 } catch (error) {
   failure = error

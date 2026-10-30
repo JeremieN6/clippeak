@@ -29,6 +29,7 @@ useHead({ title: 'Conditions d’utilisation – Clippeak' })
 
     <h2>Plateformes tierces</h2>
     <p>Twitch, YouTube, TikTok et Instagram appartiennent à leurs propriétaires respectifs. Leur disponibilité, leurs règles et leurs limites peuvent changer et peuvent affecter Clippeak. Clippeak n’est ni affilié ni approuvé par ces plateformes.</p>
+    <p>La publication sur YouTube utilise les services d’API YouTube (YouTube API Services). <strong>En connectant ton compte YouTube à Clippeak, tu acceptes d’être lié par les <a href="https://www.youtube.com/t/terms" rel="noopener" target="_blank">conditions d’utilisation de YouTube</a></strong> ; les données concernées sont traitées selon les <a href="https://policies.google.com/privacy" rel="noopener" target="_blank">règles de confidentialité de Google</a> et notre <a href="/confidentialite">politique de confidentialité</a>.</p>
 
     <h2>Bêta : pas de garantie de résultat</h2>
     <p>Le service évolue vite. Nous faisons le maximum pour produire de bons clips, mais nous ne garantissons ni leur qualité, ni leur performance, ni une disponibilité permanente. Vérifie toujours un clip avant de l’approuver.</p>
