@@ -64,7 +64,7 @@ function hasAdminCookie(event: H3Event): boolean {
 
 // Les requetes qui modifient quelque chose et qui portent seulement un cookie doivent venir de notre propre site
 // (controle de l'origine, en plus de SameSite=Lax).
-function assertSameOrigin(event: H3Event): void {
+export function assertSameOrigin(event: H3Event): void {
   if (['GET', 'HEAD', 'OPTIONS'].includes(event.method)) return
   const origin = getHeader(event, 'origin')
   if (!origin) return

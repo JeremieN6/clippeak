@@ -65,8 +65,8 @@ Constat du porteur : tout n'est pas propre ni a 100 % conforme au kit (maquettes
 ### 2.3 Publication Instagram — P3, L
 - Application Meta a creer ; compte du porteur utilisable en mode developpement, revue Meta necessaire pour les autres comptes. Compte professionnel requis cote streamer.
 
-### 2.4 Liste d'attente visible pour l'admin — P2, S
-- La page `/attente` n'enregistre rien. Ajouter une table « demandes d'acces » pour voir qui s'est connecte sans invitation et inviter en un clic (migration).
+### 2.4 Liste d'attente visible pour l'admin — P2, S — FAIT (2026-10-30, branche `feat/access-requests`)
+- Un streamer non invite arrive sur `/attente` ; il clique « Prevenez-moi quand une place s'ouvre » (rien n'est enregistre sans ce clic). Identite lue dans un cookie SIGNE pose au retour de Twitch (15 min, `clippeak_wait`), jamais dans le corps de la requete : on ne peut demander que pour soi. Table `access_requests` (migration `202610301800_access_requests`, A APPLIQUER SUR NEON : `bash scripts/ops/migrations.sh apply`, le garde-fou du deploiement bloquera sinon). `/admin` > Invitations : section « Demandes d'acces » avec Inviter (cree l'invitation, retire la demande) et Ecarter ; purge a 90 jours a la lecture ; la demande disparait aussi a la premiere connexion reussie. Politique de confidentialite et page d'attente mises a jour. Tests d'integration etendus.
 
 ### 2.5 Offres, quotas et paiement — P2, L (a decider)
 - Aucun quota ni paiement aujourd'hui. Avant d'ouvrir : decider du modele (gratuit invite / forfait / au clip), limiter le nombre de clips et de VODs par streamer et par mois, puis brancher le paiement.

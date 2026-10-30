@@ -349,6 +349,44 @@ try {
   assert.ok(badCode.headers.get('location').endsWith('login=error'))
   ok('connexion Twitch (faux Twitch) : invite = chaine creee et session (jeton hache en base), non invite = refuse sans creer de chaine, code refuse = erreur')
 
+  // --- demande d'acces d'un streamer non invite : cookie signe -> bouton « Previens-moi » -> liste admin -> invitation en un clic
+  const waitSet = stranger.headers.getSetCookie().find(c => c.startsWith('clippeak_wait='))
+  assert.ok(waitSet && waitSet.includes('HttpOnly') && waitSet.includes('SameSite=Lax'))
+  const waitCookie = waitSet.split(';')[0]
+  assert.equal((await q(`SELECT count(*)::int AS n FROM access_requests`))[0].n, 0) // rien d'enregistre avant le clic
+  const ask = (cookie, headers = {}) => fetch(B + '/api/auth/access-request', { method: 'POST', headers: { ...(cookie ? { cookie } : {}), ...headers } })
+  assert.equal((await ask(null)).status, 400)
+  assert.equal((await ask(waitCookie.slice(0, -3) + 'xyz')).status, 400)
+  assert.equal((await ask(waitCookie, { origin: 'https://evil.example' })).status, 403)
+  const asked = await ask(waitCookie)
+  assert.equal(asked.status, 200)
+  assert.equal((await asked.json()).invited, false)
+  const [reqRow] = await q(`SELECT twitch_id, twitch_login, display_name FROM access_requests`)
+  assert.deepEqual([reqRow.twitch_id, reqRow.twitch_login], ['666', 'stranger'])
+  assert.equal((await ask(waitCookie)).status, 200) // idempotent
+  assert.equal((await q(`SELECT count(*)::int AS n FROM access_requests`))[0].n, 1)
+  assert.equal((await q(`SELECT count(*)::int AS k FROM channels WHERE twitch_id = '666'`))[0].k, 0)
+  assert.equal((await call('/api/admin/access-requests', { auth: false })).status, 401)
+  const reqList = (await call('/api/admin/access-requests')).json.requests
+  assert.equal(reqList.length, 1)
+  assert.equal(reqList[0].login, 'stranger')
+  const invitedNow = await call(`/api/admin/access-requests/${reqList[0].id}/invite`, { method: 'POST' })
+  assert.equal(invitedNow.status, 200)
+  assert.equal((await q(`SELECT count(*)::int AS n FROM channel_invites WHERE twitch_login = 'stranger'`))[0].n, 1)
+  assert.equal((await call('/api/admin/access-requests')).json.requests.length, 0)
+  assert.equal((await call(`/api/admin/access-requests/${reqList[0].id}/invite`, { method: 'POST' })).status, 404)
+  // Deja invite entre-temps : le clic ne cree rien et le dit
+  const alreadyInvited = await ask(waitCookie)
+  assert.equal((await alreadyInvited.json()).invited, true)
+  // Ecarter une demande, et purge des demandes de plus de 90 jours a la lecture
+  await q(`INSERT INTO access_requests (id, twitch_id, twitch_login) VALUES (gen_random_uuid(), '900', 'ecartee'), (gen_random_uuid(), '901', 'trop_vieille')`)
+  await q(`UPDATE access_requests SET created_at = now() - interval '91 days' WHERE twitch_id = '901'`)
+  const kept = (await call('/api/admin/access-requests')).json.requests
+  assert.deepEqual(kept.map(r => r.login), ['ecartee'])
+  assert.equal((await call(`/api/admin/access-requests/${kept[0].id}`, { method: 'DELETE' })).status, 200)
+  assert.equal((await call(`/api/admin/access-requests/${kept[0].id}`, { method: 'DELETE' })).status, 404)
+  ok('demande d acces : rien d enregistre avant le clic, cookie signe obligatoire (falsifie = 400, autre origine = 403), idempotente, liste admin, invitation en un clic, ecarter, purge a 90 jours')
+
   // --- session admin (cookie pose par /admin) et chaine de demonstration
   const adminLogin = (password) => fetch(B + '/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password }) })
   assert.equal((await adminLogin('mauvais')).status, 401)

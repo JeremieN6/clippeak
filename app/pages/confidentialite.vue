@@ -45,6 +45,7 @@ useHead({ title: 'Politique de confidentialité – Clippeak' })
     <p>Pour retirer l’accès de Clippeak à ton compte Google, en plus de « Déconnecter » dans Clippeak, tu peux passer par la <a href="https://security.google.com/settings/security/permissions" rel="noopener" target="_blank">page des autorisations de sécurité de Google</a>. Quand tu déconnectes YouTube ou supprimes ton compte, le jeton est révoqué chez Google et effacé de chez nous immédiatement ; les données obtenues via l’API YouTube ne sont jamais conservées plus de 30 jours après le retrait de l’accès.</p>
 
     <h2>Combien de temps nous gardons tes données</h2>
+    <p>Si tu te connectes avec Twitch sans avoir été invité et que tu cliques sur « Prévenez-moi quand une place s’ouvre », nous gardons ton pseudo Twitch, son identifiant et la date de ta demande pour pouvoir t’inviter, au plus 90 jours (ou jusqu’à ton invitation). Sans ce clic, rien n’est enregistré. Pour effacer ta demande, écris à contact.clippeak@sassify.fr.</p>
     <p>Tes données sont conservées tant que ton compte existe. Si ton invitation est retirée, tes sessions sont fermées et tes données restent en attente de ta demande de suppression. Tu peux exporter tes données ou supprimer ton compte toi-même dans le studio (menu du compte > « Mes données ») : la suppression efface ton compte, tes fichiers, tes réglages, tes clips et tes accès aux plateformes. Des copies de sauvegarde chiffrées peuvent subsister jusqu’à 7 jours avant d’être effacées automatiquement.</p>
 
     <h2>Tes droits</h2>
