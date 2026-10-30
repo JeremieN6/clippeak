@@ -20,7 +20,6 @@ const asAdmin = computed(() => studio.mode.value === 'admin' ? studio.channelId.
 
 async function load() {
   data.value = await studio.api<RoadmapData>('/api/studio/roadmap', { query: { channel: asAdmin.value } })
-  studio.loadRoadmapDot()
 }
 onMounted(() => studio.run(load))
 

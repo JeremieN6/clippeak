@@ -72,16 +72,14 @@ async function logout() {
         <button v-if="onDemo" type="button" class="st-btn-quiet !min-h-10" :disabled="busy" @click="studio.resetDemo()">Remettre à zéro</button>
       </div>
 
-      <div v-if="connected" class="ml-auto flex flex-wrap items-center justify-end gap-2">
-        <span v-if="mode === 'streamer' && currentChannel" class="text-sm font-semibold st-muted">{{ currentChannel.displayName }}</span>
-        <button v-if="view !== 'roadmap'" type="button" class="st-btn-quiet relative" @click="view = 'roadmap'">
-          Prochainement
-          <span v-if="studio.roadmapDot.value" class="absolute right-1.5 top-2 h-2.5 w-2.5 rounded-full bg-st-accent" aria-hidden="true" />
-          <span v-if="studio.roadmapDot.value" class="sr-only">(nouveau)</span>
-        </button>
-        <button v-if="view !== 'dashboard' && (studio.onboarding.value?.completed || studio.clips.value.length)" type="button" class="st-btn-ghost" @click="view = 'dashboard'">Tableau de bord</button>
+      <StudioBell v-if="connected" class="ml-auto sm:order-last sm:ml-0" />
+
+      <div v-if="connected" class="flex w-full flex-wrap items-center justify-between gap-1 sm:ml-auto sm:w-auto sm:justify-end sm:gap-2">
+        <span v-if="mode === 'streamer' && currentChannel" class="hidden text-sm font-semibold st-muted sm:inline">{{ currentChannel.displayName }}</span>
+        <button v-if="view !== 'roadmap'" type="button" class="st-btn-quiet !px-2 max-sm:!text-[13px] sm:!px-4" @click="view = 'roadmap'">Prochainement</button>
+        <button v-if="view !== 'dashboard' && (studio.onboarding.value?.completed || studio.clips.value.length)" type="button" class="st-btn-ghost !px-2.5 max-sm:!text-[13px] sm:!px-4" @click="view = 'dashboard'"><span class="sm:hidden">Mes clips</span><span class="hidden sm:inline">Tableau de bord</span></button>
         <span v-else-if="view === 'onboarding'" class="hidden items-center gap-2 text-[13px] font-semibold st-muted lg:inline-flex">Enregistré à chaque étape</span>
-        <button v-if="mode === 'streamer'" type="button" class="st-btn-quiet" :disabled="busy" @click="logout">Se déconnecter</button>
+        <button v-if="mode === 'streamer'" type="button" class="st-btn-quiet !px-2 max-sm:!text-[13px] sm:!px-4" :disabled="busy" @click="logout">Se déconnecter</button>
         <NuxtLink v-else-if="mode === 'admin'" to="/admin" class="st-btn-ghost no-underline">← Administration</NuxtLink>
       </div>
     </header>

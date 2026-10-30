@@ -661,6 +661,22 @@ try {
   ok('prochainement : bloc unique, un vote par chaine (modifiable), totaux caches avant le vote, egalite = l admin tranche, perdante gardee avec ses votes, resultat annonce puis acquitte, idees limitees a 5/jour, livre affiche')
 
 
+
+  // --- cloche : chaque chaine recoit le vote lance, son resultat (selon son vote) et le statut livre ; lecture ; cloisonnement
+  const nA = await call('/api/studio/notifications', voterA)
+  assert.equal(nA.status, 200)
+  const titlesA = nA.json.items.map(i => i.title)
+  assert.ok(titlesA.includes('Nouveau vote : à toi de choisir'), 'vote lance')
+  assert.ok(titlesA.includes('Résultat du vote'), 'A avait vote pour la perdante')
+  assert.ok(titlesA.includes('Une fonction est livrée'), 'statut livre')
+  assert.ok((await call('/api/studio/notifications', voterB)).json.items.some(i => i.title === 'Ton vote a gagné'), 'B avait vote pour la gagnante')
+  assert.ok(nA.json.unread >= 3)
+  assert.equal((await call('/api/studio/notifications', { auth: false })).status, 401)
+  assert.equal((await call('/api/studio/notifications/read', { ...voterA, method: 'POST', body: {} })).status, 200)
+  assert.equal((await call('/api/studio/notifications', voterA)).json.unread, 0)
+  assert.ok((await call('/api/studio/notifications', voterB)).json.unread > 0, 'lire les siennes ne touche pas celles des autres')
+  ok('cloche : vote lance, resultat selon le vote, fonction livree ; lues a l ouverture ; chaque chaine ne voit que les siennes')
+
   console.log('API_IT_OK')
 } catch (error) {
   failure = error

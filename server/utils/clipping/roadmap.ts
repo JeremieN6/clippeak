@@ -33,3 +33,29 @@ export const STATUS_LABELS: Record<FeatureStatus, string> = {
   waiting_access: 'En attente d’accès',
   delivered: 'Livré'
 }
+
+// Textes des notifications de la cloche (une ligne = un titre court + une phrase).
+export interface Note { kind: 'roadmap_vote' | 'roadmap_result' | 'roadmap_status', title: string, body: string }
+
+export const voteLaunchedNote = (aTitle: string, bTitle: string): Note => ({
+  kind: 'roadmap_vote',
+  title: 'Nouveau vote : à toi de choisir',
+  body: `« ${aTitle} » ou « ${bTitle} » ? Vote dans « Prochainement » : le résultat décide de ce qu’on développe en premier.`
+})
+
+export const resultNote = (winnerTitle: string, voted: 'won' | 'lost' | 'none'): Note => ({
+  kind: 'roadmap_result',
+  title: voted === 'won' ? 'Ton vote a gagné' : 'Résultat du vote',
+  body: voted === 'won'
+    ? `« ${winnerTitle} » passe en priorité. Merci d’avoir voté !`
+    : voted === 'lost'
+      ? `« ${winnerTitle} » a gagné ce vote. Ton choix reste dans la liste et compte pour le prochain.`
+      : `« ${winnerTitle} » passe en priorité.`
+})
+
+export const statusNote = (title: string, status: string): Note | null => {
+  if (status === 'delivered') return { kind: 'roadmap_status', title: 'Une fonction est livrée', body: `« ${title} » est disponible. Merci à tous ceux qui ont voté !` }
+  if (status === 'building') return { kind: 'roadmap_status', title: 'Une fonction est en cours', body: `On travaille sur « ${title} ».` }
+  if (status === 'waiting_access') return { kind: 'roadmap_status', title: 'En attente d’accès', body: `« ${title} » attend l’accès de la plateforme avant de pouvoir sortir.` }
+  return null
+}

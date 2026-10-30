@@ -2,6 +2,8 @@ import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
 import { requireStudioAdmin } from '../../../utils/studioAuth'
 import { closeDueBlocks } from '../../../utils/roadmapStore'
+import { notifyAll } from '../../../utils/notifications'
+import { voteLaunchedNote } from '../../../utils/clipping/roadmap'
 
 const schema = z.object({ featureAId: z.string().uuid(), featureBId: z.string().uuid(), days: z.number().int().min(1).max(60).default(14) })
 
@@ -14,11 +16,13 @@ export default defineEventHandler(async (event) => {
   if (await prisma.roadmapBlock.findFirst({ where: { status: { in: ['open', 'needs_admin'] } }, select: { id: true } })) {
     throw createError({ statusCode: 409, statusMessage: 'Un vote est déjà en cours : clôture-le avant d’en lancer un autre.' })
   }
-  const features = await prisma.roadmapFeature.findMany({ where: { id: { in: [parsed.data.featureAId, parsed.data.featureBId] }, status: 'backlog' }, select: { id: true } })
+  const features = await prisma.roadmapFeature.findMany({ where: { id: { in: [parsed.data.featureAId, parsed.data.featureBId] }, status: 'backlog' }, select: { id: true, title: true } })
   if (features.length !== 2) throw createError({ statusCode: 409, statusMessage: 'Les deux fonctions doivent être « dans la liste ».' })
   const block = await prisma.$transaction(async (tx) => {
     await tx.roadmapFeature.updateMany({ where: { id: { in: features.map(f => f.id) } }, data: { status: 'voting' } })
     return tx.roadmapBlock.create({ data: { featureAId: parsed.data.featureAId, featureBId: parsed.data.featureBId, endsAt: new Date(Date.now() + parsed.data.days * 24 * 3600 * 1000) } })
   })
+  const title = (id: string) => features.find(f => f.id === id)?.title ?? ''
+  await notifyAll(voteLaunchedNote(title(parsed.data.featureAId), title(parsed.data.featureBId)))
   return { id: block.id }
 })
