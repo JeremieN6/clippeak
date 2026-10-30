@@ -2,18 +2,20 @@
 // Tableau de bord de contenu : prochaine action, compteurs par statut, filtres et tri, clips regroupes par lot.
 const studio = useStudio()
 
-type Group = 'all' | 'review' | 'approved' | 'rejected' | 'progress' | 'failed'
+type Group = 'all' | 'review' | 'approved' | 'published' | 'rejected' | 'progress' | 'failed'
 const filters = reactive({ status: 'all' as Group, lot: 'all', note: 'all', date: 'all', cat: 'all', origin: 'all', sort: 'score' })
 const openLots = reactive<Record<string, boolean>>({})
 
-const groupOf = (status: string): Group => status === 'queued' || status === 'rendering' ? 'progress' : (status as Group)
+// Un clip est dans UN seul groupe : « Publiés » (au moins une publication partie) passe avant « Approuvés » (pas encore publie).
+const groupOf = (c: StudioClip): Group => isPublished(c) ? 'published' : c.status === 'queued' || c.status === 'rendering' ? 'progress' : (c.status as Group)
 const clips = computed(() => studio.clips.value)
-const count = (g: Group) => clips.value.filter(c => groupOf(c.status) === g).length
+const count = (g: Group) => clips.value.filter(c => groupOf(c) === g).length
 const weekAgo = () => Date.now() - 7 * 24 * 3600 * 1000
 
 const counters = computed(() => ([
   { key: 'review', label: 'À valider', fg: 'var(--st-accent-text)' },
   { key: 'approved', label: 'Approuvés', fg: 'var(--st-ok)' },
+  { key: 'published', label: 'Publiés', fg: 'var(--st-ok)' },
   { key: 'rejected', label: 'Refusés', fg: 'var(--st-soft)' },
   { key: 'progress', label: 'En préparation', fg: 'var(--st-info)' },
   { key: 'failed', label: 'En échec', fg: 'var(--st-error)' }
@@ -23,7 +25,7 @@ const lotOptions = computed(() => [...new Set(clips.value.map(c => c.batch ?? 0)
 const categories = computed(() => [...new Set(clips.value.map(c => c.category).filter((c): c is string => !!c))].sort())
 
 const passes = (c: StudioClip) => {
-  if (filters.status !== 'all' && groupOf(c.status) !== filters.status) return false
+  if (filters.status !== 'all' && groupOf(c) !== filters.status) return false
   if (filters.lot !== 'all' && String(c.batch ?? 0) !== filters.lot) return false
   if (filters.note !== 'all' && (c.score ?? 0) < Number(filters.note)) return false
   if (filters.date === 'week' && new Date(c.createdAt).getTime() < weekAgo()) return false
@@ -60,7 +62,7 @@ const pubSummary = computed(() => {
 
 // Analyse / rendu en cours : part des clips des lots concernes qui sont deja sortis du rendu.
 const progress = computed(() => {
-  const running = clips.value.filter(c => groupOf(c.status) === 'progress')
+  const running = clips.value.filter(c => groupOf(c) === 'progress')
   if (!running.length) return null
   const batches = new Set(running.map(c => c.batch ?? 0))
   const total = clips.value.filter(c => batches.has(c.batch ?? 0)).length

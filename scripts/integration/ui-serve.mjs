@@ -41,6 +41,7 @@ const clips = [
   { batch: 2, status: 'review', title: 'Il a vraiment dit ça en direct devant tout le monde', score: 8.6, cat: 'Réaction', why: 'Ton chat s’est emballé en quelques secondes.', video: true },
   { batch: 2, status: 'review', title: 'Le penalty que personne n’a vu venir', score: 8.1, cat: 'Football', why: 'detecte par ressemblance avec les clips de reference (pas par le chat) : même retournement.', video: true },
   { batch: 2, status: 'approved', title: 'Pourquoi l’arbitre a fait ça ?!', score: 7.4, cat: 'Réaction', why: 'Ton chat réagit fort pendant 6 secondes.', video: true },
+  { batch: 1, status: 'approved', title: 'Le but que tout le monde attendait', score: 8.9, cat: 'Football', why: 'Ton chat explose.', video: true, published: true },
   { batch: 2, status: 'rendering', title: 'Mon chat a complètement pété les plombs', score: 6.9, cat: 'Humour', why: 'Le moment ressemble à un de tes clips.' },
   { batch: 1, status: 'rejected', title: 'Un silence de vingt secondes', score: 5.2, cat: 'Humour', why: 'Peu de réactions du chat.' },
   { batch: 1, status: 'failed', title: 'Rendu cassé', score: 7.0, cat: 'Football', why: 'Ton chat explose.', error: 'Le rendu a échoué : la vidéo source est introuvable.' }
@@ -48,6 +49,7 @@ const clips = [
 for (const [i, c] of clips.entries()) {
   const [{ id: momentId }] = await q(`INSERT INTO moments (id, vod_id, start_sec, end_sec, peak_sec, score, signals, ai_score, rationale, scorer, category, kind) VALUES (gen_random_uuid(), $1, 0, 30, 15, 7, '{}', $2, $3, 'local', $4, 'story') RETURNING id`, [vodId, c.score, c.why, c.cat])
   const [{ id }] = await q(`INSERT INTO clip_jobs (id, moment_id, status, batch, title, caption, hashtags, error, start_sec, end_sec, updated_at) VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, '#twitch #clip', $6, 0, $7, now()) RETURNING id`, [momentId, c.status, c.batch, c.title, `Légende du clip ${i + 1}`, c.error ?? null, 20 + i * 5])
+  if (c.published) await q(`INSERT INTO publications (id, clip_job_id, platform, status, scheduled_at, published_at, external_url, updated_at) VALUES (gen_random_uuid(), $1, 'youtube', 'published', now() - interval '2 hours', now() - interval '2 hours', 'https://youtube.com/shorts/demo', now())`, [id])
   if (c.video) {
     const rel = `clips/${id}.mp4`
     spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=270x480:rate=30:duration=3', '-pix_fmt', 'yuv420p', join(DATA, rel)])
