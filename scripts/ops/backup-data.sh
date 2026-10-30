@@ -5,15 +5,15 @@
 #  - CHIFFREMENT (AES-256, openssl) avant tout envoi hors serveur, car les photos montrent des visages ;
 #  - COPIE HORS SERVEUR avec rclone si RCLONE_REMOTE est defini ;
 #  - rotation : BACKUP_KEEP_DAYS jours (7 par defaut) en local.
-# Reglages (facultatifs) dans /etc/clippeak/backup.env (root, droits 600) :
+# Reglages (facultatifs) dans /etc/clippeak-backup/backup.env (root, droits 600) :
 #   RCLONE_REMOTE=r2:clippeak-backups     (nom du « remote » rclone et du bucket)
-#   BACKUP_PASSPHRASE_FILE=/etc/clippeak/backup.pass   (fichier root 600 ; A CONSERVER AUSSI DANS UN GESTIONNAIRE DE MOTS DE PASSE)
+#   BACKUP_PASSPHRASE_FILE=/etc/clippeak-backup/backup.pass   (fichier root 600 ; A CONSERVER AUSSI DANS UN GESTIONNAIRE DE MOTS DE PASSE)
 #   BACKUP_KEEP_DAYS=7   CLIPPEAK_DATA_DIR=/srv/saas/clippeak-data   BACKUP_DIR=/var/backups/clippeak
 # Exclus (recreables) : extraits de VOD (`sources`), caches des modeles (`hf`, `models`).
-# Cron :  30 3 * * * /srv/saas/clippeak/scripts/ops/backup-data.sh >> /var/log/clippeak-backup.log 2>&1
+# Cron :  30 3 * * * /usr/local/sbin/clippeak-backup-data.sh >> /var/log/clippeak-backup.log 2>&1
 set -uo pipefail
 
-[ -f /etc/clippeak/backup.env ] && set -a && . /etc/clippeak/backup.env && set +a
+[ -f /etc/clippeak-backup/backup.env ] && set -a && . /etc/clippeak-backup/backup.env && set +a
 
 DATA_DIR="${CLIPPEAK_DATA_DIR:-/srv/saas/clippeak-data}"
 DEST="${BACKUP_DIR:-/var/backups/clippeak}"
@@ -36,6 +36,10 @@ if [ -z "$DB_URL" ] && [ -f /srv/saas/clippeak/.env.local ]; then
 fi
 DB_URL="${DB_URL/-pooler/}"
 
+# pg_dump doit etre au moins de la version du serveur (Neon : PostgreSQL 18 au 2026-10-30) : on prend la plus recente installee.
+PG_DUMP="$(ls -1 /usr/lib/postgresql/*/bin/pg_dump 2>/dev/null | sort -V | tail -1)"
+PG_DUMP="${PG_DUMP:-$(command -v pg_dump || true)}"
+
 seal() {  # chiffre un fichier si une phrase secrete est fournie, sinon le laisse tel quel ; affiche le chemin final ; echec = code 1
   local f="$1"
   if [ -n "$PASS" ] && [ -f "$PASS" ]; then
@@ -54,9 +58,9 @@ else
 fi
 
 # 2. Base
-if [ -n "$DB_URL" ] && command -v pg_dump >/dev/null 2>&1; then
+if [ -n "$DB_URL" ] && [ -n "$PG_DUMP" ]; then
   DB="$DEST/db-$STAMP.sql.gz"
-  if pg_dump --no-owner --no-privileges "$DB_URL" 2>"$DEST/.pgdump.err" | gzip > "$DB" && [ "$(stat -c %s "$DB")" -gt 2000 ]; then
+  if "$PG_DUMP" --no-owner --no-privileges "$DB_URL" 2>"$DEST/.pgdump.err" | gzip > "$DB" && [ "$(stat -c %s "$DB")" -gt 2000 ]; then
     if SEALED="$(seal "$DB")"; then DB="$SEALED"; log "base : $(du -h "$DB" | cut -f1)"; else log "ERREUR : chiffrement de la base"; FAIL=1; fi
   else
     log "ERREUR : pg_dump ($(head -c 200 "$DEST/.pgdump.err" | tr '\n' ' '))"; rm -f "$DB"; FAIL=1
