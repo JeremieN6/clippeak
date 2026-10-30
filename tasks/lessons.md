@@ -180,3 +180,9 @@
 **Cause racine** : la reserve etait notee depuis 2026-10-24 (« a proteger cote reverse proxy ») mais jamais verifiee ni traitee.
 **Solution** : `clientIp()` lit `X-Real-IP`, que nginx ecrase avec l'adresse reelle ; meme fonction pour le formulaire public.
 **Regle** : une reserve de securite notee doit avoir une date et un proprietaire ; verifier la vraie configuration du proxy (lecture seule) avant de se fier a un en-tete d'adresse.
+
+### [2026-10-30] Guider le porteur dans une console externe sans tenir compte de ce qui est deja fait
+**Probleme** : pour l'audit Google, j'ai demande au porteur de refaire l'ecran de consentement (deja configure le 2026-10-28 pour le test YouTube) et j'ai liste des ecrans de Clippeak sans dire POURQUOI (la video de demonstration), ce qui l'a fait douter de tout le guide.
+**Cause racine** : checklist generique recopiee sans la confronter aux notes du projet ; libelles de console donnes de memoire.
+**Solution** : guide reecrit avec « ce qui est fait » et « ou trouver chaque ecran » ; une etape a la fois, sur captures du porteur ; texte pret a coller pour chaque champ.
+**Regle** : avant de donner une marche a suivre au porteur, relire CLAUDE.md pour retirer ce qui est deja fait, dire a quoi sert chaque action, et ne decrire une interface externe que sur capture ou source verifiee.
