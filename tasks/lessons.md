@@ -191,3 +191,7 @@
 - **Erreur** : deux migrations (`roadmap_votes`, `notifications`) ont ete appliquees en collant le SQL dans la console Neon, sans `prisma migrate resolve --applied` ; l'historique Prisma a derive sans que rien ne le signale.
 - **Regle** : apres tout SQL colle a la main, lancer `bash scripts/ops/migrations.sh resolve <nom>` ; `check` (et le deploiement) detecte maintenant l'ecart. Ne pas supposer qu'un controle manuel a ete fait : le mesurer.
 
+## 2026-10-31 : un plugin hors du bon dossier ne tourne jamais, et l'analytique ne s'arrete pas toute seule aux pages privees
+- **Erreur** : `plugins/` a la racine n'est pas lu par Nuxt 4 (srcDir = `app/`) : le plugin PostHog ecrit en juillet n'a jamais fonctionne, sans erreur ni avertissement. Et PostHog (autocapture + pages vues) tournait dans le studio et sur `/attente?login=<pseudo>`.
+- **Regle** : apres avoir ajoute un plugin, verifier dans le navigateur qu'il a un effet (ici : `app_name`, config). Tout outil de mesure ajoute au site public doit etre explicitement coupe ou nettoye sur les espaces connectes.
+

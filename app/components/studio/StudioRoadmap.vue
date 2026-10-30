@@ -49,12 +49,16 @@ const canSubmit = computed(() => Boolean(pick.value) && pick.value !== data.valu
 const voteLabel = computed(() => !voted.value ? 'Voter' : pick.value === data.value?.block?.myVote ? 'Vote enregistré' : 'Changer mon vote')
 
 const vote = () => studio.run(async () => {
+  const feature = data.value!.block!.features.find(f => f.id === pick.value)?.slug
+  const changed = Boolean(data.value!.block!.myVote)
   await studio.api('/api/studio/roadmap/vote', { method: 'POST', body: { blockId: data.value!.block!.id, featureId: pick.value, channelId: asAdmin.value } })
+  studio.track('roadmap_voted', { feature, changed })
   await load()
 }, 'Vote enregistré. Tu peux le changer jusqu’à la fin du vote.')
 
 const sendIdea = () => studio.run(async () => {
   await studio.api('/api/studio/roadmap/idea', { method: 'POST', body: { text: idea.value, channelId: asAdmin.value } })
+  studio.track('roadmap_idea_sent')
   idea.value = ''
   sent.value = true
   await load()
