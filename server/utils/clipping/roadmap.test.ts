@@ -25,3 +25,14 @@ test('echeance : due a l heure pile et apres, pas avant', () => {
   assert.equal(isDue(new Date('2026-11-01T09:59:59Z'), now), true)
   assert.equal(isDue(new Date('2026-11-01T10:00:01Z'), now), false)
 })
+
+import { resultNote, statusNote, voteLaunchedNote } from './roadmap.ts'
+
+test('notifications : vote lance, resultat selon le vote du streamer, statut', () => {
+  assert.match(voteLaunchedNote('TikTok', 'Instagram').body, /TikTok.*Instagram/)
+  assert.equal(resultNote('TikTok', 'won').title, 'Ton vote a gagné')
+  assert.match(resultNote('TikTok', 'lost').body, /Ton choix reste/)
+  assert.doesNotMatch(resultNote('TikTok', 'none').body, /Ton /)
+  assert.match(statusNote('Stats', 'delivered')!.title, /livrée/)
+  assert.equal(statusNote('Stats', 'backlog'), null)
+})

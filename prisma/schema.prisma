@@ -76,6 +76,7 @@ model Channel {
   connections    PlatformConnection[]
   roadmapVotes   RoadmapVote[]
   roadmapIdeas   RoadmapIdea[]
+  notifications  Notification[]
 
   @@map("channels")
 }
@@ -398,4 +399,20 @@ model RoadmapIdea {
 
   @@index([status, createdAt])
   @@map("roadmap_ideas")
+}
+
+// Notification affichee dans la cloche du studio (une ligne par chaine). kind : roadmap_vote | roadmap_result | roadmap_status.
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  channelId String    @map("channel_id") @db.Uuid
+  kind      String    @db.VarChar(20)
+  title     String    @db.VarChar(120)
+  body      String    @db.VarChar(300)
+  createdAt DateTime  @default(now()) @map("created_at")
+  readAt    DateTime? @map("read_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId, createdAt])
+  @@map("notifications")
 }

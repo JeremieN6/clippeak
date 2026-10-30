@@ -68,17 +68,6 @@ export function createStudio() {
   // 'onboarding' tant que le parcours n'est pas termine, puis 'dashboard' ; le streamer peut revenir a une etape depuis le tableau de bord.
   const view = ref<'onboarding' | 'dashboard' | 'roadmap'>('onboarding')
 
-  // Pastille « Prochainement » : un vote est ouvert et pas encore fait, ou un resultat est a lire.
-  const roadmapDot = ref(false)
-  async function loadRoadmapDot() {
-    try {
-      const r = await $fetch<{ block: { myVote: string | null } | null, notice: unknown }>('/api/studio/roadmap', { query: { channel: mode.value === 'admin' ? channelId.value : undefined } })
-      roadmapDot.value = Boolean(r.notice) || Boolean(r.block && !r.block.myVote)
-    } catch {
-      roadmapDot.value = false
-    }
-  }
-
   // 'streamer' = connecte avec Twitch (ne voit que sa chaine) ; 'admin' = session de /admin (voit la chaine de demonstration et les autres).
   const mode = ref<'streamer' | 'admin' | null>(null)
   const step = ref(1)
@@ -165,7 +154,6 @@ export function createStudio() {
       await Promise.all([loadChannel(), loadClips()])
       view.value = onboarding.value?.completed ? 'dashboard' : 'onboarding'
       step.value = firstOpenStep()
-      loadRoadmapDot()
       return true
     } catch {
       connected.value = false
@@ -416,7 +404,7 @@ export function createStudio() {
   }, 'Publication annulée.')
 
   return {
-    connected, error, notice, busy, channels, channelId, detail, bank, clips, connections, vodAlerts, view, step, onboarding, mode, roadmapDot, loadRoadmapDot,
+    connected, error, notice, busy, channels, channelId, detail, bank, clips, connections, vodAlerts, view, step, onboarding, mode,
     disconnectPlatform, publishClip, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
     api, run, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, setCaptionTags, advance, finishOnboarding, goToStep, stepStatus,

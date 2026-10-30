@@ -1,5 +1,6 @@
 import { prisma } from './prisma'
-import { outcome, tally, isDue, type Tally } from './clipping/roadmap'
+import { outcome, tally, isDue, resultNote, type Tally } from './clipping/roadmap'
+import { notifyEach } from './notifications'
 
 // Acces base de la page « Prochainement » (regles pures : server/utils/clipping/roadmap.ts).
 
@@ -22,6 +23,14 @@ export async function finishBlock(block: BlockRow, winnerId: string, decidedBy: 
     prisma.roadmapFeature.update({ where: { id: winnerId }, data: { status: 'building', carriedVotes: 0 } }),
     prisma.roadmapFeature.update({ where: { id: loserId }, data: { status: 'backlog', carriedVotes: loserTotal } })
   ])
+  // Cloche : chaque chaine apprend le resultat, avec un texte selon son propre vote.
+  const [winner, votes, channels] = await Promise.all([
+    prisma.roadmapFeature.findUnique({ where: { id: winnerId }, select: { title: true } }),
+    prisma.roadmapVote.findMany({ where: { blockId: block.id }, select: { channelId: true, featureId: true } }),
+    prisma.channel.findMany({ select: { id: true } })
+  ])
+  const voted = new Map(votes.map(v => [v.channelId, v.featureId]))
+  await notifyEach(channels.map(c => ({ channelId: c.id, note: resultNote(winner?.title ?? '', !voted.has(c.id) ? 'none' : voted.get(c.id) === winnerId ? 'won' : 'lost') })))
 }
 
 // Les blocs dont l'echeance est passee se ferment a la prochaine lecture (pas de tache planifiee). Egalite : l'admin tranche.
