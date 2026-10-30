@@ -33,9 +33,15 @@ function adminSessionSecret(event: H3Event): string {
   return createHmac('sha256', 'clippeak-admin-session').update(adminPassword(event)).digest('hex')
 }
 
+// Adresse du visiteur pour les limites d'essais : X-Real-IP est ECRASEE par nginx (`proxy_set_header X-Real-IP $remote_addr`), donc
+// non falsifiable ; X-Forwarded-For, lui, est transmis tel quel par ce nginx et peut etre invente par le client (contournement de la limite).
+export function clientIp(event: H3Event): string {
+  return getHeader(event, 'x-real-ip')?.trim() || getRequestIP(event) || 'inconnue'
+}
+
 // Verifie le mot de passe admin (comparaison en temps constant, 10 echecs par minute et par adresse au maximum).
 export function checkAdminPassword(event: H3Event, provided: string): void {
-  const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'inconnue'
+  const ip = clientIp(event)
   const expected = adminPassword(event)
   if (!expected) throw createError({ statusCode: 503, statusMessage: 'Back-office non configure' })
   if (safeEqual(provided.trim(), expected)) {

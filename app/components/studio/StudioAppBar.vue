@@ -19,7 +19,7 @@ const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') open.value = false }
 onMounted(() => { document.addEventListener('click', away); document.addEventListener('keydown', esc) })
 onBeforeUnmount(() => { document.removeEventListener('click', away); document.removeEventListener('keydown', esc) })
 
-const go = (v: 'dashboard' | 'roadmap') => { view.value = v; open.value = false }
+const go = (v: 'dashboard' | 'roadmap' | 'account') => { view.value = v; open.value = false }
 
 async function switchChannel() {
   await navigateTo({ query: { channel: channelId.value } }, { replace: true })
@@ -93,6 +93,10 @@ async function logout() {
           <button v-if="view !== 'roadmap'" type="button" role="menuitem" class="st-menu-item sm:hidden" @click="go('roadmap')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.2 5.3L20 10l-4.3 3.8L17 20l-5-3-5 3 1.3-6.2L4 10l5.8-1.7z" /></svg>
             Prochainement
+          </button>
+          <button v-if="view !== 'account'" type="button" role="menuitem" class="st-menu-item" @click="go('account')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" /></svg>
+            Mes données
           </button>
           <NuxtLink v-if="mode === 'admin'" to="/admin" role="menuitem" class="st-menu-item no-underline">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>

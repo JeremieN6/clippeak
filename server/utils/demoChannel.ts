@@ -82,11 +82,19 @@ export async function createTestChannel(name: string) {
 
 // Supprime une chaine de test avec tout ce qu'elle contient : clips, extraits de video, photos et fichiers deposes (visages d'amis).
 export async function deleteTestChannel(id: string): Promise<boolean> {
+  const channel = await prisma.channel.findUnique({ where: { id }, select: { twitchId: true } })
+  if (!channel || !isTestTwitchId(channel.twitchId)) return false
+  return eraseChannel(id)
+}
+
+// Efface une chaine : base (tout part en cascade : reglages, clips, publications, jetons, sessions, votes, notifications) puis fichiers
+// (photos, sons, illustrations, videos de reference, clips rendus, extraits de VOD). Les fichiers sont lus AVANT la suppression en base.
+export async function eraseChannel(id: string): Promise<boolean> {
   const channel = await prisma.channel.findUnique({
     where: { id },
     include: { assets: true, referenceItems: true, vods: { select: { id: true, moments: { select: { jobs: { select: { outputPath: true } } } } } } }
   })
-  if (!channel || !isTestTwitchId(channel.twitchId)) return false
+  if (!channel) return false
   await prisma.channel.delete({ where: { id } })
   const clipFiles = channel.vods.flatMap(v => v.moments.flatMap(m => m.jobs.map(j => j.outputPath)))
   await removeFiles([...channel.assets.map(a => a.path), ...channel.referenceItems.map(r => r.filePath), ...clipFiles])

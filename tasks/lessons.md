@@ -174,3 +174,9 @@
 **Cause racine** : les deux workflows construisent dans le meme dossier en meme temps.
 **Solution** : `gh run rerun <id>` du deploiement echoue, une fois l'autre termine.
 **Regle** : fusionner une PR, attendre la fin de son deploiement, puis la suivante ; verifier le resultat de CHAQUE deploiement.
+
+### [2026-10-30] Une limite d'essais basee sur un en-tete que le client peut inventer
+**Probleme** : la limite de 10 essais par minute sur le mot de passe admin lisait `X-Forwarded-For`. Le nginx de ce serveur ne le reecrit pas (il ne pose que `X-Real-IP`), donc un client peut en envoyer un different a chaque essai et contourner la limite.
+**Cause racine** : la reserve etait notee depuis 2026-10-24 (« a proteger cote reverse proxy ») mais jamais verifiee ni traitee.
+**Solution** : `clientIp()` lit `X-Real-IP`, que nginx ecrase avec l'adresse reelle ; meme fonction pour le formulaire public.
+**Regle** : une reserve de securite notee doit avoir une date et un proprietaire ; verifier la vraie configuration du proxy (lecture seule) avant de se fier a un en-tete d'adresse.

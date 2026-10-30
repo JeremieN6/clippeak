@@ -60,7 +60,8 @@ onMounted(async () => {
     </div>
 
     <template v-if="connected && studio.detail.value">
-      <StudioRoadmap v-if="view === 'roadmap'" />
+      <StudioAccount v-if="view === 'account'" />
+      <StudioRoadmap v-else-if="view === 'roadmap'" />
       <StudioDashboard v-else-if="view === 'dashboard'" />
       <StudioOnboarding v-else />
     </template>

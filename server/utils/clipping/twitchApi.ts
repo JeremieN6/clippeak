@@ -186,6 +186,20 @@ export function createTwitchApi(
     return 'created'
   }
 
+  // Supprime les ecoutes EventSub (stream.online / stream.offline) d'un streamer : appele quand il supprime son compte.
+  async function unsubscribeUser(userId: string): Promise<number> {
+    const response = await helix(`/eventsub/subscriptions?user_id=${encodeURIComponent(userId)}`)
+    if (!response.ok) throw new TwitchApiError(`Liste des abonnements impossible (HTTP ${response.status})`, response.status)
+    const body = await response.json() as { data?: Array<{ id: string, condition?: { broadcaster_user_id?: string } }> }
+    let removed = 0
+    for (const sub of body.data ?? []) {
+      if (sub.condition?.broadcaster_user_id !== userId) continue
+      const del = await helix(`/eventsub/subscriptions?id=${encodeURIComponent(sub.id)}`, { method: 'DELETE' })
+      if (del.ok || del.status === 404) removed++
+    }
+    return removed
+  }
+
   // Clips les plus vus d'une chaine (Helix les renvoie tries par nombre de vues decroissant).
   async function listClips(broadcasterId: string, first = 100): Promise<TwitchClip[]> {
     const response = await helix(`/clips?broadcaster_id=${encodeURIComponent(broadcasterId)}&first=${Math.min(100, first)}`)
@@ -218,7 +232,7 @@ export function createTwitchApi(
     return names
   }
 
-  return { getToken, getUserByLogin, listArchives, getVideoById, getLiveStreams, listClips, getGameNames, subscribe }
+  return { getToken, getUserByLogin, listArchives, getVideoById, getLiveStreams, listClips, getGameNames, subscribe, unsubscribeUser }
 }
 
 export type TwitchApi = ReturnType<typeof createTwitchApi>
