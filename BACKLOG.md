@@ -157,4 +157,4 @@ Constat du porteur : tout n'est pas propre ni a 100 % conforme au kit (maquettes
 
 ## 3.1 Sauvegardes : etat du 2026-10-30
 - INSTALLEES sur le VPS (fichiers + base, chiffrees, copie sur Mega, cron 3 h 30) ; voir `OPS-SAUVEGARDES.md`.
-- Decision du porteur (2026-10-30) : pas de surveillance du journal pour le moment, l'outil n'est pas public ; on s'en occupera quand il y aura des streamers. L'essai de restauration de la base dans une branche Neon vide reste a faire avant l'ouverture.
+- Decision du porteur (2026-10-30) : pas de surveillance du journal pour le moment, l'outil n'est pas public ; on s'en occupera quand il y aura des streamers. Essai de restauration de la base REUSSI le 2026-10-30 (branche Neon jetable, chiffres identiques a la production).
