@@ -154,3 +154,8 @@ Constat du porteur : tout n'est pas propre ni a 100 % conforme au kit (maquettes
 - **3.2 Suppression de compte et export** : fait (vue « Mes donnees » dans le menu du compte ; `GET /api/studio/account/export`, `POST /api/studio/account/delete` avec nom de chaine retape ; retire l'autorisation Google et l'ecoute Twitch au mieux, efface base + fichiers + invitation).
 - **3.3 Relecture juridique** : faite par le porteur le 2026-10-30.
 - **3.4 Revue de securite** : fait. Trouve et corrige : la limite d'essais lisait `X-Forwarded-For` que nginx transmet sans le reecrire (falsifiable : contournement de la limite sur le mot de passe admin) -> lecture de `X-Real-IP` ; ancienne route `/api/admin/twitch/channels` (comparaison non constante, sans limite) -> `requireStudioAdmin` ; formulaire public de feedback sans limite -> 5 envois par minute. Reste : supprimer `.env.local.bak-20261024` sur le VPS (accord du porteur).
+
+## 3.1 Sauvegardes : etat du 2026-10-30 (branche `ops/backups`)
+- Script reecrit et TESTE en local (`scripts/ops/backup-data.sh` : archive + exclusions, chiffrement AES-256, refus d'envoyer en clair, echecs visibles, base via l'adresse directe) ; procedure complete dans `OPS-SAUVEGARDES.md`.
+- PAS ENCORE INSTALLE sur le VPS (cron, phrase secrete, rclone) : attend l'accord du porteur et le choix de la destination hors serveur (Cloudflare R2 ou Backblaze B2, quota gratuit de 10 Go). `pg_dump` 16.15 est deja sur le VPS ; compatibilite avec la version du serveur Neon a verifier au premier essai.
+- Neon gratuit = restauration sur 6 h seulement : sans sauvegarde a nous, une erreur decouverte le lendemain est irrecuperable.
