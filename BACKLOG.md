@@ -121,7 +121,7 @@ Constat du porteur : tout n'est pas propre ni a 100 % conforme au kit (maquettes
 - **Previsualisation sonore** des sons integres (fabriques au rendu) — P3, S.
 - **Suivi PostHog** du parcours (onboarding, premiere approbation, premiere publication, retour a J+7) pour mesurer ce que la page « Prochainement » change — P2, S.
 - **Parcours Twitch reel** : l'aller-retour de connexion apres la refonte `/connexion` -> `/studio` n'est pas verifie avec un vrai streamer invite — P1, S.
-- **Telephone** : verifier tout le studio en 375 px apres le recadrage UI.
+- **Telephone** : FAIT le 2026-10-30 (serveur de demonstration, 375 px) : tableau de bord, cartes de clip, Prochainement, menu du compte, Mes donnees et les etapes 2 a 8 de l'onboarding n'ont aucun debordement horizontal, aucune zone cliquable < 40 px, aucun texte < 12 px (mesure par script ; pas de jugement a l'oeil sur de petites captures).
 
 ---
 
