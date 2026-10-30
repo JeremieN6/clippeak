@@ -15,13 +15,22 @@ Les vidéos déjà envoyées en privé restent privées : après l'audit, il fau
 - Un envoi réel vérifié en production (vidéo privée).
 - Une seule portée demandée : `https://www.googleapis.com/auth/youtube.upload` (envoi seulement ; aucune lecture ni suppression).
 
-## Ce qu'il reste à faire, dans l'ordre (par le porteur : il faut le compte propriétaire du projet Google Cloud)
-1. **Vérifier le domaine** `clippeak.sassify.fr` dans Google Search Console (propriété « Domaine » ou « Préfixe d'URL »), avec le compte propriétaire du projet Cloud. Puis, dans Cloud Console > API et services > Écran de consentement OAuth > **Domaines autorisés**, ajouter `sassify.fr`.
-2. **Compléter l'écran de consentement** : nom de l'application (Clippeak), e-mail d'assistance, logo (120 × 120 px), page d'accueil (`https://clippeak.sassify.fr`), lien vers la politique de confidentialité et vers les conditions (les mêmes que ci-dessus), e-mail de contact du développeur. **Le lien vers la politique de confidentialité doit aussi figurer sur la page d'accueil** : à vérifier sur la landing (pied de page).
-3. **Tourner la vidéo de démonstration** (écran, 3 à 4 minutes, à mettre sur YouTube en « non répertoriée ») qui montre, en anglais ou avec sous-titres anglais : (a) la connexion à Clippeak ; (b) le clic sur « Connecter YouTube » ; (c) **l'écran de consentement de Google en entier, avec l'identifiant du projet visible dans l'URL** ; (d) un clip approuvé dans le studio ; (e) le bouton « Publier » ; (f) le résultat sur la chaîne YouTube ; (g) « Déconnecter YouTube » qui retire l'accès. Voir le scénario ci-dessous.
-4. **Passer l'application en « Production »** (bouton « Publier l'application » de l'écran de consentement) et **envoyer la demande de vérification** avec la justification de portée ci-dessous et le lien de la vidéo. Délai habituel : quelques jours à quelques semaines ; Google répond par e-mail et peut poser des questions.
-5. **Remplir le formulaire « YouTube API Services Audit and Quota Extension »** (formulaire officiel de YouTube) : numéro du projet Cloud, description de l'usage, vidéo de démonstration, confirmation du respect des conditions de YouTube (Developer Policies), pas de stockage des vidéos des utilisateurs au-delà de ce qui est nécessaire, suppression des données sur demande. Les réponses sont prêtes ci-dessous.
-6. Quand Google confirme : **renvoyer** un clip de test pour vérifier qu'il sort en **public**.
+## Où on en est (2026-10-30)
+- [x] **Domaine vérifié** dans Google Search Console (balise meta dans `nuxt.config.ts`, ne jamais la retirer).
+- [x] **Écran de consentement configuré** (fait le 2026-10-28 pour le test d'envoi YouTube) : il reste seulement à **vérifier** que la page « Branding » contient bien logo, page d'accueil, liens confidentialité / conditions et le domaine autorisé `sassify.fr` (rien à refaire si c'est déjà rempli).
+- [ ] **Vidéo de démonstration** (voir « Où trouver chaque écran » ci-dessous).
+- [ ] **Passage en Production + demande de vérification** (Google Cloud Console).
+- [ ] **Formulaire d'audit YouTube**.
+
+## Où trouver chaque écran
+**Dans Clippeak (`https://clippeak.sassify.fr/studio`, connecté avec Twitch) :**
+- « Tes plateformes » = l'**étape 7** de la liste des étapes à gauche. Depuis le tableau de bord : colonne de gauche « Mes réglages » > « Tes plateformes ». On y trouve « Connecter YouTube » et, une fois connecté, « Déconnecter ».
+- « Publier » = sur la **carte d'un clip approuvé** du tableau de bord (bloc « Publier » : publier maintenant ou programmer). Il faut un clip approuvé avec une vidéo : ne jamais utiliser un clip d'un ami ; l'assistant peut préparer un clip de test à partir d'une vidéo du porteur (comme l'essai du 2026-10-29).
+- « Mes données » = **menu du compte** (rond avec ton initiale, en haut à droite) > « Mes données ».
+
+**Dans Google Cloud Console (`https://console.cloud.google.com`, projet « Clippeak ») :**
+- Menu > « Google Auth Platform » (ancien « Écran de consentement OAuth »). Pages : « Branding » (nom, logo, liens, domaines autorisés), « Audience » (état « Test » ou « En production », bouton **« Publier l'application »**), « Accès aux données » (portées), « Centre de validation » (**soumettre la vérification**).
+- Les libellés exacts peuvent varier selon la langue et les mises à jour de Google.
 
 ## Justification de la portée (à coller, en anglais)
 > Clippeak turns a Twitch streamer's live streams into short vertical clips. The streamer reviews each clip and explicitly approves it; only then can they schedule or publish it to their own YouTube channel as a Short. We request the single scope `youtube.upload` so that, on the streamer's explicit action, the application can upload the approved video file to the channel the streamer connected. We do not read, list, modify or delete any existing video, playlist, comment or channel data, and we never publish anything without the streamer's explicit approval. The streamer can disconnect YouTube at any time from the application, which revokes the access token.
