@@ -63,18 +63,7 @@ watch(step, () => nextTick(() => main.value?.scrollIntoView({ block: 'start' }))
           <span>Tes premiers clips sont arrivés ({{ studio.clips.value.length }}). Tu peux les voir sans finir le parcours.</span>
           <button type="button" class="st-btn" @click="studio.view.value = 'dashboard'">Voir mes clips</button>
         </div>
-        <Transition name="st-step" mode="out-in">
-          <div :key="step">
-            <StudioStepReference v-if="step === 1" />
-            <StudioStepPhotos v-else-if="step === 2" />
-            <StudioStepLook v-else-if="step === 3" />
-            <StudioStepSounds v-else-if="step === 4" />
-            <StudioStepIllustrations v-else-if="step === 5" />
-            <StudioStepDetection v-else-if="step === 6" />
-            <StudioStepPlatforms v-else-if="step === 7" />
-            <StudioStepRecap v-else />
-          </div>
-        </Transition>
+        <StudioConversation />
       </div>
 
       <div class="sticky bottom-0 z-10 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-st-border bg-st-bg px-4 py-3 sm:px-10 sm:py-3.5">
@@ -84,7 +73,7 @@ watch(step, () => nextTick(() => main.value?.scrollIntoView({ block: 'start' }))
         <template v-if="step < 8">
           <button v-if="step >= 2 && step <= 7" type="button" class="st-btn-quiet sm:ml-auto" :disabled="studio.busy.value" @click="later">Plus tard</button>
           <button type="button" class="st-btn flex-1 sm:!min-h-[52px] sm:flex-none sm:!px-7 sm:text-base" :class="step === 1 ? 'sm:ml-auto' : ''" :disabled="!canNext" @click="next">
-            <span class="sm:hidden">Continuer</span><span class="hidden sm:inline">Enregistrer et continuer</span>
+            Continuer
           </button>
         </template>
       </div>
