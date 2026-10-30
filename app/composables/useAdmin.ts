@@ -2,6 +2,7 @@
 // La page n'est liee depuis nulle part : on y arrive en tapant l'adresse.
 
 export interface AdminInvite { id: string, login: string, note: string | null, connected: boolean, createdAt: string, lastLoginAt: string | null }
+export interface AdminQuota { limit: number | null, used: number, remaining: number | null, reached: boolean, resetsAt: string }
 export interface AdminAccessRequest { id: string, login: string, displayName: string | null, createdAt: string }
 export interface AdminVod { id: string, twitchVodId: string, url: string, title: string | null, status: string, error: string | null, createdAt: string, channel: string, channelId: string, moments: number, clips: number, durationSec: number, progress: { phase: 'blocked' | 'waiting' | 'analyzing' | 'rendering' | 'ready' | 'failed', estimateSec: number | null, clipsTotal: number, clipsInProgress: number } }
 export interface AdminChannel { id: string, login: string, displayName: string, demo: boolean, test: boolean }
@@ -15,6 +16,7 @@ export function createAdmin() {
   const busy = ref(false)
   const invites = ref<AdminInvite[]>([])
   const accessRequests = ref<AdminAccessRequest[]>([])
+  const quotas = ref<Record<string, AdminQuota>>({})
   const channels = ref<AdminChannel[]>([])
   const vods = ref<AdminVod[]>([])
 
@@ -34,13 +36,15 @@ export function createAdmin() {
 
   async function refresh() {
     await $fetch('/api/admin/demo', { method: 'POST' })
-    const [inv, chan, req] = await Promise.all([
+    const [inv, chan, req, quo] = await Promise.all([
       $fetch<{ invites: AdminInvite[] }>('/api/admin/invites'),
       $fetch<{ channels: AdminChannel[] }>('/api/studio/channels'),
-      $fetch<{ requests: AdminAccessRequest[] }>('/api/admin/access-requests')
+      $fetch<{ requests: AdminAccessRequest[] }>('/api/admin/access-requests'),
+      $fetch<{ quotas: Record<string, AdminQuota> }>('/api/admin/quotas')
     ])
     invites.value = inv.invites
     accessRequests.value = req.requests
+    quotas.value = quo.quotas
     channels.value = chan.channels
   }
 
@@ -76,6 +80,12 @@ export function createAdmin() {
     await $fetch('/api/admin/invites', { method: 'POST', body: { login: loginName, note: note || undefined } })
     await refresh()
   }, 'Invitation ajoutée.')
+
+  // limit null = illimite. Enregistre le plafond mensuel de clips d'une vraie chaine.
+  const setQuota = (id: string, limit: number | null) => run(async () => {
+    await $fetch(`/api/admin/channels/${id}/quota`, { method: 'PUT', body: { limit } })
+    await refresh()
+  }, limit === null ? 'Plafond retiré : clips illimités pour cette chaîne.' : `Plafond réglé à ${limit} clips par mois.`)
 
   const inviteRequest = (id: string) => run(async () => {
     await $fetch(`/api/admin/access-requests/${id}/invite`, { method: 'POST' })
@@ -142,7 +152,7 @@ export function createAdmin() {
     await refresh()
   }, 'Chaîne de démonstration remise à zéro.')
 
-  return { authed, checking, password, error, notice, busy, invites, accessRequests, inviteRequest, dismissRequest, channels, vods, loadVods, roadmap, loadRoadmap, roadmapAction, addVod, retryVod, moveVod, removeVod, restore, login, logout, addInvite, removeInvite, resetDemo, addTestChannel, removeTestChannel }
+  return { authed, checking, password, error, notice, busy, invites, accessRequests, quotas, setQuota, inviteRequest, dismissRequest, channels, vods, loadVods, roadmap, loadRoadmap, roadmapAction, addVod, retryVod, moveVod, removeVod, restore, login, logout, addInvite, removeInvite, resetDemo, addTestChannel, removeTestChannel }
 }
 
 export type Admin = ReturnType<typeof createAdmin>

@@ -5,6 +5,7 @@ import type { PrismaClient } from '@prisma/client'
 import { clipsDir, dataDir, safeResolve } from './dataDir'
 import { parseStyle, referencedSoundAssets } from './streamerStyle'
 import { assignBatches } from './batching'
+import { channelClipRoom } from './prismaQuota'
 import { tagsFromFilename } from './illustrations'
 import type { JobContext, JobResult } from './clipJobPipeline'
 import type { AnalyzedMoment } from './vodAnalysis'
@@ -140,12 +141,18 @@ export function createPipelineStore(db: Db) {
     // VOD terminee : prise en charge atomique (ended -> analyzing). Une VOD deja analysee pendant le live repasse ici
     // pour le reste du stream ; les pics deja traites sont ecartes par existingPeaks.
     async claimVodToAnalyze(): Promise<VodToAnalyze | null> {
-      const candidate = await db.vod.findFirst({
+      const waiting = await db.vod.findMany({
         // Une VOD ajoutee a la main est toujours analysee (chaines de test comprises) ; les autres seulement si la chaine est ecoutee.
         where: { status: 'ended', OR: [{ channel: { autoClip: true } }, { source: 'manual' }] },
         orderBy: { createdAt: 'asc' },
+        take: 30,
         include: { channel: { include: { settings: true } } }
       })
+      // Plafond mensuel atteint : la VOD reste en attente (statut inchange) et sera analysee le mois suivant ou quand l'admin releve le plafond.
+      let candidate: (typeof waiting)[number] | undefined
+      for (const v of waiting) {
+        if ((await channelClipRoom(db, v.channelId)) > 0) { candidate = v; break }
+      }
       if (!candidate) return null
       const claimed = await db.vod.updateMany({ where: { id: candidate.id, status: 'ended' }, data: { status: 'analyzing' } })
       if (claimed.count !== 1) return null
@@ -166,7 +173,10 @@ export function createPipelineStore(db: Db) {
         orderBy: { createdAt: 'asc' },
         include: { channel: { include: { settings: true } } }
       })
-      return rows.map(row => ({
+      // Plafond mensuel atteint : pas d'analyse pendant le live (inutile de transcrire des clips qu'on ne produira pas).
+      const withRoom = []
+      for (const row of rows) if ((await channelClipRoom(db, row.channelId)) > 0) withRoom.push(row)
+      return withRoom.map(row => ({
         id: row.id,
         twitchVodId: row.twitchVodId,
         channelId: row.channelId,
@@ -196,7 +206,11 @@ export function createPipelineStore(db: Db) {
         durationSec: row.status === 'done' && row.endedAt ? Math.max(0, (row.endedAt.getTime() - (row.startedAt as Date).getTime()) / 1000) : null,
         scanSec: row.scanSec ?? 0
       }))
-      return targets.filter(t => t.live || (t.durationSec !== null && t.scanSec < t.durationSec - 10)).sort((a, b) => Number(b.live) - Number(a.live))
+      const open = targets.filter(t => t.live || (t.durationSec !== null && t.scanSec < t.durationSec - 10)).sort((a, b) => Number(b.live) - Number(a.live))
+      // Plafond mensuel atteint : pas de balayage (il coute du temps de transcription pour des clips qu'on ne produira pas).
+      const room = new Map<string, boolean>()
+      for (const t of open) if (!room.has(t.channelId)) room.set(t.channelId, (await channelClipRoom(db, t.channelId)) > 0)
+      return open.filter(t => room.get(t.channelId))
     },
 
     async setScanSec(vodId: string, scanSec: number) {
@@ -294,7 +308,10 @@ export function createPipelineStore(db: Db) {
         created.push({ momentId: row.id, score: m.score.score })
       }
 
-      const top = [...created].sort((a, b) => b.score - a.score).slice(0, maxClips)
+      // Plafond mensuel : jamais plus de clips que la place restante (le surplus reste en « candidat », sans clip ni rendu).
+      const vodRow = await db.vod.findUniqueOrThrow({ where: { id: vodId }, select: { channelId: true } })
+      const room = await channelClipRoom(db, vodRow.channelId)
+      const top = [...created].sort((a, b) => b.score - a.score).slice(0, Math.min(maxClips, room))
       const last = await db.clipJob.aggregate({ _max: { batch: true } })
       const assignments = assignBatches(top.map(t => ({ id: t.momentId, score: t.score })), last._max.batch ?? 0)
       for (const a of assignments) {

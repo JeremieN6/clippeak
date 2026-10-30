@@ -68,6 +68,40 @@ async function main() {
   assert.equal((await prisma.clipJob.aggregate({ _max: { batch: true } }))._max.batch, 3)
   log('numerotation des lots continue entre deux VODs')
 
+  // 2b. Plafond mensuel de clips : jamais plus que la place restante, VOD en attente quand le plafond est atteint, illimite = jamais bloque
+  {
+    const capped = await prisma.channel.create({ data: { twitchId: '777001', login: 'plafonne', displayName: 'Plafonne', settings: { create: { monthlyClipQuota: 3 } } } })
+    const cv1 = await prisma.vod.create({ data: { channelId: capped.id, twitchVodId: '999201', url: 'u', status: 'ended' } })
+    // Les VODs en attente des autres chaines passent d'abord (plus anciennes) : on les met de cote le temps du test.
+    await prisma.vod.updateMany({ where: { status: 'ended', channelId: { not: capped.id } }, data: { status: 'done' } })
+    assert.equal((await store.claimVodToAnalyze())?.id, cv1.id)
+    const cs = await store.saveAnalysis(cv1.id, [mk(100, 9), mk(300, 8), mk(500, 7), mk(700, 6), mk(900, 5.5)], 8)
+    assert.deepEqual(cs, { moments: 5, queued: 3 })
+    assert.equal(await prisma.moment.count({ where: { vodId: cv1.id, status: 'candidate' } }), 2) // le surplus reste candidat
+    const cLive = await prisma.vod.create({ data: { channelId: capped.id, twitchVodId: '999299', url: 'u', status: 'live' } })
+    assert.ok(!(await store.listLiveVods()).some(v => v.id === cLive.id)) // pas d'analyse pendant le live une fois le plafond atteint
+    await prisma.vod.delete({ where: { id: cLive.id } })
+    const cv2 = await prisma.vod.create({ data: { channelId: capped.id, twitchVodId: '999202', url: 'u', status: 'ended' } })
+    assert.equal(await store.claimVodToAnalyze(), null)
+    assert.equal((await prisma.vod.findUniqueOrThrow({ where: { id: cv2.id } })).status, 'ended') // en attente, pas en echec
+    // Les echecs de rendu ne comptent pas
+    await prisma.clipJob.updateMany({ where: { moment: { vodId: cv1.id } }, data: { status: 'failed' } })
+    assert.equal(await (await import('../../server/utils/clipping/prismaQuota')).monthlyClipUsage(prisma as any, capped.id), 0)
+    assert.equal((await store.claimVodToAnalyze())?.id, cv2.id)
+    // Plafond releve a la main puis retire (illimite)
+    await prisma.streamerSettings.update({ where: { channelId: capped.id }, data: { monthlyClipQuota: null } })
+    const cv3 = await prisma.vod.create({ data: { channelId: capped.id, twitchVodId: '999203', url: 'u', status: 'ended' } })
+    assert.equal((await store.claimVodToAnalyze())?.id, cv3.id)
+    assert.deepEqual(await store.saveAnalysis(cv3.id, [mk(100, 9), mk(300, 8), mk(500, 7), mk(700, 6), mk(900, 5.5)], 8), { moments: 5, queued: 5 })
+    // Un clip d'un mois precedent ne compte plus
+    await prisma.streamerSettings.update({ where: { channelId: capped.id }, data: { monthlyClipQuota: 5 } })
+    await prisma.clipJob.updateMany({ where: { moment: { vodId: cv3.id } }, data: { createdAt: new Date(Date.now() - 40 * 24 * 3600 * 1000) } })
+    assert.equal(await (await import('../../server/utils/clipping/prismaQuota')).channelClipRoom(prisma as any, capped.id), 5)
+    await prisma.channel.delete({ where: { id: capped.id } })
+    await prisma.vod.updateMany({ where: { status: 'done', id: { in: [vod.id, vod2.id] } }, data: {} })
+    log('plafond mensuel : clips limites a la place restante, VOD en attente (pas en echec), echecs non comptes, plafond releve ou retire, mois precedent ignore')
+  }
+
   // 3. File de rendu : ordre de prise, review, echec
   const first = await queue.claimNext()
   assert.equal(first?.id, jobs[0].id)

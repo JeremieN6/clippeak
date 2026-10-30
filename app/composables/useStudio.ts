@@ -68,6 +68,8 @@ export function createStudio() {
   // Pris ici (pendant l'installation du composant) : plus tard, apres un await, le contexte Nuxt n'est plus disponible.
   const nuxtApp = useNuxtApp()
   const clips = ref<StudioClip[]>([])
+  // Plafond mensuel de clips (limit null = illimite) : affiche dans le tableau de bord.
+  const quota = ref<{ limit: number | null, used: number, remaining: number | null, reached: boolean, resetsAt: string } | null>(null)
   const connections = ref<StudioConnection[]>([])
   const vodAlerts = ref<VodAlert[]>([])
 
@@ -139,8 +141,12 @@ export function createStudio() {
   }
 
   async function loadClips() {
-    const data = await api<{ clips: StudioClip[] }>('/api/studio/clips', { query: { status: 'all', channel: channelId.value || undefined } })
+    const [data, q] = await Promise.all([
+      api<{ clips: StudioClip[] }>('/api/studio/clips', { query: { status: 'all', channel: channelId.value || undefined } }),
+      channelId.value ? api<NonNullable<typeof quota.value>>(`/api/studio/channels/${channelId.value}/quota`).catch(() => null) : Promise.resolve(null)
+    ])
     clips.value = data.clips
+    quota.value = q
   }
 
   // Premiere etape non faite (ou la derniere) a l'ouverture du parcours.
@@ -427,7 +433,7 @@ export function createStudio() {
   }, 'Publication annulée.')
 
   return {
-    connected, error, notice, busy, channels, channelId, detail, bank, clips, connections, vodAlerts, view, step, onboarding, mode,
+    connected, error, notice, busy, channels, channelId, detail, bank, clips, quota, connections, vodAlerts, view, step, onboarding, mode,
     disconnectPlatform, publishClip, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
     api, run, track, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, setCaptionTags, advance, finishOnboarding, goToStep, stepStatus,
