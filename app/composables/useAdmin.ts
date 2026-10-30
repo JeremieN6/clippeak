@@ -2,6 +2,7 @@
 // La page n'est liee depuis nulle part : on y arrive en tapant l'adresse.
 
 export interface AdminInvite { id: string, login: string, note: string | null, connected: boolean, createdAt: string, lastLoginAt: string | null }
+export interface AdminAccessRequest { id: string, login: string, displayName: string | null, createdAt: string }
 export interface AdminVod { id: string, twitchVodId: string, url: string, title: string | null, status: string, error: string | null, createdAt: string, channel: string, channelId: string, moments: number, clips: number, durationSec: number, progress: { phase: 'blocked' | 'waiting' | 'analyzing' | 'rendering' | 'ready' | 'failed', estimateSec: number | null, clipsTotal: number, clipsInProgress: number } }
 export interface AdminChannel { id: string, login: string, displayName: string, demo: boolean, test: boolean }
 
@@ -13,6 +14,7 @@ export function createAdmin() {
   const notice = ref('')
   const busy = ref(false)
   const invites = ref<AdminInvite[]>([])
+  const accessRequests = ref<AdminAccessRequest[]>([])
   const channels = ref<AdminChannel[]>([])
   const vods = ref<AdminVod[]>([])
 
@@ -32,11 +34,13 @@ export function createAdmin() {
 
   async function refresh() {
     await $fetch('/api/admin/demo', { method: 'POST' })
-    const [inv, chan] = await Promise.all([
+    const [inv, chan, req] = await Promise.all([
       $fetch<{ invites: AdminInvite[] }>('/api/admin/invites'),
-      $fetch<{ channels: AdminChannel[] }>('/api/studio/channels')
+      $fetch<{ channels: AdminChannel[] }>('/api/studio/channels'),
+      $fetch<{ requests: AdminAccessRequest[] }>('/api/admin/access-requests')
     ])
     invites.value = inv.invites
+    accessRequests.value = req.requests
     channels.value = chan.channels
   }
 
@@ -63,6 +67,7 @@ export function createAdmin() {
     await $fetch('/api/admin/logout', { method: 'POST' })
     authed.value = false
     invites.value = []
+    accessRequests.value = []
     channels.value = []
     vods.value = []
   })
@@ -71,6 +76,16 @@ export function createAdmin() {
     await $fetch('/api/admin/invites', { method: 'POST', body: { login: loginName, note: note || undefined } })
     await refresh()
   }, 'Invitation ajoutée.')
+
+  const inviteRequest = (id: string) => run(async () => {
+    await $fetch(`/api/admin/access-requests/${id}/invite`, { method: 'POST' })
+    await refresh()
+  }, 'Invitation envoyée : il suffit à la personne de se reconnecter avec Twitch.')
+
+  const dismissRequest = (id: string) => run(async () => {
+    await $fetch(`/api/admin/access-requests/${id}`, { method: 'DELETE' })
+    await refresh()
+  }, 'Demande écartée.')
 
   const removeInvite = (id: string) => run(async () => {
     await $fetch(`/api/admin/invites/${id}`, { method: 'DELETE' })
@@ -127,7 +142,7 @@ export function createAdmin() {
     await refresh()
   }, 'Chaîne de démonstration remise à zéro.')
 
-  return { authed, checking, password, error, notice, busy, invites, channels, vods, loadVods, roadmap, loadRoadmap, roadmapAction, addVod, retryVod, moveVod, removeVod, restore, login, logout, addInvite, removeInvite, resetDemo, addTestChannel, removeTestChannel }
+  return { authed, checking, password, error, notice, busy, invites, accessRequests, inviteRequest, dismissRequest, channels, vods, loadVods, roadmap, loadRoadmap, roadmapAction, addVod, retryVod, moveVod, removeVod, restore, login, logout, addInvite, removeInvite, resetDemo, addTestChannel, removeTestChannel }
 }
 
 export type Admin = ReturnType<typeof createAdmin>

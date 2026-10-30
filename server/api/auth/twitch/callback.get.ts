@@ -4,6 +4,7 @@ import { readEnv } from '../../../utils/env'
 import { cookieOptions, loginConfig } from '../../../utils/studioLogin'
 import { safeEqual } from '../../../utils/clipping/adminAuth'
 import { createTwitchApi } from '../../../utils/clipping/twitchApi'
+import { setWaitCookie } from '../../../utils/accessRequest'
 import { exchangeCode, fetchIdentity, hashToken, newToken, SESSION_COOKIE, SESSION_TTL_MS, STATE_COOKIE } from '../../../utils/clipping/twitchLogin'
 
 // Connexion reussie : le studio. Sinon : retour sur la page de connexion avec la raison.
@@ -37,7 +38,11 @@ export default defineEventHandler(async (event) => {
 
   // Inscription sur invitation : le pseudo (ou l'identifiant Twitch deja enregistre) doit etre dans la liste de l'admin.
   const invite = await prisma.channelInvite.findFirst({ where: { OR: [{ twitchId: identity.id }, { twitchLogin: identity.login }] } })
-  if (!invite) return waiting(event, identity.login)
+  if (!invite) {
+    // Rien n'est enregistre ici : seule l'identite est gardee 15 min dans un cookie signe, pour le bouton « Previens-moi » de la page d'attente.
+    setWaitCookie(event, { id: identity.id, login: identity.login, displayName: identity.displayName })
+    return waiting(event, identity.login)
+  }
 
   const firstLogin = !invite.twitchId
   const channel = await prisma.channel.upsert({
@@ -46,6 +51,7 @@ export default defineEventHandler(async (event) => {
     create: { twitchId: identity.id, login: identity.login, displayName: identity.displayName, settings: { create: {} } }
   })
   await prisma.channelInvite.update({ where: { id: invite.id }, data: { twitchId: identity.id, twitchLogin: identity.login, lastLoginAt: new Date() } })
+  await prisma.accessRequest.deleteMany({ where: { twitchId: identity.id } })
 
   // Ecoute des lives de la chaine (idempotent). Un echec ne bloque pas la connexion : le rattrapage periodique comble le reste.
   const secret = readEnv('TWITCH_EVENTSUB_SECRET')

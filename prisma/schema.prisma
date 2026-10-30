@@ -98,24 +98,24 @@ model StreamerSettings {
 }
 
 model Vod {
-  id          String    @id @default(uuid()) @db.Uuid
-  channelId   String    @map("channel_id") @db.Uuid
-  twitchVodId String    @unique @map("twitch_vod_id") @db.VarChar(40)
-  url         String    @db.VarChar(255)
-  title       String?   @db.VarChar(255)
-  status      VodStatus @default(live)
-  source      VodSource @default(auto)
-  startedAt   DateTime? @map("started_at")
-  endedAt     DateTime? @map("ended_at")
+  id             String    @id @default(uuid()) @db.Uuid
+  channelId      String    @map("channel_id") @db.Uuid
+  twitchVodId    String    @unique @map("twitch_vod_id") @db.VarChar(40)
+  url            String    @db.VarChar(255)
+  title          String?   @db.VarChar(255)
+  status         VodStatus @default(live)
+  source         VodSource @default(auto)
+  startedAt      DateTime? @map("started_at")
+  endedAt        DateTime? @map("ended_at")
   // Avancement du balayage par ressemblance (secondes de VOD deja transcrites et comparees aux clips de reference).
-  scanSec     Float?    @map("scan_sec")
+  scanSec        Float?    @map("scan_sec")
   // Acces : premiere fois ou la VOD s'est averee reservee aux abonnes, fin de la recuperation des extraits (la VOD n'est plus necessaire),
   // et moment ou le streamer a confirme l'avoir remise comme avant.
   restrictedAt   DateTime? @map("restricted_at")
   sourcesSavedAt DateTime? @map("sources_saved_at")
   restoreAckAt   DateTime? @map("restore_ack_at")
   error          String?
-  createdAt   DateTime  @default(now()) @map("created_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
 
   channel Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
   moments Moment[]
@@ -275,6 +275,18 @@ model ChannelInvite {
   @@map("channel_invites")
 }
 
+// Demande d'acces d'un streamer non invite : creee seulement quand il clique « Previens-moi » sur la page d'attente.
+// Gardee jusqu'a son invitation, son retrait par l'admin, ou 90 jours.
+model AccessRequest {
+  id          String   @id @default(uuid()) @db.Uuid
+  twitchId    String   @unique @map("twitch_id") @db.VarChar(40)
+  twitchLogin String   @map("twitch_login") @db.VarChar(25)
+  displayName String?  @map("display_name") @db.VarChar(60)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("access_requests")
+}
+
 // Session d'un streamer connecte : seul le hash SHA-256 du jeton est conserve (le jeton ne vit que dans le cookie).
 model StudioSession {
   id        String   @id @default(uuid()) @db.Uuid
@@ -333,14 +345,14 @@ model Publication {
 // Page « Prochainement » : les streamers votent, par blocs de 2 fonctions, celle qui sera developpee en priorite.
 // status : backlog (en attente d'un bloc) | voting | building | waiting_access (acces API pas encore accorde) | delivered.
 model RoadmapFeature {
-  id           String   @id @default(uuid()) @db.Uuid
-  slug         String   @unique @db.VarChar(40)
-  title        String   @db.VarChar(80)
-  description  String   @db.VarChar(400)
-  status       String   @default("backlog") @db.VarChar(16)
-  carriedVotes Int      @default(0) @map("carried_votes")
+  id           String    @id @default(uuid()) @db.Uuid
+  slug         String    @unique @db.VarChar(40)
+  title        String    @db.VarChar(80)
+  description  String    @db.VarChar(400)
+  status       String    @default("backlog") @db.VarChar(16)
+  carriedVotes Int       @default(0) @map("carried_votes")
   deliveredAt  DateTime? @map("delivered_at")
-  createdAt    DateTime @default(now()) @map("created_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
 
   blocksA RoadmapBlock[] @relation("BlockA")
   blocksB RoadmapBlock[] @relation("BlockB")

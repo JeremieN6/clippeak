@@ -9,6 +9,21 @@ const login = computed(() => {
   const raw = String(route.query.login ?? '')
   return /^[A-Za-z0-9_]{3,25}$/.test(raw) ? raw : ''
 })
+
+// « Previens-moi » : enregistre la demande seulement au clic (l'identite vient du cookie signe pose au retour de Twitch).
+const state = ref<'idle' | 'sending' | 'done' | 'invited' | 'error'>('idle')
+const problem = ref('')
+async function ask() {
+  state.value = 'sending'
+  problem.value = ''
+  try {
+    const res = await $fetch<{ invited: boolean }>('/api/auth/access-request', { method: 'POST' })
+    state.value = res.invited ? 'invited' : 'done'
+  } catch (e: any) {
+    problem.value = e?.data?.statusMessage || 'Impossible d’envoyer la demande pour le moment.'
+    state.value = 'error'
+  }
+}
 </script>
 
 <template>
@@ -35,8 +50,17 @@ const login = computed(() => {
         <ul class="m-0 flex list-none flex-col gap-2 p-0 text-sm leading-relaxed st-muted">
           <li>Aucun compte n’a été créé et rien n’a été enregistré sur ta chaîne.</li>
           <li>Demande une invitation à la personne qui t’a partagé le lien : elle connaît l’équipe.</li>
+          <li>Ou clique ci-dessous : on garde ton pseudo Twitch pour t’inviter dès qu’une place s’ouvre.</li>
           <li>Dès que ta chaîne est invitée, il suffit de te reconnecter avec Twitch.</li>
         </ul>
+      </section>
+
+      <section v-if="login" class="flex flex-col gap-2">
+        <button v-if="state === 'idle' || state === 'sending' || state === 'error'" type="button" class="st-btn self-start" :disabled="state === 'sending'" @click="ask">Prévenez-moi quand une place s’ouvre</button>
+        <p v-if="state === 'done'" class="m-0 text-sm text-st-ok" role="status">C’est noté : on garde ton pseudo Twitch ({{ login }}) pour t’inviter. Tu peux le faire effacer en écrivant à contact.clippeak@sassify.fr.</p>
+        <p v-if="state === 'invited'" class="m-0 text-sm text-st-ok" role="status">Bonne nouvelle : ta chaîne est invitée. Reconnecte-toi avec Twitch.</p>
+        <p v-if="state === 'error'" class="m-0 text-sm text-st-error" role="alert">{{ problem }}</p>
+        <p class="m-0 text-xs st-muted">Seul ton pseudo Twitch est conservé, pour 90 jours au plus. <NuxtLink to="/confidentialite" class="underline">Politique de confidentialité</NuxtLink></p>
       </section>
 
       <div class="flex flex-wrap gap-2">

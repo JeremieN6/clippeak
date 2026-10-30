@@ -179,6 +179,8 @@ Direction : passer de la simulation a un pipeline reel, inspire d'un workflow de
 
 - **2026-10-30 (garde-fou des migrations)** : `scripts/ops/migrations.sh check|apply|resolve` + etape de `deploy.yml` qui bloque le redemarrage si une migration n'est pas appliquee (code 3). Le premier `check` reel a montre que `202610301000_roadmap_votes` et `202610301500_notifications` etaient appliquees (tables presentes) mais jamais enregistrees (`migrate resolve --applied` oublie) : le porteur doit lancer `resolve` pour ces deux noms AVANT de fusionner la branche `ops/migrations-guard`, sinon le deploiement s'arrete.
 
+- **2026-10-30 (demandes d'acces)** : branche `feat/access-requests` (BACKLOG 2.4). `/attente` propose « Prevenez-moi » : la demande (pseudo, id Twitch, date) n'est enregistree qu'au clic, depuis un cookie signe `clippeak_wait` pose au retour de Twitch ; section « Demandes d'acces » dans `/admin` > Invitations (Inviter en un clic / Ecarter, purge a 90 jours). Migration `202610301800_access_requests` A APPLIQUER par le porteur (`bash scripts/ops/migrations.sh apply`) AVANT le deploiement, sinon le garde-fou l'arrete. 227 tests unitaires + integration OK ; page d'attente verifiee a l'ecran ; section admin non vue a l'ecran (liste vide dans la base de demonstration, couverte par les tests d'API).
+
 - **2026-10-27 (connexion Twitch)** : decision du porteur : les streamers se connectent avec Twitch, sur invitation de l'ADMIN (liste de pseudos geree par le porteur, pas de parrainage entre streamers) pour maitriser la charge CPU du VPS ; la page a mot de passe reste reservee a l'admin. Remplace la decision du 2026-10-23 « pas d'OAuth streamer en V2 ».
 
 ---
