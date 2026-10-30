@@ -181,6 +181,8 @@ Direction : passer de la simulation a un pipeline reel, inspire d'un workflow de
 
 - **2026-10-30 (demandes d'acces)** : branche `feat/access-requests` (BACKLOG 2.4). `/attente` propose « Prevenez-moi » : la demande (pseudo, id Twitch, date) n'est enregistree qu'au clic, depuis un cookie signe `clippeak_wait` pose au retour de Twitch ; section « Demandes d'acces » dans `/admin` > Invitations (Inviter en un clic / Ecarter, purge a 90 jours). Migration `202610301800_access_requests` A APPLIQUER par le porteur (`bash scripts/ops/migrations.sh apply`) AVANT le deploiement, sinon le garde-fou l'arrete. 227 tests unitaires + integration OK ; page d'attente verifiee a l'ecran ; section admin non vue a l'ecran (liste vide dans la base de demonstration, couverte par les tests d'API).
 
+- **2026-10-30 (statut Publies)** : branche `feat/published-status` : `isPublished(clip)` (useStudio.ts) = clip approuve avec au moins une publication partie ; le tableau de bord a un compteur et un filtre « Publiés » (un clip n'est que dans un groupe : Publiés avant Approuvés), la carte montre le badge « Publié », le panneau de publication la date. Aucune migration, aucune API. Verifie a l'ecran sur le serveur de demonstration (un clip publie ajoute a `ui-serve.mjs`) ; telephone non mesure pour les 6 compteurs (grille 2 colonnes).
+
 - **2026-10-27 (connexion Twitch)** : decision du porteur : les streamers se connectent avec Twitch, sur invitation de l'ADMIN (liste de pseudos geree par le porteur, pas de parrainage entre streamers) pour maitriser la charge CPU du VPS ; la page a mot de passe reste reservee a l'admin. Remplace la decision du 2026-10-23 « pas d'OAuth streamer en V2 ».
 
 ---

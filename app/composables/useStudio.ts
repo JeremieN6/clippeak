@@ -12,6 +12,9 @@ export interface StudioClip {
   publications: StudioPublication[]
 }
 
+// Un clip approuve est « Publie » des qu'une de ses publications est partie (il reste « approuve » en base).
+export const isPublished = (clip: { status: string, publications: Array<{ status: string }> }) => clip.status === 'approved' && clip.publications.some(p => p.status === 'published')
+
 export interface StudioPublication { id: string, platform: string, status: string, scheduledAt: string, publishedAt: string | null, url: string | null, error: string | null }
 export interface VodAlert { id: string, title: string, state: 'blocked' | 'working' | 'restore', since: string | null }
 export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null }

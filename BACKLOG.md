@@ -119,7 +119,7 @@ Constat du porteur : tout n'est pas propre ni a 100 % conforme au kit (maquettes
 
 ## 5. Produit et interface (reste de la liste d'origine)
 
-- **Statut « Publies »** dans le tableau de bord et modale « Publier » des maquettes — P2, M (se rejoint avec 1.2).
+- **Statut « Publies »** — FAIT le 2026-10-30 (branche `feat/published-status`) : compteur et filtre « Publiés » dans le tableau de bord (un clip approuvé dont une publication est partie passe de « Approuvés » à « Publiés »), badge « Publié » sur la carte, date et lien dans le panneau de publication. La modale « Publier » des maquettes n'est pas reprise : le panneau existant (maintenant / programmer) fait le meme travail. Les statistiques par plateforme restent en 1.2.
 - **Previsualisation sonore** des sons integres (fabriques au rendu) — P3, S.
 - **Suivi PostHog** du parcours (onboarding, premiere approbation, premiere publication, retour a J+7) pour mesurer ce que la page « Prochainement » change — P2, S.
 - **Parcours Twitch reel** : l'aller-retour de connexion apres la refonte `/connexion` -> `/studio` n'est pas verifie avec un vrai streamer invite — P1, S.

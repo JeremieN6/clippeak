@@ -48,7 +48,7 @@ async function schedule() {
           <span class="st-badge" :class="p.status === 'published' ? 'st-badge-ok' : p.status === 'failed' ? 'st-badge-error' : 'st-badge-info'">
             {{ p.status === 'published' ? 'Publié' : p.status === 'failed' ? 'Échec' : p.status === 'publishing' ? 'En cours…' : 'Programmé' }}
           </span>
-          <span class="st-muted">{{ platformName[p.platform] }}<template v-if="p.status === 'scheduled'"> · {{ fmt(p.scheduledAt) }}</template></span>
+          <span class="st-muted">{{ platformName[p.platform] }}<template v-if="p.status === 'scheduled'"> · {{ fmt(p.scheduledAt) }}</template><template v-else-if="p.status === 'published' && p.publishedAt"> · le {{ fmt(p.publishedAt) }}</template></span>
           <a v-if="p.url" :href="p.url" target="_blank" rel="noopener" class="font-semibold text-st-accentLight">Voir</a>
           <button v-if="p.status === 'scheduled' || p.status === 'failed'" type="button" class="st-btn-quiet !min-h-8 !px-2 text-[13px]" :disabled="studio.busy.value" @click="studio.cancelPublication(p.id)">{{ p.status === 'failed' ? 'Abandonner' : 'Annuler' }}</button>
           <span v-if="p.status === 'failed' && p.error" class="basis-full text-st-error">{{ p.error }}</span>

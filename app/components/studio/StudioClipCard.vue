@@ -18,7 +18,7 @@ const statusLook: Record<string, { label: string, cls: string }> = {
   queued: { label: 'En file', cls: 'st-badge-info' },
   rendering: { label: 'Rendu en cours', cls: 'st-badge-info' }
 }
-const look = computed(() => statusLook[props.clip.status] ?? statusLook.review)
+const look = computed(() => isPublished(props.clip) ? { label: 'Publié', cls: 'st-badge-ok' } : statusLook[props.clip.status] ?? statusLook.review)
 const issues = computed(() => props.clip.qc?.issues ?? [])
 const minutes = computed(() => props.clip.durationSec == null ? '' : `${Math.floor(props.clip.durationSec / 60)}:${String(props.clip.durationSec % 60).padStart(2, '0')}`)
 const originLabel = computed(() => props.clip.origin === 'ref' ? 'Ressemble à un de tes clips' : 'Détecté par le chat')
