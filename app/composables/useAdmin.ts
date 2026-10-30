@@ -77,6 +77,14 @@ export function createAdmin() {
     await refresh()
   }, 'Invitation retirée. Les sessions de cette chaîne sont fermées.')
 
+  // « Prochainement » : fonctions, blocs de vote (totaux visibles pour l'admin) et idees des streamers.
+  const roadmap = ref<{ features: Array<{ id: string, title: string, description: string, status: string, carriedVotes: number }>, blocks: Array<{ id: string, status: string, endsAt: string, decidedBy: string | null, winnerId: string | null, votes: number, a: { id: string, title: string, total: number }, b: { id: string, title: string, total: number } }>, ideas: Array<{ id: string, text: string, status: string, createdAt: string, channel: string }> } | null>(null)
+  const loadRoadmap = () => run(async () => { roadmap.value = await $fetch('/api/admin/roadmap') })
+  const roadmapAction = (method: 'POST' | 'PATCH', url: string, body: Record<string, unknown>, success: string) => run(async () => {
+    await $fetch(url, { method, body })
+    roadmap.value = await $fetch('/api/admin/roadmap')
+  }, success)
+
   const loadVods = () => run(async () => {
     vods.value = (await $fetch<{ vods: AdminVod[] }>('/api/admin/vods')).vods
   })
@@ -119,7 +127,7 @@ export function createAdmin() {
     await refresh()
   }, 'Chaîne de démonstration remise à zéro.')
 
-  return { authed, checking, password, error, notice, busy, invites, channels, vods, loadVods, addVod, retryVod, moveVod, removeVod, restore, login, logout, addInvite, removeInvite, resetDemo, addTestChannel, removeTestChannel }
+  return { authed, checking, password, error, notice, busy, invites, channels, vods, loadVods, roadmap, loadRoadmap, roadmapAction, addVod, retryVod, moveVod, removeVod, restore, login, logout, addInvite, removeInvite, resetDemo, addTestChannel, removeTestChannel }
 }
 
 export type Admin = ReturnType<typeof createAdmin>

@@ -74,6 +74,11 @@ async function logout() {
 
       <div v-if="connected" class="ml-auto flex flex-wrap items-center justify-end gap-2">
         <span v-if="mode === 'streamer' && currentChannel" class="text-sm font-semibold st-muted">{{ currentChannel.displayName }}</span>
+        <button v-if="view !== 'roadmap'" type="button" class="st-btn-quiet relative" @click="view = 'roadmap'">
+          Prochainement
+          <span v-if="studio.roadmapDot.value" class="absolute right-1.5 top-2 h-2.5 w-2.5 rounded-full bg-st-accent" aria-hidden="true" />
+          <span v-if="studio.roadmapDot.value" class="sr-only">(nouveau)</span>
+        </button>
         <button v-if="view !== 'dashboard' && (studio.onboarding.value?.completed || studio.clips.value.length)" type="button" class="st-btn-ghost" @click="view = 'dashboard'">Tableau de bord</button>
         <span v-else-if="view === 'onboarding'" class="hidden items-center gap-2 text-[13px] font-semibold st-muted lg:inline-flex">Enregistré à chaque étape</span>
         <button v-if="mode === 'streamer'" type="button" class="st-btn-quiet" :disabled="busy" @click="logout">Se déconnecter</button>
@@ -82,7 +87,7 @@ async function logout() {
     </header>
 
     <!-- Message flottant : ne decale rien, se ferme tout seul (succes) ou a la demande (erreur). -->
-    <div class="pointer-events-none fixed inset-x-4 top-[76px] z-50 flex justify-end sm:left-auto sm:right-6 sm:w-[420px]" aria-live="polite">
+    <div class="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex justify-end sm:left-auto sm:right-6 sm:w-[420px]" aria-live="polite">
       <Transition name="st-step">
         <div v-if="error || notice" :key="error || notice" class="st-alert pointer-events-auto w-full items-center border shadow-[0_8px_24px_rgba(0,0,0,.4)]" :class="error ? 'st-alert-error border-st-errorBorder' : 'st-alert-ok border-st-okBorder'" :role="error ? 'alert' : 'status'">
           <svg class="flex-none" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-if="error" d="M12 7v6M12 17h.01" /><path v-else d="M5 12.5l4.5 4.5L19 7.5" /></svg>
@@ -95,7 +100,8 @@ async function logout() {
     </div>
 
     <template v-if="connected && studio.detail.value">
-      <StudioDashboard v-if="view === 'dashboard'" />
+      <StudioRoadmap v-if="view === 'roadmap'" />
+      <StudioDashboard v-else-if="view === 'dashboard'" />
       <StudioOnboarding v-else />
     </template>
     <StudioSkeleton v-else-if="checking" />

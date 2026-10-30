@@ -597,6 +597,70 @@ try {
   ok('VOD reservee aux abonnes : acceptee en attente (admin), carte « Action requise » du streamer, verification immediate, deblocage, carte « tu peux la remettre » puis confirmation ; autre chaine = 404')
 
 
+  // --- « Prochainement » : blocs de vote, totaux caches avant le vote, egalite, cloture, idees
+  await q(`INSERT INTO studio_sessions (id, channel_id, token_hash, expires_at) VALUES (gen_random_uuid(), $1, $2, now() + interval '1 day')`, [otherId, sha('jeton-autre-vote')])
+  await q(`INSERT INTO studio_sessions (id, channel_id, token_hash, expires_at) VALUES (gen_random_uuid(), $1, $2, now() + interval '1 day')`, [channelId, sha('jeton-vote-a')])
+  const voterA = as('jeton-vote-a'); const voterB = as('jeton-autre-vote')
+  const rmFeats = Object.fromEntries((await q(`SELECT slug, id FROM roadmap_features`)).map(r => [r.slug, r.id]))
+  assert.ok(rmFeats.tiktok && rmFeats.instagram && rmFeats.stats, 'les 3 fonctions de depart existent')
+  assert.equal((await call('/api/studio/roadmap', { auth: false })).status, 401)
+  const rmNone = await call('/api/studio/roadmap', voterA)
+  assert.equal(rmNone.status, 200); assert.equal(rmNone.json.block, null)
+  // admin : lancer un bloc (pas deux a la fois, pas la meme fonction deux fois)
+  assert.equal((await call('/api/admin/roadmap/blocks', { method: 'POST', body: { featureAId: rmFeats.tiktok, featureBId: rmFeats.tiktok } })).status, 400)
+  assert.equal((await call('/api/admin/roadmap/blocks', { ...voterA, method: 'POST', body: { featureAId: rmFeats.tiktok, featureBId: rmFeats.instagram } })).status, 401)
+  const rmLaunched = await call('/api/admin/roadmap/blocks', { method: 'POST', body: { featureAId: rmFeats.tiktok, featureBId: rmFeats.instagram, days: 14 } })
+  assert.equal(rmLaunched.status, 200)
+  assert.equal((await call('/api/admin/roadmap/blocks', { method: 'POST', body: { featureAId: rmFeats.stats, featureBId: rmFeats.tiktok } })).status, 409)
+  const rmBlock = rmLaunched.json.id
+  // avant le vote : pas de totaux
+  const rmBefore = await call('/api/studio/roadmap', voterA)
+  assert.equal(rmBefore.json.block.totals, null); assert.equal(rmBefore.json.block.myVote, null)
+  // vote, puis changement de vote : un seul vote par chaine
+  assert.equal((await call('/api/studio/roadmap/vote', { ...voterA, method: 'POST', body: { blockId: rmBlock, featureId: rmFeats.stats } })).status, 400)
+  assert.equal((await call('/api/studio/roadmap/vote', { ...voterA, method: 'POST', body: { blockId: rmBlock, featureId: rmFeats.tiktok } })).status, 200)
+  assert.equal((await call('/api/studio/roadmap/vote', { ...voterA, method: 'POST', body: { blockId: rmBlock, featureId: rmFeats.instagram } })).status, 200)
+  assert.equal((await q(`SELECT count(*)::int AS n FROM roadmap_votes WHERE block_id = $1`, [rmBlock]))[0].n, 1)
+  const rmVoted = await call("/api/studio/roadmap", voterA)
+  assert.equal(rmVoted.json.block.myVote, rmFeats.instagram); assert.equal(rmVoted.json.block.totals[rmFeats.instagram], 1); assert.equal(rmVoted.json.block.totals[rmFeats.tiktok], 0)
+  // l'autre chaine ne voit pas les totaux tant qu'elle n'a pas vote ; l'admin voit les siens
+  assert.equal((await call('/api/studio/roadmap', voterB)).json.block.totals, null)
+  assert.equal((await call('/api/studio/roadmap/vote', { ...voterB, method: 'POST', body: { blockId: rmBlock, featureId: rmFeats.tiktok } })).status, 200)
+  // idees : texte trop court refuse, valide accepte, 5 par jour
+  assert.equal((await call('/api/studio/roadmap/idea', { ...voterA, method: 'POST', body: { text: 'ab' } })).status, 400)
+  for (let i = 0; i < 5; i++) assert.equal((await call('/api/studio/roadmap/idea', { ...voterA, method: 'POST', body: { text: `Une idee numero ${i} pour Clippeak` } })).status, 200)
+  assert.equal((await call('/api/studio/roadmap/idea', { ...voterA, method: 'POST', body: { text: 'Une sixieme idee du jour' } })).status, 429)
+  const rmAdmin = await call('/api/admin/roadmap')
+  assert.equal(rmAdmin.status, 200); assert.equal(rmAdmin.json.ideas.length, 5)
+  assert.equal(rmAdmin.json.blocks[0].a.total + rmAdmin.json.blocks[0].b.total, 2)
+  assert.equal((await call('/api/admin/roadmap', voterA)).status, 401)
+  // egalite 1-1 : echeance passee => l'admin doit trancher
+  await q(`UPDATE roadmap_blocks SET ends_at = (now() at time zone 'utc') - interval '1 minute' WHERE id = $1`, [rmBlock])
+  assert.equal((await call('/api/studio/roadmap/vote', { ...voterA, method: 'POST', body: { blockId: rmBlock, featureId: rmFeats.tiktok } })).status, 409)
+  const rmTied = await call('/api/studio/roadmap', voterA)
+  assert.equal(rmTied.json.block.tied, true)
+  assert.equal((await call(`/api/admin/roadmap/blocks/${rmBlock}/close`, { method: 'POST', body: {} })).status, 409)
+  assert.equal((await call(`/api/admin/roadmap/blocks/${rmBlock}/close`, { method: 'POST', body: { featureId: rmFeats.tiktok } })).status, 200)
+  const [tk, ig] = [(await q(`SELECT status, carried_votes FROM roadmap_features WHERE id = $1`, [rmFeats.tiktok]))[0], (await q(`SELECT status, carried_votes FROM roadmap_features WHERE id = $1`, [rmFeats.instagram]))[0]]
+  assert.equal(tk.status, 'building'); assert.equal(ig.status, 'backlog'); assert.equal(ig.carried_votes, 1)
+  // resultat a annoncer : la chaine qui avait vote pour la perdante le voit, puis plus apres « vu »
+  const rmNotice = await call('/api/studio/roadmap', voterA)
+  assert.equal(rmNotice.json.notice.won, false); assert.equal((await call('/api/studio/roadmap', voterB)).json.notice.won, true)
+  assert.equal((await call('/api/studio/roadmap/seen', { ...voterA, method: 'POST', body: { blockId: rmBlock } })).status, 200)
+  assert.equal((await call('/api/studio/roadmap', voterA)).json.notice, null)
+  // 2e bloc : la perdante revient avec ses votes conserves ; la plus votee gagne seule a l'echeance
+  const rmSecond = await call('/api/admin/roadmap/blocks', { method: 'POST', body: { featureAId: rmFeats.instagram, featureBId: rmFeats.stats, days: 7 } })
+  assert.equal(rmSecond.status, 200)
+  assert.equal((await call('/api/studio/roadmap/vote', { ...voterA, method: 'POST', body: { blockId: rmSecond.json.id, featureId: rmFeats.stats } })).status, 200)
+  assert.equal((await call('/api/studio/roadmap', voterA)).json.block.totals[rmFeats.instagram], 1)
+  await q(`UPDATE roadmap_blocks SET ends_at = (now() at time zone 'utc') - interval '1 minute' WHERE id = $1`, [rmSecond.json.id])
+  await call('/api/studio/roadmap', voterA)
+  assert.equal((await q(`SELECT winner_id, decided_by, status FROM roadmap_blocks WHERE id = $1`, [rmSecond.json.id]))[0].status, 'needs_admin')
+  assert.equal((await call(`/api/admin/roadmap/features/${rmFeats.tiktok}`, { method: 'PATCH', body: { status: 'delivered' } })).status, 200)
+  assert.equal((await call('/api/studio/roadmap', voterA)).json.delivered.length, 1)
+  ok('prochainement : bloc unique, un vote par chaine (modifiable), totaux caches avant le vote, egalite = l admin tranche, perdante gardee avec ses votes, resultat annonce puis acquitte, idees limitees a 5/jour, livre affiche')
+
+
   console.log('API_IT_OK')
 } catch (error) {
   failure = error
