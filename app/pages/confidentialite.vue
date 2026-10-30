@@ -16,7 +16,7 @@ useHead({ title: 'Politique de confidentialité – Clippeak' })
       <li><strong>Ce que tu déposes :</strong> clips de référence, photos, vidéos d’illustration (B-roll), sons, et tes réglages (titre, sous-titres, détection, plateformes choisies).</li>
       <li><strong>Les clips produits :</strong> les vidéos générées, leur titre, leur légende et ta décision (approuvé, refusé).</li>
       <li><strong>Technique :</strong> un cookie de session, indispensable pour rester connecté. Il n’est lu que par notre serveur.</li>
-      <li><strong>Mesure d’audience :</strong> le site public utilise PostHog pour comprendre comment il est utilisé (pages vues, clics sur le parcours d’essai).</li>
+      <li><strong>Mesure d’audience :</strong> le site public utilise PostHog pour comprendre comment il est utilisé (pages vues, clics sur le parcours d’essai). Dans l’espace connecté (studio), aucun clic ni texte n’est enregistré : seuls quelques événements d’usage sont comptés (étape terminée, clip approuvé ou publié, vote), sans titre, sans pseudo ni contenu de tes clips ; l’administration n’envoie rien et les adresses ne gardent pas leurs paramètres.</li>
     </ul>
 
     <h2>Tes photos et la reconnaissance du visage</h2>

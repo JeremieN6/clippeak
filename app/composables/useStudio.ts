@@ -1,5 +1,6 @@
 // Etat et actions du studio, partages entre le parcours guide (8 etapes) et le tableau de bord. Le streamer est identifie par son cookie
 // de session Twitch, l'admin par le cookie de session pose sur /admin : aucun mot de passe ne circule ici.
+import { buildEvent } from '~~/server/utils/clipping/analytics'
 
 export interface StudioChannel { id: string, login: string, displayName: string, autoClip: boolean, demo: boolean, test?: boolean }
 
@@ -64,6 +65,8 @@ export function createStudio() {
   const channelId = ref('')
   const detail = ref<any>(null)
   const bank = ref<any>(null)
+  // Pris ici (pendant l'installation du composant) : plus tard, apres un await, le contexte Nuxt n'est plus disponible.
+  const nuxtApp = useNuxtApp()
   const clips = ref<StudioClip[]>([])
   const connections = ref<StudioConnection[]>([])
   const vodAlerts = ref<VodAlert[]>([])
@@ -81,6 +84,14 @@ export function createStudio() {
     } catch (e: any) {
       throw new Error(friendlyError(e))
     }
+  }
+
+  // Suivi du parcours (PostHog) : seulement pour un vrai streamer (jamais l'admin), liste fermee d'evenements, proprietes neutres.
+  function track(name: string, props?: Record<string, unknown>) {
+    if (mode.value !== 'streamer') return
+    const evt = buildEvent(name, props)
+    const ph = nuxtApp.$clientPosthog as { capture: (n: string, p: Record<string, unknown>) => void } | null | undefined
+    if (evt && ph) ph.capture(evt.name, evt.props)
   }
 
   async function run(task: () => Promise<void>, success = '') {
@@ -157,6 +168,7 @@ export function createStudio() {
       await Promise.all([loadChannel(), loadClips()])
       view.value = onboarding.value?.completed ? 'dashboard' : 'onboarding'
       step.value = firstOpenStep()
+      track('studio_opened', { onboarded: Boolean(onboarding.value?.completed) })
       return true
     } catch {
       connected.value = false
@@ -248,6 +260,7 @@ export function createStudio() {
       if (n === 6) await putSettings()
     }
     await recordStep(n, kind)
+    track('onboarding_step', { step: n, kind })
     step.value = Math.min(8, n + 1)
   })
 
@@ -255,6 +268,7 @@ export function createStudio() {
     detail.value.style.onboarding.completed = true
     await putStyle()
     await Promise.all([loadChannel(), loadClips()])
+    track('onboarding_completed')
     view.value = 'dashboard'
   })
 
@@ -367,12 +381,16 @@ export function createStudio() {
     const body = action === 'approve' ? { action, caption: draft.caption, note: draft.note || undefined }
       : action === 'reject' ? { action, note: draft.note || undefined }
         : { action, title: draft.title || undefined, replan: true, note: draft.note || undefined }
+    const firstApproval = action === 'approve' && !clips.value.some(c => c.status === 'approved')
     await api(`/api/studio/clips/${clip.id}/review`, { method: 'POST', body })
+    track('clip_reviewed', { action, first: firstApproval })
     await loadClips()
   }, action === 'approve' ? 'Clip approuvé. Rien n’a été publié.' : action === 'reject' ? 'Clip refusé.' : 'Clip remis en file pour un nouveau rendu.')
 
   const approveMany = (list: StudioClip[]) => run(async () => {
+    const firstApproval = !clips.value.some(c => c.status === 'approved')
     for (const clip of list) await api(`/api/studio/clips/${clip.id}/review`, { method: 'POST', body: { action: 'approve', caption: clip.caption ?? undefined } })
+    track('clip_reviewed', { action: 'approve', first: firstApproval, count: list.length })
     await loadClips()
   }, `${list.length} clip(s) approuvé(s). Rien n’a été publié.`)
 
@@ -385,7 +403,9 @@ export function createStudio() {
 
   // `at` null : maintenant. Rien ne part sans cet appel : approuver ne publie pas.
   const publishClip = (clip: StudioClip, platform: string, at: Date | null) => run(async () => {
+    const first = !clips.value.some(c => c.publications.some(p => p.status !== 'cancelled'))
     await api(`/api/studio/clips/${clip.id}/publish`, { method: 'POST', body: { platform, at: at ? at.toISOString() : undefined } })
+    track('clip_published', { platform, when: at ? 'scheduled' : 'now', first })
     await loadClips()
   }, at ? 'Publication programmée.' : 'Publication lancée : elle part dans quelques instants.')
 
@@ -409,7 +429,7 @@ export function createStudio() {
   return {
     connected, error, notice, busy, channels, channelId, detail, bank, clips, connections, vodAlerts, view, step, onboarding, mode,
     disconnectPlatform, publishClip, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
-    api, run, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
+    api, run, track, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, setCaptionTags, advance, finishOnboarding, goToStep, stepStatus,
     addAssets, saveAsset, removeAsset, addReferences, saveStat, removeReference, reviewClip, approveMany
   }
