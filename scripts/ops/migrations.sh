@@ -24,23 +24,23 @@ case "${1:-}" in
     fi
     if echo "$OUT" | grep -q "Database schema is up to date"; then echo "Base a jour : aucune migration en attente."; exit 0; fi
     # Ni « a jour » ni « en attente » : connexion impossible ou historique inattendu. On le dit, sans bloquer a tort.
-    echo "Etat des migrations IMPOSSIBLE a determiner :"; echo "$OUT" | grep -vE '^(Prisma schema|Datasource)' | tail -6 | sed -E 's#postgres(ql)?://[^ ]+#<adresse masquee>#g'; exit 2
+    echo "Etat des migrations IMPOSSIBLE a determiner :"; echo "$OUT" | grep -vE '^(Prisma schema|Datasource)' | tail -6 | sed -E -e '/^Datasource/d' -e 's#postgres(ql)?://[^ ]+#<adresse masquee>#g'; exit 2
     ;;
   apply)
     status
-    echo "$OUT" | grep -q "have not yet been applied" || { echo "Rien a appliquer."; echo "$OUT" | grep -q "up to date" && exit 0; echo "$OUT" | tail -5 | sed -E 's#postgres(ql)?://[^ ]+#<adresse masquee>#g'; exit 2; }
+    echo "$OUT" | grep -q "have not yet been applied" || { echo "Rien a appliquer."; echo "$OUT" | grep -q "up to date" && exit 0; echo "$OUT" | tail -5 | sed -E -e '/^Datasource/d' -e 's#postgres(ql)?://[^ ]+#<adresse masquee>#g'; exit 2; }
     echo "Migrations qui vont etre appliquees a la base de PRODUCTION :"
     echo "$OUT" | sed -n '/have not yet been applied/,$p' | grep -E '^[0-9]{12}_'
     read -rp "Ecris « oui » pour les appliquer : " A
     [ "$A" = "oui" ] || { echo "Annule."; exit 1; }
-    "$PRISMA" migrate deploy 2>&1 | sed -E 's#postgres(ql)?://[^ ]+#<adresse masquee>#g'; exit "${PIPESTATUS[0]}"
+    "$PRISMA" migrate deploy 2>&1 | sed -E -e '/^Datasource/d' -e 's#postgres(ql)?://[^ ]+#<adresse masquee>#g'; exit "${PIPESTATUS[0]}"
     ;;
   resolve)
     # Pour une migration dont le SQL a ete colle a la main dans la console Neon : l'enregistre comme appliquee (n'execute aucun SQL de migration).
     shift; [ "$#" -ge 1 ] || { echo "Usage : bash scripts/ops/migrations.sh resolve <nom-de-migration> [...]"; exit 1; }
     for M in "$@"; do
       [ -d "prisma/migrations/$M" ] || { echo "Migration inconnue : $M"; exit 1; }
-      "$PRISMA" migrate resolve --applied "$M" 2>&1 | sed -E 's#postgres(ql)?://[^ ]+#<adresse masquee>#g'
+      "$PRISMA" migrate resolve --applied "$M" 2>&1 | sed -E -e '/^Datasource/d' -e 's#postgres(ql)?://[^ ]+#<adresse masquee>#g'
     done
     ;;
   *) echo "Usage : bash scripts/ops/migrations.sh check|apply|resolve"; exit 1 ;;
