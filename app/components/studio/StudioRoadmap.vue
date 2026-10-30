@@ -7,9 +7,9 @@ interface Feature { id: string, slug: string, title: string, description: string
 interface RoadmapData {
   canVote: boolean
   block: { id: string, status: string, endsAt: string, features: Feature[], myVote: string | null, totals: Record<string, number> | null, tied: boolean } | null
-  inProgress: Array<Feature & { status: string }>
+  inProgress: Array<Feature & { status: string, wonWith: number | null }>
   waiting: Feature[]
-  delivered: Feature[]
+  delivered: Array<Feature & { wonWith: number | null }>
   ideasLeft: number
   notice: { blockId: string, won: boolean, winnerTitle: string } | null
 }
@@ -18,13 +18,24 @@ const data = ref<RoadmapData | null>(null)
 const pick = ref('')
 const idea = ref('')
 const sent = ref(false)
+type Tab = 'vote' | 'doing' | 'done'
+const tab = ref<Tab>('vote')
 const asAdmin = computed(() => studio.mode.value === 'admin' ? studio.channelId.value : undefined)
 
 async function load() {
   data.value = await studio.api<RoadmapData>('/api/studio/roadmap', { query: { channel: asAdmin.value } })
   pick.value = data.value.block?.myVote ?? ''
+  if (!first.done) { first.done = true; if (!data.value.block && data.value.inProgress.length) tab.value = 'doing' }
 }
+const first = { done: false }
 onMounted(() => studio.run(load))
+
+const tabs = computed(() => [
+  { id: 'vote' as const, label: 'En vote', count: (data.value?.block ? 1 : 0) + (data.value?.waiting.length ?? 0) },
+  { id: 'doing' as const, label: 'En cours', count: data.value?.inProgress.length ?? 0 },
+  { id: 'done' as const, label: 'Livré', count: data.value?.delivered.length ?? 0 }
+])
+const votesText = (n: number | null) => n === null ? '' : n === 0 ? 'Choisie par l’équipe' : `Choisie avec ${n} vote${n > 1 ? 's' : ''}`
 
 const back = () => { studio.view.value = studio.onboarding.value?.completed || studio.clips.value.length ? 'dashboard' : 'onboarding' }
 
@@ -87,6 +98,18 @@ const statusLabel: Record<string, { text: string, cls: string }> = {
 
     <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(300px,1fr)]">
       <div class="flex min-w-0 flex-col gap-6">
+        <div role="tablist" aria-label="Où en sont les fonctions" class="flex gap-1 self-start rounded-xl border border-st-border bg-st-surface p-1">
+          <button
+            v-for="t in tabs" :id="`tab-${t.id}`" :key="t.id" type="button" role="tab" :aria-selected="tab === t.id" :aria-controls="`panel-${t.id}`"
+            class="inline-flex h-11 items-center gap-2 rounded-[9px] border-0 px-3.5 text-sm font-bold sm:px-4"
+            :class="tab === t.id ? 'bg-st-accentBg text-st-accentText' : 'bg-transparent text-st-muted hover:text-st-text'" @click="tab = t.id"
+          >
+            {{ t.label }}
+            <span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-extrabold" :class="tab === t.id ? 'bg-st-accent text-white' : 'bg-st-raised2 text-st-soft'">{{ t.count }}</span>
+          </button>
+        </div>
+
+        <div v-show="tab === 'vote'" id="panel-vote" role="tabpanel" aria-labelledby="tab-vote" class="flex flex-col gap-6">
         <!-- Vote en cours -->
         <section v-if="data?.block" class="flex flex-col gap-[18px] rounded-2xl border border-st-accentBorder bg-st-surface p-5 sm:p-6" aria-labelledby="vt">
           <div class="flex flex-wrap items-center justify-between gap-3">
@@ -150,25 +173,34 @@ const statusLabel: Record<string, { text: string, cls: string }> = {
             </div>
           </section>
         </template>
+        </div>
 
-        <section v-if="data?.inProgress.length" class="flex flex-col gap-3" aria-labelledby="progress-title">
-          <h2 id="progress-title" class="st-title m-0 text-xl font-bold leading-[26px]">En préparation</h2>
-          <div v-for="f in data.inProgress" :key="f.id" class="flex min-h-[72px] flex-wrap items-center gap-x-3.5 gap-y-2 rounded-xl border border-st-border bg-st-surface px-4 py-3">
+        <div v-show="tab === 'doing'" id="panel-doing" role="tabpanel" aria-labelledby="tab-doing" class="flex flex-col gap-3">
+          <p class="m-0 text-sm leading-[22px] st-muted">Les fonctions que vous avez votées (ou que l’équipe a choisies) et sur lesquelles on travaille maintenant.</p>
+          <div v-for="f in data?.inProgress ?? []" :key="f.id" class="flex min-h-[72px] flex-wrap items-center gap-x-3.5 gap-y-2 rounded-xl border border-st-border bg-st-surface px-4 py-3">
             <span class="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] bg-st-raised2 text-st-soft" aria-hidden="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path :d="icon(f.slug)" /></svg>
             </span>
-            <span class="flex min-w-[200px] flex-1 flex-col gap-0.5"><span class="text-base font-bold">{{ f.title }}</span><span class="text-[13px] leading-5 st-muted">{{ f.description }}</span></span>
+            <span class="flex min-w-[200px] flex-1 flex-col gap-0.5"><span class="text-base font-bold">{{ f.title }}</span><span class="text-[13px] leading-5 st-muted">{{ f.description }}</span><span v-if="votesText(f.wonWith)" class="text-[13px] text-st-accentLight">{{ votesText(f.wonWith) }}</span></span>
             <span class="st-badge" :class="statusLabel[f.status]?.cls ?? 'st-badge-neutral'">{{ statusLabel[f.status]?.text ?? f.status }}</span>
           </div>
-        </section>
+          <div v-if="data && !data.inProgress.length" class="flex flex-col items-center gap-1.5 rounded-2xl border border-dashed border-st-borderStrong px-6 py-10 text-center">
+            <h2 class="st-title m-0 text-lg font-bold">Rien en cours pour l’instant</h2>
+            <p class="m-0 max-w-sm text-sm leading-[22px] st-muted">Dès qu’un vote est terminé, la fonction gagnante apparaît ici pendant qu’on la développe.</p>
+          </div>
+        </div>
 
-        <section v-if="data?.delivered.length" class="flex flex-col gap-3" aria-labelledby="done-title">
-          <h2 id="done-title" class="st-title m-0 text-xl font-bold leading-[26px]">Livré grâce à vos votes</h2>
-          <div v-for="f in data.delivered" :key="f.id" class="flex min-h-[72px] flex-wrap items-center gap-x-3.5 gap-y-2 rounded-xl border border-st-okBorder bg-st-okBg px-4 py-3">
-            <span class="flex min-w-[200px] flex-1 flex-col gap-0.5"><span class="text-base font-bold">{{ f.title }}</span><span class="text-[13px] leading-5 st-muted">{{ f.description }}</span></span>
+        <div v-show="tab === 'done'" id="panel-done" role="tabpanel" aria-labelledby="tab-done" class="flex flex-col gap-3">
+          <p class="m-0 text-sm leading-[22px] st-muted">Ce qui est disponible grâce à vos votes.</p>
+          <div v-for="f in data?.delivered ?? []" :key="f.id" class="flex min-h-[72px] flex-wrap items-center gap-x-3.5 gap-y-2 rounded-xl border border-st-okBorder bg-st-okBg px-4 py-3">
+            <span class="flex min-w-[200px] flex-1 flex-col gap-0.5"><span class="text-base font-bold">{{ f.title }}</span><span class="text-[13px] leading-5 st-muted">{{ f.description }}</span><span v-if="votesText(f.wonWith)" class="text-[13px] text-st-ok">{{ votesText(f.wonWith) }}</span></span>
             <span class="st-badge st-badge-ok">Livré</span>
           </div>
-        </section>
+          <div v-if="data && !data.delivered.length" class="flex flex-col items-center gap-1.5 rounded-2xl border border-dashed border-st-borderStrong px-6 py-10 text-center">
+            <h2 class="st-title m-0 text-lg font-bold">Rien de livré pour l’instant</h2>
+            <p class="m-0 max-w-sm text-sm leading-[22px] st-muted">Les fonctions votées apparaissent ici une fois disponibles.</p>
+          </div>
+        </div>
       </div>
 
       <!-- Propose une idee -->

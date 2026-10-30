@@ -162,3 +162,15 @@
 **Cause racine** : `studio.css` (charge apres Tailwind) donne `display:inline-flex` aux boutons, ce qui bat `hidden`/`lg:hidden` a specificite egale.
 **Solution** : regles de rattrapage `.st-btn.lg\:hidden` etc. en fin de `studio.css`.
 **Regle** : pour tout element cense etre cache selon la largeur, lire son `display` calcule a 1440 et 390 px, ne pas se fier a la classe.
+
+### [2026-10-30] Une section cachee quand elle est vide est invisible pour celui qui teste
+**Probleme** : La page « Prochainement » n'affichait « En preparation » et « Livre » que si elles contenaient quelque chose. Le porteur, sans donnees, ne voyait rien et a cru la fonction absente.
+**Cause racine** : j'avais ecrit la page pour le cas rempli et je ne l'avais regardee qu'avec des donnees partielles ; aucun etat vide explicite.
+**Solution** : onglets En vote / En cours / Livre toujours visibles, avec un message dans chaque etat vide.
+**Regle** : une zone d'ecran qu'on a promise doit toujours exister, meme vide, avec un message qui dit quand elle se remplira. Verifier chaque etat : vide, partiel, plein.
+
+### [2026-10-30] Deux fusions rapprochees = deux deploiements qui se marchent dessus
+**Probleme** : fusion de 2 PR a quelques secondes d'ecart ; le 2e deploiement a echoue (`manifest.json` introuvable dans le cache du build sur le VPS).
+**Cause racine** : les deux workflows construisent dans le meme dossier en meme temps.
+**Solution** : `gh run rerun <id>` du deploiement echoue, une fois l'autre termine.
+**Regle** : fusionner une PR, attendre la fin de son deploiement, puis la suivante ; verifier le resultat de CHAQUE deploiement.

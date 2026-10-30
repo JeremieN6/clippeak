@@ -26,6 +26,12 @@ export default defineEventHandler(async (event) => {
     channelId ? prisma.roadmapIdea.count({ where: { channelId, createdAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) } } }) : Promise.resolve(0)
   ])
 
+  // « Choisie avec N votes » : voix obtenues par chaque fonction gagnante dans son dernier bloc clos.
+  const closed = await prisma.roadmapBlock.findMany({ where: { status: 'closed', winnerId: { not: null } }, orderBy: { closedAt: 'asc' }, select: { id: true, winnerId: true } })
+  const counts = closed.length ? await prisma.roadmapVote.groupBy({ by: ['blockId', 'featureId'], where: { blockId: { in: closed.map(b => b.id) } }, _count: { _all: true } }) : []
+  const wonWith = new Map<string, number>()
+  for (const b of closed) wonWith.set(b.winnerId as string, counts.find(c => c.blockId === b.id && c.featureId === b.winnerId)?._count._all ?? 0)
+
   // Resultat a annoncer : dernier bloc clos auquel ce streamer a vote et dont il n'a pas encore vu le resultat.
   const unseen = channelId
     ? await prisma.roadmapVote.findFirst({ where: { channelId, resultSeen: false, block: { status: 'closed' } }, orderBy: { updatedAt: 'desc' }, include: { block: { include: { featureA: true, featureB: true } } } })
@@ -45,9 +51,9 @@ export default defineEventHandler(async (event) => {
           tied: block.status === 'needs_admin' && t ? outcome(t) === 'tie' : false
         }
       : null,
-    inProgress: others.filter(f => f.status !== 'backlog'),
+    inProgress: others.filter(f => f.status !== 'backlog').map(f => ({ ...f, wonWith: wonWith.get(f.id) ?? null })),
     waiting: others.filter(f => f.status === 'backlog'),
-    delivered,
+    delivered: delivered.map(f => ({ ...f, wonWith: wonWith.get(f.id) ?? null })),
     ideasLeft: Math.max(0, IDEAS_PER_DAY - ideasToday),
     notice
   }
