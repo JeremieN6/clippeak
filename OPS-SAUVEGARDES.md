@@ -24,7 +24,9 @@ Sans copie hors serveur, les archives protègent d'une erreur de suppression ou 
 - **Fichiers** (96 Mo chiffrés) **et base** (pg_dump 18.6 chiffré, 56 Ko ; contrôle du contenu : 29 tables, 4 chaînes, 24 clips, 6 VODs, 3 feedbacks, dump complet) sauvegardés, puis copiés **chiffrés sur Mega** (`mega:clippeak-backups`, compte dédié `contact.clippeak@sassify.fr`). Rotation : 7 jours en local et sur Mega.
 - Essai en environnement minimal **comme cron** (PATH réduit) : réussi (un défaut y a été trouvé et corrigé : `rclone` n'était pas dans le PATH de cron).
 - Installé aussi sur le serveur : `postgresql-client-18` (dépôt officiel PGDG) et `rclone` v1.75.2 (somme de contrôle vérifiée). `libpq5` est passé de 16.15 à 18.6 (rétrocompatible).
-- **Reste à faire** : (1) un **essai de restauration** de la base dans une branche Neon vide (voir « Restaurer ») ; (2) copier la phrase secrète (`secrets-local/clippeak-backup-phrase.txt`) dans un gestionnaire de mots de passe puis supprimer le fichier du PC ; (3) surveiller `/var/log/clippeak-backup.log` les premiers jours ; Mega limite la bande passante des comptes gratuits.
+- **Essai de restauration RÉUSSI le 2026-10-30** : dump chiffré de la nuit décrypté sur le VPS et restauré dans une branche Neon jetable ; 20 tables publiques, 4 chaînes, 24 clips, 6 VODs, 3 feedbacks, 8 migrations : identique à la production. Branche supprimée. Points d'attention pour une vraie restauration : vider/recréer le schéma `public` de la branche avant (le dump ne le fait pas) ; les erreurs « already exists » sur le schéma `neon_auth` sont normales (Neon le crée lui-même).
+- Phrase secrète copiée dans le gestionnaire de mots de passe, fichier du PC supprimé.
+- Décision du porteur : pas de surveillance du journal `/var/log/clippeak-backup.log` tant que l'outil n'est pas public (Mega limite la bande passante des comptes gratuits : à surveiller ensuite).
 
 ## Marche à suivre depuis le PC (sans jamais voir l'adresse du serveur)
 Dans un terminal ouvert **dans le dossier du projet** :
