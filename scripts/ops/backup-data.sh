@@ -80,6 +80,7 @@ if [ -n "${RCLONE_REMOTE:-}" ]; then
   elif ! command -v rclone >/dev/null 2>&1; then
     log "ERREUR : RCLONE_REMOTE est defini mais rclone n'est pas installe"; FAIL=1
   elif rclone copy "$DEST" "$RCLONE_REMOTE" --include '*.enc' --max-age "${KEEP_DAYS}d" --quiet; then
+    rclone delete "$RCLONE_REMOTE" --include '*.enc' --min-age "${KEEP_DAYS}d" --quiet || log "AVERTISSEMENT : rotation distante impossible"
     log "copie hors serveur : $RCLONE_REMOTE"
   else
     log "ERREUR : copie hors serveur"; FAIL=1

@@ -33,6 +33,13 @@ Sans copie hors serveur, les archives protègent d'une erreur de suppression ou 
 - **Pas encore de copie hors serveur** (choix de la destination en cours).
 - La phrase secrète est dans `secrets-local/clippeak-backup-phrase.txt` sur le PC du porteur (hors git) : à copier dans un gestionnaire de mots de passe puis à supprimer du PC.
 
+## Marche à suivre depuis le PC (sans jamais voir l'adresse du serveur)
+Dans un terminal ouvert **dans le dossier du projet** :
+1. `bash scripts/ops/run-on-vps.sh prerequisites` : installe `pg_dump` 18 et `rclone` sur le serveur (une fois).
+2. `bash scripts/ops/run-on-vps.sh mega` : demande le mot de passe du compte Mega (masqué : rien ne s'affiche en tapant), branche la copie hors serveur, teste la connexion et lance une sauvegarde complète. Le mot de passe ne passe ni par la conversation, ni par l'historique du terminal, ni par les arguments d'une commande ; rclone ne le garde que masqué dans `/root/.config/rclone/rclone.conf` (droits 600).
+- Compte Mega **dédié aux sauvegardes**, sans double authentification, mot de passe unique.
+- La rotation distante supprime sur Mega les archives de plus de 7 jours (`BACKUP_KEEP_DAYS`), pour ne pas remplir le compte.
+
 ## Installation sur le VPS (à faire une fois, en root)
 ```bash
 # 1. dossier de réglages DEDIE, lisible par root seulement (ne pas utiliser /etc/clippeak : le worker y lit worker.env)
