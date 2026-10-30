@@ -58,7 +58,7 @@ async function logout() {
 <template>
   <div class="st-root min-h-screen bg-st-bg">
     <!-- Une seule barre : logo a gauche ; en admin, le compte affiche (pastille + choix de chaine) puis les actions. -->
-    <header class="sticky top-0 z-30 flex min-h-16 flex-wrap items-center gap-x-4 gap-y-2 border-b border-st-border bg-st-bg px-5 py-2 sm:px-8">
+    <header class="z-30 sm:sticky sm:top-0 flex min-h-16 flex-wrap items-center gap-x-4 gap-y-2 border-b border-st-border bg-st-bg px-5 py-2 sm:px-8">
       <NuxtLink to="/" class="flex min-h-11 items-center gap-2.5 text-st-text no-underline" aria-label="Clippeak, accueil">
         <span class="flex h-8 w-8 items-center justify-center rounded-full bg-st-accent text-xs font-extrabold text-white" aria-hidden="true">CP</span>
         <span class="st-title text-lg font-bold">Clippeak</span>

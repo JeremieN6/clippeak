@@ -156,3 +156,9 @@
 **Cause racine** : Tailwind ne peut pas appliquer `/40` a une couleur dont la valeur est une variable CSS opaque ; la classe n'est simplement pas generee, sans erreur.
 **Solution** : jetons dedies `--st-*-border` (color-mix) et classes `border-st-okBorder`, etc.
 **Regle** : apres avoir ajoute une classe Tailwind inedite, verifier qu'elle existe dans le CSS construit (ou mesurer le style calcule) ; ne pas supposer qu'une classe sans erreur de build fonctionne.
+
+### [2026-10-29] Une classe utilitaire de visibilite est ecrasee par une classe de composant
+**Probleme** : `lg:hidden` sur un bouton `st-btn-ghost` ne le cachait pas : doublon visible sur grand ecran (bouton « Etapes » + liste, « Mes reglages » + titre), signale par le porteur.
+**Cause racine** : `studio.css` (charge apres Tailwind) donne `display:inline-flex` aux boutons, ce qui bat `hidden`/`lg:hidden` a specificite egale.
+**Solution** : regles de rattrapage `.st-btn.lg\:hidden` etc. en fin de `studio.css`.
+**Regle** : pour tout element cense etre cache selon la largeur, lire son `display` calcule a 1440 et 390 px, ne pas se fier a la classe.

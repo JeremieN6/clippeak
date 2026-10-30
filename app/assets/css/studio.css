@@ -140,3 +140,8 @@ select.st-field { min-height: 44px; font-weight: 600; background: var(--st-raise
   .st-rise, .st-pop, .st-pulse, .st-dz-icon, .st-bar-live, .st-skel { animation: none; }
   .st-step-enter-active, .st-step-leave-active, .st-list-enter-active, .st-list-leave-active, .st-bar, .st-btn, .st-btn-ghost, .st-dropzone, .st-dot { transition: none; }
 }
+
+/* Les boutons posent leur propre `display` : sans ceci, `lg:hidden` / `sm:hidden` ne les cachait pas (bouton « Etapes » et « Mes reglages » visibles en doublon sur grand ecran). */
+.st-btn.hidden, .st-btn-ghost.hidden, .st-btn-quiet.hidden { display: none; }
+@media (min-width: 640px) { .st-btn.sm\:hidden, .st-btn-ghost.sm\:hidden, .st-btn-quiet.sm\:hidden { display: none; } }
+@media (min-width: 1024px) { .st-btn.lg\:hidden, .st-btn-ghost.lg\:hidden, .st-btn-quiet.lg\:hidden { display: none; } }
