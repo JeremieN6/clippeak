@@ -144,3 +144,9 @@ Constat du porteur : tout n'est pas propre ni a 100 % conforme au kit (maquettes
 2. **Court terme** : audit UI (1.4 etape 0), page « Prochainement » en version fichier (1.1), notifications par streamer (2.2), parcours Twitch reel (5).
 3. **Avant l'ouverture** : recadrage UI, sauvegardes, suppression de compte, revue de securite, mesure de charge (2.6).
 4. **Ensuite** : statistiques par plateforme (1.2), TikTok (1.3), liste d'attente, offres et quotas.
+
+
+## Decisions du 2026-10-30
+- **Onboarding conversationnel (1.5)** : conversation ECRITE A L'AVANCE, sans IA (le streamer repond avec des elements places dans le fil : depot, boutons, curseurs). Pas d'exemple externe (rustine.io abandonne). Le porteur veut une MAQUETTE Claude Design avant de coder : brief dans `BRIEF-UI-ONBOARDING-CONVERSATION.md` (4 ecrans). Ensuite : prototype des etapes 1 et 2, puis les 8.
+- **Notifications Telegram / e-mail par streamer (2.2)** : la question « comment veux-tu etre prevenu » existe deja dans le formulaire de la landing (`plateformeReception` : Discord / Telegram / Mail / Autre). On ne construit aucun envoi par streamer avant d'avoir lu les reponses ; la preference sera aussi demandee a l'etape 7 du nouvel onboarding.
+- **Feedback dans le studio** : garder le formulaire de la landing (visiteurs, liste d'attente) ET ajouter une carte de feedback DANS le studio apres le PREMIER CLIP APPROUVE (moment de satisfaction), jamais obligatoire pour recuperer ses clips, 3-4 questions (ce qui manque, satisfaction, canal de notification), stockees avec la chaine (migration a prevoir).
