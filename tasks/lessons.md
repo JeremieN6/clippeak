@@ -186,3 +186,8 @@
 **Cause racine** : checklist generique recopiee sans la confronter aux notes du projet ; libelles de console donnes de memoire.
 **Solution** : guide reecrit avec « ce qui est fait » et « ou trouver chaque ecran » ; une etape a la fois, sur captures du porteur ; texte pret a coller pour chaque champ.
 **Regle** : avant de donner une marche a suivre au porteur, relire CLAUDE.md pour retirer ce qui est deja fait, dire a quoi sert chaque action, et ne decrire une interface externe que sur capture ou source verifiee.
+
+## 2026-10-30 : migration collee a la main = migration a enregistrer
+- **Erreur** : deux migrations (`roadmap_votes`, `notifications`) ont ete appliquees en collant le SQL dans la console Neon, sans `prisma migrate resolve --applied` ; l'historique Prisma a derive sans que rien ne le signale.
+- **Regle** : apres tout SQL colle a la main, lancer `bash scripts/ops/migrations.sh resolve <nom>` ; `check` (et le deploiement) detecte maintenant l'ecart. Ne pas supposer qu'un controle manuel a ete fait : le mesurer.
+
