@@ -195,3 +195,7 @@
 - **Erreur** : `plugins/` a la racine n'est pas lu par Nuxt 4 (srcDir = `app/`) : le plugin PostHog ecrit en juillet n'a jamais fonctionne, sans erreur ni avertissement. Et PostHog (autocapture + pages vues) tournait dans le studio et sur `/attente?login=<pseudo>`.
 - **Regle** : apres avoir ajoute un plugin, verifier dans le navigateur qu'il a un effet (ici : `app_name`, config). Tout outil de mesure ajoute au site public doit etre explicitement coupe ou nettoye sur les espaces connectes.
 
+## 2026-10-31 : une variable lue au build doit etre dans le fichier que le build lit
+- **Erreur** : `NUXT_PUBLIC_POSTHOG_KEY` etait dans `.env.local` du VPS, mais le build Nuxt n'y lit rien : la prod embarquait `publicKey:""` et PostHog n'a jamais recu un seul evenement, sans erreur visible.
+- **Regle** : apres avoir pose une cle, verifier l'EFFET en production (config de la page, premier evenement recu cote outil), pas seulement la presence de la ligne dans un fichier. Les variables de BUILD vont dans `.env` du VPS ; celles lues par le serveur au demarrage passent par `readEnv` (`.env.local`).
+
