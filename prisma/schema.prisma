@@ -74,6 +74,8 @@ model Channel {
   assets         StreamerAsset[]
   sessions       StudioSession[]
   connections    PlatformConnection[]
+  roadmapVotes   RoadmapVote[]
+  roadmapIdeas   RoadmapIdea[]
 
   @@map("channels")
 }
@@ -325,4 +327,75 @@ model Publication {
   @@unique([clipJobId, platform])
   @@index([status, scheduledAt])
   @@map("publications")
+}
+
+// Page « Prochainement » : les streamers votent, par blocs de 2 fonctions, celle qui sera developpee en priorite.
+// status : backlog (en attente d'un bloc) | voting | building | waiting_access (acces API pas encore accorde) | delivered.
+model RoadmapFeature {
+  id           String   @id @default(uuid()) @db.Uuid
+  slug         String   @unique @db.VarChar(40)
+  title        String   @db.VarChar(80)
+  description  String   @db.VarChar(400)
+  status       String   @default("backlog") @db.VarChar(16)
+  carriedVotes Int      @default(0) @map("carried_votes")
+  deliveredAt  DateTime? @map("delivered_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  blocksA RoadmapBlock[] @relation("BlockA")
+  blocksB RoadmapBlock[] @relation("BlockB")
+  votes   RoadmapVote[]
+
+  @@map("roadmap_features")
+}
+
+// status : open | needs_admin (echeance passee, egalite ou zero vote : l'admin tranche) | closed. decidedBy : votes | admin.
+model RoadmapBlock {
+  id         String    @id @default(uuid()) @db.Uuid
+  featureAId String    @map("feature_a_id") @db.Uuid
+  featureBId String    @map("feature_b_id") @db.Uuid
+  status     String    @default("open") @db.VarChar(12)
+  endsAt     DateTime  @map("ends_at")
+  winnerId   String?   @map("winner_id") @db.Uuid
+  decidedBy  String?   @map("decided_by") @db.VarChar(8)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  closedAt   DateTime? @map("closed_at")
+
+  featureA RoadmapFeature @relation("BlockA", fields: [featureAId], references: [id])
+  featureB RoadmapFeature @relation("BlockB", fields: [featureBId], references: [id])
+  votes    RoadmapVote[]
+
+  @@index([status, endsAt])
+  @@map("roadmap_blocks")
+}
+
+// Un vote par streamer et par bloc (modifiable jusqu'a l'echeance). resultSeen : le streamer a vu le resultat du bloc.
+model RoadmapVote {
+  id         String   @id @default(uuid()) @db.Uuid
+  blockId    String   @map("block_id") @db.Uuid
+  channelId  String   @map("channel_id") @db.Uuid
+  featureId  String   @map("feature_id") @db.Uuid
+  resultSeen Boolean  @default(false) @map("result_seen")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  block   RoadmapBlock   @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  channel Channel        @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  feature RoadmapFeature @relation(fields: [featureId], references: [id])
+
+  @@unique([blockId, channelId])
+  @@map("roadmap_votes")
+}
+
+// Idees proposees par les streamers (lues dans /admin). status : new | archived.
+model RoadmapIdea {
+  id        String   @id @default(uuid()) @db.Uuid
+  channelId String   @map("channel_id") @db.Uuid
+  text      String   @db.VarChar(500)
+  status    String   @default("new") @db.VarChar(10)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("roadmap_ideas")
 }
