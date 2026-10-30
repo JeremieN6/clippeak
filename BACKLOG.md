@@ -93,8 +93,10 @@ Constat du porteur : tout n'est pas propre ni a 100 % conforme au kit (maquettes
 - Relire les routes ajoutees depuis la derniere revue (connexion Twitch, sessions, YouTube, deplacement de VOD, chaines de test, ajout manuel de VOD).
 - Points deja notes : limite d'essais basee sur `x-forwarded-for` (a proteger cote nginx), deux cles SSH de deploiement a surveiller (`github-deploy-tifo` distincte, conservee), sauvegardes de `.env.local` sur le VPS a supprimer.
 
-### 3.5 Migrations Neon manuelles — P2, S
-- Chaque migration est appliquee a la main par le porteur (le classifieur refuse `migrate deploy`). Pratique tant qu'on est seul, risquee des qu'on deploie vite : documenter une procedure en 3 commandes, ou un pas de deploiement explicite avec verification avant le redemarrage.
+### 3.5 Migrations Neon manuelles — P2, S — FAIT (2026-10-30, branche `ops/migrations-guard`)
+- `bash scripts/ops/migrations.sh check|apply|resolve` (adresse jamais affichee, base DIRECTE de Neon) : `check` = lecture seule, code 3 s'il reste une migration ; `apply` = liste, demande « oui », applique ; `resolve <nom>` = enregistre une migration dont le SQL a ete colle a la main dans la console Neon.
+- Garde-fou dans `deploy.yml` : apres le build et AVANT `pm2 reload`, `check` ; une migration manquante fait echouer le deploiement (le site reste sur l'ancienne version) avec le message qui dit quoi faire ; etat illisible = simple avertissement.
+- Premier resultat reel : `roadmap_votes` et `notifications` etaient appliquees (tables presentes) mais jamais ENREGISTREES dans `_prisma_migrations` (le `migrate resolve --applied` avait ete oublie) : a regler avec `resolve` avant de fusionner la branche, sinon le deploiement s'arrete.
 
 ---
 
