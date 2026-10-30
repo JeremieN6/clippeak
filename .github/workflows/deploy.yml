@@ -40,6 +40,14 @@ jobs:
           npm run build
           # Le build supprime .output : le bundle du worker doit etre reconstruit.
           npm run build:worker
+          # Garde-fou : si une migration n'est pas appliquee a la base, on s'arrete AVANT de redemarrer (le site reste sur l'ancienne version).
+          # Code 3 = migration en attente (bloque) ; 2 = etat impossible a lire (on previent mais on ne bloque pas).
+          set +e
+          bash scripts/ops/migrations.sh check
+          MIG=$?
+          set -e
+          if [ "$MIG" = "3" ]; then echo "::error::Migration(s) non appliquee(s) : applique-les (bash scripts/ops/migrations.sh apply) puis relance le deploiement."; exit 1; fi
+          if [ "$MIG" = "2" ]; then echo "::warning::Etat des migrations non verifie."; fi
           if pm2 describe clippeak > /dev/null 2>&1; then
             pm2 reload clippeak --update-env
           else

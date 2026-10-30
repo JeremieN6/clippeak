@@ -177,6 +177,8 @@ Direction : passer de la simulation a un pipeline reel, inspire d'un workflow de
 
 - **2026-10-30 (menage du backlog)** : PR #51, #23, #45 (docs) fusionnees. Decisions du porteur : outil pas encore public, donc (1) notifications Telegram/e-mail par streamer RETIREES du backlog (a rouvrir avec de vrais streamers), (2) pas de surveillance des sauvegardes pour le moment. Fait ensuite le meme jour : parcours Twitch reel VERIFIE par le porteur (navigation privee, ca fonctionne) et ESSAI DE RESTAURATION DE LA BASE REUSSI (dump chiffre -> branche Neon jetable, comptes identiques a la prod, branche supprimee ; voir `OPS-SAUVEGARDES.md`). Reste avant ouverture : telephone, chaines de test a supprimer.
 
+- **2026-10-30 (garde-fou des migrations)** : `scripts/ops/migrations.sh check|apply|resolve` + etape de `deploy.yml` qui bloque le redemarrage si une migration n'est pas appliquee (code 3). Le premier `check` reel a montre que `202610301000_roadmap_votes` et `202610301500_notifications` etaient appliquees (tables presentes) mais jamais enregistrees (`migrate resolve --applied` oublie) : le porteur doit lancer `resolve` pour ces deux noms AVANT de fusionner la branche `ops/migrations-guard`, sinon le deploiement s'arrete.
+
 - **2026-10-27 (connexion Twitch)** : decision du porteur : les streamers se connectent avec Twitch, sur invitation de l'ADMIN (liste de pseudos geree par le porteur, pas de parrainage entre streamers) pour maitriser la charge CPU du VPS ; la page a mot de passe reste reservee a l'admin. Remplace la decision du 2026-10-23 « pas d'OAuth streamer en V2 ».
 
 ---
