@@ -19,19 +19,12 @@ Dernière mise à jour : 2026-10-30. Script : `scripts/ops/backup-data.sh` (test
 
 Sans copie hors serveur, les archives protègent d'une erreur de suppression ou d'un bug, **pas de la perte du serveur**.
 
-## État au 2026-10-30
-- **Installé sur le VPS** : script `/usr/local/sbin/clippeak-backup-data.sh`, réglages root-only dans `/etc/clippeak-backup/`, tâche cron à 3 h 30, premier essai réussi (archive chiffrée des fichiers, 96 Mo, relecture vérifiée).
-- **Pas encore sauvegardée : la base.** Neon tourne en **PostgreSQL 18.6** et le serveur n'a que `pg_dump` 16 : `pg_dump` refuse ("server version mismatch"). Il faut installer `postgresql-client-18` depuis le dépôt officiel PostgreSQL (PGDG), ce qui ajoute une source de paquets au serveur partagé : l'assistant a été **bloqué** par le contrôle de sécurité quand il a voulu le faire. Commandes à lancer soi-même en root :
-  ```bash
-  install -d /usr/share/postgresql-common/pgdg
-  curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
-  echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" > /etc/apt/sources.list.d/pgdg.list
-  apt-get update && apt-get install -y postgresql-client-18
-  /usr/local/sbin/clippeak-backup-data.sh   # doit maintenant afficher « base : … »
-  ```
-  (Le script choisit tout seul le `pg_dump` le plus récent installé. Le client n'installe aucun serveur et ne touche pas au `pg_dump` 16 existant.)
-- **Pas encore de copie hors serveur** (choix de la destination en cours).
-- La phrase secrète est dans `secrets-local/clippeak-backup-phrase.txt` sur le PC du porteur (hors git) : à copier dans un gestionnaire de mots de passe puis à supprimer du PC.
+## État au 2026-10-30 (soir) : TOUT EST EN PLACE
+- **Sur le serveur de production** (le PC n'a fait que lancer les commandes par SSH) : script `/usr/local/sbin/clippeak-backup-data.sh`, réglages root-only dans `/etc/clippeak-backup/`, tâche cron chaque nuit à 3 h 30.
+- **Fichiers** (96 Mo chiffrés) **et base** (pg_dump 18.6 chiffré, 56 Ko ; contrôle du contenu : 29 tables, 4 chaînes, 24 clips, 6 VODs, 3 feedbacks, dump complet) sauvegardés, puis copiés **chiffrés sur Mega** (`mega:clippeak-backups`, compte dédié `contact.clippeak@sassify.fr`). Rotation : 7 jours en local et sur Mega.
+- Essai en environnement minimal **comme cron** (PATH réduit) : réussi (un défaut y a été trouvé et corrigé : `rclone` n'était pas dans le PATH de cron).
+- Installé aussi sur le serveur : `postgresql-client-18` (dépôt officiel PGDG) et `rclone` v1.75.2 (somme de contrôle vérifiée). `libpq5` est passé de 16.15 à 18.6 (rétrocompatible).
+- **Reste à faire** : (1) un **essai de restauration** de la base dans une branche Neon vide (voir « Restaurer ») ; (2) copier la phrase secrète (`secrets-local/clippeak-backup-phrase.txt`) dans un gestionnaire de mots de passe puis supprimer le fichier du PC ; (3) surveiller `/var/log/clippeak-backup.log` les premiers jours ; Mega limite la bande passante des comptes gratuits.
 
 ## Marche à suivre depuis le PC (sans jamais voir l'adresse du serveur)
 Dans un terminal ouvert **dans le dossier du projet** :

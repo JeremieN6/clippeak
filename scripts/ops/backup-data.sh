@@ -13,6 +13,9 @@
 # Cron :  30 3 * * * /usr/local/sbin/clippeak-backup-data.sh >> /var/log/clippeak-backup.log 2>&1
 set -uo pipefail
 
+# cron ne fournit que /usr/bin:/bin : rclone vit dans /usr/local/bin.
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
 [ -f /etc/clippeak-backup/backup.env ] && set -a && . /etc/clippeak-backup/backup.env && set +a
 
 DATA_DIR="${CLIPPEAK_DATA_DIR:-/srv/saas/clippeak-data}"
