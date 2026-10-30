@@ -18,11 +18,11 @@ export default defineEventHandler(async (event) => {
   })
   const mine = block && channelId ? await prisma.roadmapVote.findUnique({ where: { blockId_channelId: { blockId: block.id, channelId } }, select: { featureId: true } }) : null
   const t = block && (mine || block.status === 'needs_admin') ? await blockTally(block) : null
-  const pick = (f: { id: string, title: string, description: string, carriedVotes: number }) => ({ id: f.id, title: f.title, description: f.description, carried: f.carriedVotes > 0 })
+  const pick = (f: { id: string, slug: string, title: string, description: string, carriedVotes: number }) => ({ id: f.id, slug: f.slug, title: f.title, description: f.description, carried: f.carriedVotes > 0 })
 
   const [others, delivered, ideasToday] = await Promise.all([
-    prisma.roadmapFeature.findMany({ where: { status: { in: ['building', 'waiting_access', 'backlog'] } }, orderBy: { createdAt: 'asc' }, select: { id: true, title: true, description: true, status: true } }),
-    prisma.roadmapFeature.findMany({ where: { status: 'delivered' }, orderBy: { deliveredAt: 'desc' }, take: 10, select: { id: true, title: true, description: true, deliveredAt: true } }),
+    prisma.roadmapFeature.findMany({ where: { status: { in: ['building', 'waiting_access', 'backlog'] } }, orderBy: { createdAt: 'asc' }, select: { id: true, slug: true, title: true, description: true, status: true } }),
+    prisma.roadmapFeature.findMany({ where: { status: 'delivered' }, orderBy: { deliveredAt: 'desc' }, take: 10, select: { id: true, slug: true, title: true, description: true, deliveredAt: true } }),
     channelId ? prisma.roadmapIdea.count({ where: { channelId, createdAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) } } }) : Promise.resolve(0)
   ])
 
