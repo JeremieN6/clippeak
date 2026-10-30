@@ -3,6 +3,13 @@
 defineProps<{ admin: Admin }>()
 const testName = ref('')
 const confirming = ref('')
+// Saisie du plafond par chaine (vide = illimite) : on garde ce que l'admin tape, pas la valeur enregistree.
+const quotaInput = reactive<Record<string, string>>({})
+async function saveQuota(admin: Admin, id: string) {
+  const raw = (quotaInput[id] ?? '').trim()
+  await admin.setQuota(id, raw === '' ? null : Number(raw))
+  delete quotaInput[id]
+}
 
 async function addTest(admin: Admin) {
   const name = testName.value.trim()
@@ -65,6 +72,13 @@ async function removeTest(admin: Admin, id: string) {
       <div v-for="c in admin.channels.value.filter(x => !x.demo && !x.test)" :key="c.id" class="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-st-border py-3.5">
         <div class="min-w-0 flex-1 basis-44 break-words text-[15px] font-bold">{{ c.displayName }}</div>
         <NuxtLink :to="`/studio?channel=${c.id}`" class="st-btn-ghost no-underline">Ouvrir son studio</NuxtLink>
+        <div v-if="admin.quotas.value[c.id]" class="flex basis-full flex-wrap items-center gap-2 text-[13px] st-muted">
+          <span :class="admin.quotas.value[c.id]!.reached ? 'font-bold text-st-warn' : ''">Ce mois-ci : {{ admin.quotas.value[c.id]!.used }} / {{ admin.quotas.value[c.id]!.limit ?? 'illimité' }} clips</span>
+          <label class="flex items-center gap-1.5"><span class="sr-only">Plafond mensuel de {{ c.displayName }}</span>
+            <input v-model="quotaInput[c.id]" class="st-field !min-h-11 !w-28" inputmode="numeric" placeholder="illimité" :aria-label="`Plafond mensuel de ${c.displayName} (vide = illimité)`">
+          </label>
+          <button type="button" class="st-btn-ghost text-sm" :disabled="admin.busy.value || quotaInput[c.id] === undefined" @click="saveQuota(admin, c.id)">Régler le plafond</button>
+        </div>
       </div>
     </section>
   </div>

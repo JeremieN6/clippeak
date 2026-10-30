@@ -81,6 +81,11 @@ const disconnected = computed(() => {
   }).map(pl => ({ id: pl, name: platformNames[pl] ?? pl }))
 })
 
+const resetDate = computed(() => {
+  if (!studio.quota.value) return ''
+  const d = new Date(studio.quota.value.resetsAt)
+  return `${d.getUTCDate() === 1 ? '1er' : d.getUTCDate()} ${d.toLocaleDateString('fr-FR', { month: 'long', timeZone: 'UTC' })}`
+})
 const reviewCount = computed(() => count('review'))
 const approvedCount = computed(() => count('approved'))
 const next = computed(() => reviewCount.value > 0
@@ -138,6 +143,14 @@ const selectClass = 'st-field !min-h-11 !w-full'
       <StudioVodAlerts />
 
       <p v-if="pubSummary" class="st-pop m-0 -mt-4 text-sm font-semibold text-st-ok">{{ pubSummary }}</p>
+
+      <div v-if="studio.quota.value?.reached" class="st-alert st-alert-warn st-rise flex-wrap items-center" role="alert">
+        <div class="min-w-[220px] flex-1">
+          <div class="font-bold">Plafond du mois atteint ({{ studio.quota.value.used }} / {{ studio.quota.value.limit }} clips)</div>
+          <div class="text-[13px] opacity-90">Les nouveaux clips reprennent le {{ resetDate }} : tes prochains lives attendent, rien n’est perdu. Tes clips actuels restent disponibles. Besoin de plus de place ? Écris à contact.clippeak@sassify.fr.</div>
+        </div>
+      </div>
+      <p v-else-if="studio.quota.value && studio.quota.value.limit !== null" class="m-0 -mt-4 text-[13px] st-muted">Clips ce mois-ci : {{ studio.quota.value.used }} / {{ studio.quota.value.limit }}</p>
 
       <div v-if="progress" class="st-alert st-alert-info st-rise flex-col !gap-2.5" role="status">
         <div class="flex items-center gap-2 font-bold">

@@ -82,15 +82,17 @@ model Channel {
 }
 
 model StreamerSettings {
-  id             String   @id @default(uuid()) @db.Uuid
-  channelId      String   @unique @map("channel_id") @db.Uuid
-  keywords       String[] @default(["mdr", "ptdr", "lol", "omg", "xd", "kekw"])
-  clipMinSec     Int      @default(30) @map("clip_min_sec")
-  clipMaxSec     Int      @default(60) @map("clip_max_sec")
-  subtitles      Boolean  @default(true)
-  accentColor    String   @default("#FFFFFF") @map("accent_color") @db.VarChar(9)
-  highlightColor String   @default("#FFD400") @map("highlight_color") @db.VarChar(9)
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(uuid()) @db.Uuid
+  channelId        String   @unique @map("channel_id") @db.Uuid
+  keywords         String[] @default(["mdr", "ptdr", "lol", "omg", "xd", "kekw"])
+  clipMinSec       Int      @default(30) @map("clip_min_sec")
+  clipMaxSec       Int      @default(60) @map("clip_max_sec")
+  subtitles        Boolean  @default(true)
+  accentColor      String   @default("#FFFFFF") @map("accent_color") @db.VarChar(9)
+  highlightColor   String   @default("#FFD400") @map("highlight_color") @db.VarChar(9)
+  // Plafond de clips produits par mois (defaut 40, null = illimite, reglable par l'admin). Chaines de demo et de test : jamais plafonnees.
+  monthlyClipQuota Int?     @default(40) @map("monthly_clip_quota")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 

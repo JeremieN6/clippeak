@@ -738,6 +738,43 @@ try {
   assert.equal((await call('/api/auth/me', me2)).status, 401, 'la session disparait avec le compte')
   ok('mes donnees : export sans jeton, suppression refusee a l admin et sans confirmation, puis chaine, connexions, invitation et session effacees')
 
+  // --- plafond mensuel de clips : lecture streamer (sa chaine seulement), liste et reglage admin (jamais par un streamer), chaines de test exemptees
+  const cid = created.id
+  const qUrl = `/api/studio/channels/${cid}/quota`
+  const q0 = (await call(qUrl, as(sessionCookie.split('=')[1]))).json
+  assert.deepEqual([q0.limit, q0.used, q0.remaining, q0.reached], [40, 0, 40, false])
+  assert.ok(new Date(q0.resetsAt).getUTCDate() === 1)
+  assert.equal((await call(`/api/studio/channels/${crypto.randomUUID()}/quota`, as(sessionCookie.split('=')[1]))).status, 404)
+  assert.equal((await call(qUrl, { auth: false })).status, 401)
+  const [{ id: qvod }] = await q(`INSERT INTO vods (id, channel_id, twitch_vod_id, url, status) VALUES (gen_random_uuid(), $1, 'q-vod', 'u', 'done') RETURNING id`, [cid])
+  for (const status of ['review', 'failed']) {
+    const [{ id: qm }] = await q(`INSERT INTO moments (id, vod_id, start_sec, end_sec, peak_sec, score, signals) VALUES (gen_random_uuid(), $1, 0, 30, 15, 7, '{}') RETURNING id`, [qvod])
+    await q(`INSERT INTO clip_jobs (id, moment_id, status, batch, start_sec, end_sec, updated_at) VALUES (gen_random_uuid(), $1, $2, 1, 0, 30, now())`, [qm, status])
+  }
+  assert.equal((await call(qUrl, as(sessionCookie.split('=')[1]))).json.used, 1) // l'echec de rendu ne compte pas
+  const [{ id: testQid }] = await q(`INSERT INTO channels (id, twitch_id, login, display_name) VALUES (gen_random_uuid(), 'test-quota', 'test-quota', 'Test quota') RETURNING id`)
+  const adminQ = (await call('/api/admin/quotas')).json.quotas
+  assert.equal(adminQ[cid].limit, 40)
+  assert.equal(adminQ[cid].used, 1)
+  assert.equal(adminQ[testQid], undefined)
+  assert.equal((await call('/api/admin/quotas', as(sessionCookie.split('=')[1]))).status, 401)
+  const putQuota = (id, limit, opts = {}) => call(`/api/admin/channels/${id}/quota`, { method: 'PUT', body: { limit }, ...opts })
+  for (const bad of ['abc', -1, 1.5, 1001, undefined]) assert.equal((await putQuota(cid, bad)).status, 400)
+  assert.equal((await putQuota(crypto.randomUUID(), 5)).status, 404)
+  assert.equal((await putQuota(testQid, 5)).status, 409)
+  assert.equal((await putQuota(cid, 5, as(sessionCookie.split('=')[1]))).status, 401) // un streamer ne regle pas son propre plafond
+  assert.equal((await putQuota(cid, 1)).status, 200)
+  const q1 = (await call(qUrl, as(sessionCookie.split('=')[1]))).json
+  assert.deepEqual([q1.limit, q1.remaining, q1.reached], [1, 0, true])
+  assert.equal((await call(`/api/studio/channels/${cid}/settings`, { ...as(sessionCookie.split('=')[1]), method: 'PUT', body: { monthlyClipQuota: 999, clipMinSec: 20, clipMaxSec: 60 } })).status < 500, true)
+  assert.equal((await call(qUrl, as(sessionCookie.split('=')[1]))).json.limit, 1) // le reglage streamer ne touche pas au plafond
+  assert.equal((await putQuota(cid, null)).status, 200)
+  const q2 = (await call(qUrl, as(sessionCookie.split('=')[1]))).json
+  assert.deepEqual([q2.limit, q2.remaining, q2.reached], [null, null, false])
+  assert.equal((await putQuota(cid, 40)).status, 200)
+  await q(`DELETE FROM channels WHERE id = $1`, [testQid])
+  ok('plafond mensuel : lecture par le streamer (sa chaine seulement), echecs non comptes, liste et reglage admin (validation, 404, chaine de test 409, jamais par un streamer), le reglage du streamer ne change pas le plafond')
+
   console.log('API_IT_OK')
 } catch (error) {
   failure = error
