@@ -18,9 +18,10 @@ Les vidéos déjà envoyées en privé restent privées : après l'audit, il fau
 ## Où on en est (2026-10-30)
 - [x] **Domaine vérifié** dans Google Search Console (balise meta dans `nuxt.config.ts`, ne jamais la retirer).
 - [x] **Écran de consentement configuré** (fait le 2026-10-28 pour le test d'envoi YouTube) : il reste seulement à **vérifier** que la page « Branding » contient bien logo, page d'accueil, liens confidentialité / conditions et le domaine autorisé `sassify.fr` (rien à refaire si c'est déjà rempli).
-- [ ] **Vidéo de démonstration** (voir « Où trouver chaque écran » ci-dessous).
-- [ ] **Passage en Production + demande de vérification** (Google Cloud Console).
-- [ ] **Formulaire d'audit YouTube**.
+- [x] **Vidéo de démonstration** (3 min 10, non répertoriée).
+- [x] **Passage en Production + demande de vérification** envoyée le 2026-10-30.
+- [x] **Formulaire d'audit YouTube** envoyé le 2026-10-30 (quota par défaut : 100 envois/jour suffisent).
+- [ ] **Attendre les réponses** de Google et de YouTube (e-mail) ; puis renvoyer un clip de test pour vérifier qu'il sort en public.
 
 ## Où trouver chaque écran
 **Dans Clippeak (`https://clippeak.sassify.fr/studio`, connecté avec Twitch) :**
