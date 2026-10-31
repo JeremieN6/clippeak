@@ -40,10 +40,10 @@ export function friendlyError(e: any): string {
 export const STEPS = [
   { n: 1, label: 'Tes clips de référence', tag: 'Obligatoire', required: true },
   { n: 2, label: 'Tes photos', tag: 'Conseillé', required: false },
-  { n: 3, label: 'Le look de tes clips', tag: 'Facultatif', required: false },
+  { n: 3, label: 'Le look de tes clips', tag: 'Conseillé', required: false },
   { n: 4, label: 'Les sons', tag: 'Facultatif', required: false },
   { n: 5, label: 'Tes illustrations', tag: 'Facultatif', required: false },
-  { n: 6, label: 'La détection', tag: 'Facultatif', required: false },
+  { n: 6, label: 'La détection', tag: 'Conseillé', required: false },
   { n: 7, label: 'Tes plateformes', tag: 'Facultatif', required: false },
   { n: 8, label: 'Récapitulatif', tag: '', required: true }
 ] as const

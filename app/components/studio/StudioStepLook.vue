@@ -131,7 +131,7 @@ async function pickAvatar(event: Event) {
 <template>
   <div v-if="detail" class="grid max-w-[1100px] gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
     <div class="flex min-w-0 flex-col gap-6">
-      <StudioStepHeader :n="3" tag="Facultatif" title="Le look de tes clips">
+      <StudioStepHeader :n="3" tag="Conseillé" title="Le look de tes clips">
         {{ quick ? 'Réponds en un clic : l’aperçu bouge à chaque réponse.' : 'Règle le titre, les sous-titres et le cadrage. L’aperçu bouge en direct.' }}
       </StudioStepHeader>
 

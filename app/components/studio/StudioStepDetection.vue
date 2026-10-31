@@ -9,7 +9,7 @@ defineExpose({ invalid })
 
 <template>
   <div v-if="detail?.settings" class="flex max-w-[820px] flex-col gap-6">
-    <StudioStepHeader :n="6" tag="Tu peux la passer" title="Repérer tes bons moments">
+    <StudioStepHeader :n="6" tag="Conseillé" title="Repérer tes bons moments">
       Clippeak cherche d’abord ce qui ressemble à tes clips, puis les moments où ton chat s’emballe.
     </StudioStepHeader>
 
