@@ -7,12 +7,17 @@ set -euo pipefail
 ENVFILE=/srv/saas/clippeak/.env.local
 read -r SK; read -r WH; read -r PRICE
 case "$SK" in sk_test_*|rk_test_*|sk_live_*|rk_live_*) ;; *) echo "Cle secrete Stripe invalide (elle commence par sk_test_ ou rk_test_)."; exit 1 ;; esac
-case "$WH" in whsec_*) ;; *) echo "Secret de webhook invalide (il commence par whsec_)."; exit 1 ;; esac
+# Webhook vide : on garde celui deja pose (cree dans Stripe par l'assistant).
+[ -z "$WH" ] || case "$WH" in whsec_*) ;; *) echo "Secret de webhook invalide (il commence par whsec_)."; exit 1 ;; esac
 case "$PRICE" in price_*) ;; *) echo "Identifiant de prix invalide (il commence par price_)."; exit 1 ;; esac
 [ -f "$ENVFILE" ] || { echo "$ENVFILE introuvable"; exit 1; }
 install -d -m 700 /root/env-backups
 cp -p "$ENVFILE" "/root/env-backups/clippeak.env.local.$(date +%Y%m%d-%H%M)"
 tmp="$(mktemp)"
+if [ -z "$WH" ]; then
+  WH="$(grep -E '^STRIPE_WEBHOOK_SECRET=' "$ENVFILE" | head -1 | cut -d= -f2-)"
+  [ -n "$WH" ] || { echo "Aucun secret de webhook en place : saisis-le."; exit 1; }
+fi
 grep -vE '^(STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|STRIPE_PRICE_CREATOR)=' "$ENVFILE" > "$tmp" || true
 { cat "$tmp"; printf '%s\n' "STRIPE_SECRET_KEY=$SK" "STRIPE_WEBHOOK_SECRET=$WH" "STRIPE_PRICE_CREATOR=$PRICE"; } > "$ENVFILE"
 rm -f "$tmp"; chmod 600 "$ENVFILE"

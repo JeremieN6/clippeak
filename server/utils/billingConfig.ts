@@ -6,7 +6,8 @@ import { createStripeClient, type StripeClient } from './clipping/stripeApi'
 // aucune carte « Offre » dans le studio, aucune route de paiement. Les cles de test (sk_test_) et de production (sk_live_) se remplacent
 // l'une par l'autre sans changer le code.
 export function billingConfig(event?: H3Event) {
-  const secretKey = readEnv('STRIPE_SECRET_KEY')
+  // `STRIPE_SECRET_API_KEY` est accepte aussi (nom choisi par le porteur dans son .env.local local).
+  const secretKey = readEnv('STRIPE_SECRET_KEY') || readEnv('STRIPE_SECRET_API_KEY')
   const priceId = readEnv('STRIPE_PRICE_CREATOR')
   const webhookSecret = readEnv('STRIPE_WEBHOOK_SECRET')
   const publicUrl = readEnv('CLIPPEAK_PUBLIC_URL').replace(/\/+$/, '')
