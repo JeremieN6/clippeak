@@ -18,11 +18,11 @@ const timers: Array<ReturnType<typeof setTimeout>> = []
 const intervals: Array<ReturnType<typeof setInterval>> = []
 
 const flowSteps = [
-  { label: 'Analyse de la VOD', duration: 4000 },
-  { label: 'Téléchargement du chat Twitch', duration: 11000 },
+  { label: 'Lecture de la VOD', duration: 4000 },
+  { label: 'Analyse du chat Twitch', duration: 11000 },
   { label: "Détection des pics d'activité", duration: 12000 },
-  { label: 'Extraction des séquences vidéo', duration: 19000 },
-  { label: 'Création du ZIP', duration: 14000 }
+  { label: 'Choix du début et de la fin de chaque clip', duration: 19000 },
+  { label: 'Montage vertical avec titre et sous-titres', duration: 14000 }
 ]
 
 const totalDurationMs = flowSteps.reduce((sum, step) => sum + step.duration, 0)
@@ -133,24 +133,12 @@ function launchFlow() {
   startFakeProcessing()
 }
 
-async function downloadZip() {
-  const JSZip = (await import('jszip')).default
-  const zip = new JSZip()
-  zip.file(
-    'OUVRE-IMPORTANT.txt',
-    "Déjà merci d'avoir ouvert. Dans ce .zip tu trouveras une liste de clip pré sélectionné pour illustré jusqu'au bout le processus. Clippeak est en cours de développement. Merci d'avoir testé ! Tes clips seront bientôt réels. Laisse-nous ton email pour être prévenu en avant-première."
-  )
-
-  const blob = await zip.generateAsync({ type: 'blob' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'clippeak-beta.zip'
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
-}
+// Exemples affiches a la fin de la simulation : de faux clips, jamais de fichier a telecharger.
+const exampleClips = [
+  { title: 'Il a vraiment dit ça en direct devant tout le monde', score: '8.6', duration: '0:42' },
+  { title: 'Le penalty que personne n’a vu venir', score: '8.1', duration: '0:35' },
+  { title: 'Mon chat a complètement pété les plombs', score: '7.4', duration: '0:51' }
+]
 
 onBeforeUnmount(() => {
   clearTimers()
@@ -159,8 +147,9 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="scroll-mt-24">
-    <h2 class="font-display text-3xl font-extrabold sm:text-4xl">Essaye Clippeak sur ta dernière VOD</h2>
-    <p class="mt-2 text-clippeak-muted">Colle l'URL de ta VOD Twitch ci-dessous. Aucun compte requis.</p>
+    <span class="inline-flex rounded-full border border-clippeak-violet/40 bg-clippeak-violet/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white/90">Simulation</span>
+    <h2 class="mt-3 font-display text-3xl font-extrabold sm:text-4xl">Découvre le parcours de Clippeak en 1 minute</h2>
+    <p class="mt-2 text-clippeak-muted">Colle une URL de VOD Twitch pour voir comment ça se passe. C'est une démonstration : ta VOD n'est pas lue et aucun vrai clip n'est généré. Pour de vrais clips, connecte-toi avec Twitch (accès sur invitation).</p>
 
     <div class="mt-3 rounded-2xl border border-clippeak-violet/20 bg-clippeak-surface/55 p-3 sm:p-7">
       <form class="space-y-4" @submit.prevent="launchFlow">
@@ -176,11 +165,11 @@ onBeforeUnmount(() => {
             :disabled="processingPhase === 'running'"
             class="h-12 whitespace-nowrap rounded-xl bg-clippeak-violet px-6 text-sm font-semibold transition hover:bg-clippeak-violetLight disabled:cursor-not-allowed disabled:opacity-70"
           >
-            Générer mes clips viraux
+            Lancer la simulation
           </button>
         </div>
 
-          <span class=" mt-4 text-xs text-clippeak-muted">Si t'as la flemme test en copiant-collant une de nos VOD : <strong><em>https://www.twitch.tv/videos/123456789</em></strong></span>
+          <span class=" mt-4 text-xs text-clippeak-muted">Pas de VOD sous la main ? Colle n'importe quel lien de ce type : <strong><em>https://www.twitch.tv/videos/123456789</em></strong></span>
         
 
         <p v-if="validationError" class="text-sm font-semibold text-red-400">{{ validationError }}</p>
@@ -190,8 +179,8 @@ onBeforeUnmount(() => {
       <div v-if="processingPhase !== 'idle'" class="mt-6">
         <p class="text-sm text-white/80">
           {{ processingPhase === 'done'
-            ? 'Traitement terminé. Tu peux télécharger tes clips ci-dessous, et le formulaire apparaît juste après si tu veux nous laisser ton retour.'
-            : 'Ne ferme pas cet onglet pendant que Clippeak travaille. Tu seras notifié dès que tes clips sont prêts.' }}
+            ? 'Simulation terminée. Voilà ce que tu recevrais dans ton espace. Un formulaire facultatif apparaît juste après si tu veux nous laisser ton avis.'
+            : 'Simulation en cours. Dans le vrai produit, tout se passe sur nos serveurs : tu peux fermer la page et revenir quand tes clips sont prêts.' }}
         </p>
 
         <div class="mt-4 flex items-center justify-between text-sm text-white/85">
@@ -232,15 +221,22 @@ onBeforeUnmount(() => {
       </div>
 
       <div v-if="processingPhase === 'done'" class="mt-6 rounded-xl border border-clippeak-violet/30 bg-clippeak-violet/10 p-5">
-        <h3 class="font-display text-2xl font-bold">Tes clips sont prêts 🎉</h3>
-        <p class="mt-2 text-white/85">{{ resultClipsCount }} clips détectés sur ta VOD</p>
-        <button
-          type="button"
-          class="mt-4 w-full rounded-xl bg-clippeak-violet px-6 py-3 font-semibold text-white transition hover:bg-clippeak-violetLight"
-          @click="downloadZip"
+        <h3 class="font-display text-2xl font-bold">Voilà ce que Clippeak ferait pour toi</h3>
+        <p class="mt-2 text-white/85">Sur une vraie VOD, Clippeak prépare jusqu'à 8 clips par live (exemples ci-dessous, fictifs). Ils arrivent par lots de 4 dans ton espace : tu valides, tu ajustes le titre si besoin, puis tu les télécharges ou tu les publies sur YouTube Shorts.</p>
+        <ul class="mt-4 grid gap-3 sm:grid-cols-3">
+          <li v-for="clip in exampleClips" :key="clip.title" class="rounded-xl border border-white/10 bg-black/30 p-4">
+            <span class="text-xs font-semibold uppercase tracking-wider text-clippeak-violetLight">Exemple</span>
+            <p class="mt-2 text-sm font-semibold leading-5">{{ clip.title }}</p>
+            <p class="mt-2 text-xs text-clippeak-muted">★ {{ clip.score }} · {{ clip.duration }}</p>
+          </li>
+        </ul>
+        <a
+          href="/connexion"
+          class="mt-5 block w-full rounded-xl bg-clippeak-violet px-6 py-3 text-center font-semibold text-white transition hover:bg-clippeak-violetLight"
         >
-          Télécharger mes clips (.zip)
-        </button>
+          Se connecter avec Twitch
+        </a>
+        <p class="mt-2 text-center text-xs text-clippeak-muted">Accès sur invitation pendant la bêta · gratuit jusqu'à 40 clips par mois</p>
       </div>
     </div>
   </section>

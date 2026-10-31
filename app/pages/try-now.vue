@@ -17,19 +17,23 @@ async function showFeedbackAfterCompletion() {
   })
 }
 
+useSeoMeta({
+  title: 'Démo (simulation) : Clippeak',
+  description: 'Simulation du parcours Clippeak : aucun vrai clip n’est généré. Pour de vrais clips, connecte-toi avec Twitch.'
+})
+
 const navLinks = [
   { href: '/', label: 'Accueil' },
   { href: '/#features', label: 'Benefices' },
   { href: '/#how-it-works', label: 'Comment ça marche' },
   { href: '/#offers', label: 'Offres' },
-  { href: '/#testimonials', label: 'Temoignages' },
   { href: '/#faq', label: 'FAQ' }
 ]
 </script>
 
 <template>
   <main class="mx-auto w-full max-w-6xl px-5 pb-14 pt-6 sm:px-8 sm:pt-8">
-    <LandingNavbar :links="navLinks" primary-href="/try-now" />
+    <LandingNavbar :links="navLinks" primary-href="/connexion" />
 
     <section class="relative mb-10 mt-8 text-center">
       <div class="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-clippeak-violet/35 blur-[120px]"></div>

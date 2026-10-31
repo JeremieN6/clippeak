@@ -55,7 +55,7 @@ async function submitFeedback() {
     <p class="mt-2 text-clippeak-muted">2 minutes pour façonner l'avenir de Clippeak</p>
 
     <div v-if="feedbackSubmitted" class="mt-6 rounded-xl border border-emerald-300/40 bg-emerald-400/10 p-4 text-emerald-300">
-      Merci beaucoup ! On te previent dès que Clippeak est prêt. 🚀
+      Merci beaucoup ! On te prévient dès qu'une place s'ouvre. 🚀
     </div>
 
     <form v-else class="mt-6 space-y-6" @submit.prevent="submitFeedback">
@@ -119,7 +119,7 @@ async function submitFeedback() {
       </div>
 
       <div>
-        <label class="mb-2 block text-sm font-semibold">Entre ton email pour accéder en avant-première</label>
+        <label class="mb-2 block text-sm font-semibold">Entre ton email pour être prévenu quand une place s'ouvre (facultatif)</label>
         <input
           v-model="feedback.email"
           type="email"
