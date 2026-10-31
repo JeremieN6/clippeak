@@ -36,6 +36,7 @@ useHead({ title: 'Politique de confidentialité – Clippeak' })
       <li><strong>Hébergement :</strong> base de données (Neon) et serveur privé virtuel pour le calcul et le stockage des fichiers.</li>
       <li><strong>API Claude (Anthropic) :</strong> lorsque cette option est activée, des extraits de transcription et des images de tes clips peuvent être envoyés pour aider à noter les moments et analyser tes références.</li>
       <li><strong>PostHog :</strong> mesure d’audience du site public.</li>
+      <li><strong>Stripe :</strong> paiement de l’offre payante, si tu t’abonnes. Ta carte est saisie chez Stripe : Clippeak ne la voit jamais et ne garde que l’identifiant client Stripe, l’état de ton abonnement et sa date d’échéance. À la suppression de ton compte, ton abonnement est annulé ; Stripe conserve ses propres données de facturation selon ses obligations légales.</li>
     </ul>
     <p>Nous ne vendons pas tes données et ne les utilisons pas pour de la publicité.</p>
 

@@ -5,6 +5,7 @@ import { decryptToken } from './clipping/tokenVault'
 import { revokeGoogleToken } from './clipping/googleOAuth'
 import { createTwitchApi } from './clipping/twitchApi'
 import { eraseChannel, isDemoTwitchId, isTestTwitchId } from './demoChannel'
+import { stripeClient } from './billingConfig'
 
 // Export et suppression des donnees d'un streamer (RGPD : acces et effacement). L'export ne contient JAMAIS de jeton ni de mot de passe.
 
@@ -25,7 +26,8 @@ export async function exportChannelData(channelId: string) {
       },
       roadmapVotes: { select: { createdAt: true, feature: { select: { title: true } } } },
       roadmapIdeas: { select: { text: true, status: true, createdAt: true } },
-      notifications: { select: { title: true, body: true, createdAt: true, readAt: true } }
+      notifications: { select: { title: true, body: true, createdAt: true, readAt: true } },
+      billing: { select: { plan: true, status: true, currentPeriodEnd: true, createdAt: true } }
     }
   })
   if (!channel) return null
@@ -41,7 +43,8 @@ export async function exportChannelData(channelId: string) {
     vods: channel.vods,
     votes: channel.roadmapVotes.map(v => ({ feature: v.feature.title, at: v.createdAt })),
     ideas: channel.roadmapIdeas,
-    notifications: channel.notifications
+    notifications: channel.notifications,
+    subscription: channel.billing
   }
 }
 
@@ -65,6 +68,16 @@ export async function deleteChannelAccount(channelId: string): Promise<DeleteRes
   const clientSecret = readEnv('TWITCH_CLIENT_SECRET')
   if (clientId && clientSecret) {
     try { await createTwitchApi({ clientId, clientSecret }).unsubscribeUser(channel.twitchId); steps.push('écoute des lives arrêtée') } catch { steps.push('écoute des lives : arrêt à confirmer par l’équipe') }
+  }
+
+  // Abonnement : annule chez Stripe avant d'effacer (jamais de prelevement sur un compte supprime). Les donnees de carte restent chez Stripe.
+  const billing = await prisma.channelBilling.findUnique({ where: { channelId }, select: { stripeSubscriptionId: true } })
+  if (billing?.stripeSubscriptionId) {
+    const stripe = stripeClient()
+    if (!stripe) steps.push('abonnement : à annuler par l’équipe')
+    else {
+      try { await stripe.cancelSubscription(billing.stripeSubscriptionId); steps.push('abonnement annulé') } catch { steps.push('abonnement : annulation à confirmer par l’équipe') }
+    }
   }
 
   await eraseChannel(channelId)

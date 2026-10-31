@@ -43,6 +43,7 @@ spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=s
 await q(`UPDATE clip_jobs SET output_path = $1 WHERE id = $2`, [rel, reviewId])
 
 let open666 = false
+const stripeCalls = []
 // --- faux Twitch (jeton et profil) pour jouer le retour de connexion sans le vrai service
 const fakeTwitch = createServer((req, res) => {
   let body = ''
@@ -86,6 +87,13 @@ const fakeTwitch = createServer((req, res) => {
       const who = req.headers.authorization === 'Bearer tok-invite' ? { id: '555', login: 'Invitee', display_name: 'Invitee' } : { id: '666', login: 'stranger', display_name: 'Stranger' }
       return res.end(JSON.stringify({ data: [who] }))
     }
+    if (req.url.startsWith('/v1/')) {
+      stripeCalls.push({ method: req.method, url: req.url, body: Object.fromEntries(new URLSearchParams(body)), auth: req.headers.authorization })
+      if (req.url === '/v1/checkout/sessions') return res.end(JSON.stringify({ id: 'cs_test_1', url: 'https://checkout.stripe.test/c/pay/cs_test_1' }))
+      if (req.url === '/v1/billing_portal/sessions') return res.end(JSON.stringify({ url: 'https://billing.stripe.test/p/session' }))
+      if (req.url.startsWith('/v1/prices/')) return res.end(JSON.stringify({ unit_amount: 1900, currency: 'eur', recurring: { interval: 'month' } }))
+      if (req.method === 'DELETE' && req.url.startsWith('/v1/subscriptions/')) return res.end(JSON.stringify({ status: 'canceled' }))
+    }
     res.statusCode = 404
     res.end('{}')
   })
@@ -93,7 +101,7 @@ const fakeTwitch = createServer((req, res) => {
 await new Promise(r => fakeTwitch.listen(3397, '127.0.0.1', r))
 
 // --- serveur
-const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_GQL_URL: 'http://127.0.0.1:3397/gql', TWITCH_USHER_URL: 'http://127.0.0.1:3397/usher/vod', CLIPPEAK_RECHECK_COOLDOWN_MS: '0', GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsec', GOOGLE_TOKEN_URL: 'http://127.0.0.1:3397/token', CLIPPEAK_TOKEN_KEY: randomBytes(32).toString('base64') }
+const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_GQL_URL: 'http://127.0.0.1:3397/gql', TWITCH_USHER_URL: 'http://127.0.0.1:3397/usher/vod', CLIPPEAK_RECHECK_COOLDOWN_MS: '0', GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsec', GOOGLE_TOKEN_URL: 'http://127.0.0.1:3397/token', CLIPPEAK_TOKEN_KEY: randomBytes(32).toString('base64'), STRIPE_SECRET_KEY: 'sk_test_fake', STRIPE_PRICE_CREATOR: 'price_test_creator', STRIPE_WEBHOOK_SECRET: 'whsec_test', STRIPE_API_BASE_URL: 'http://127.0.0.1:3397' }
 const cwd = join(DATA, 'cwd'); mkdirSync(cwd, { recursive: true })
 const logFd = openSync(join(DATA, 'server.log'), 'w')
 const server = spawn('node', [join(ROOT, '.output', 'server', 'index.mjs')], { env, cwd, stdio: ['ignore', logFd, logFd] })
@@ -722,10 +730,11 @@ try {
   await q(`INSERT INTO channel_invites (id, twitch_login, twitch_id) VALUES (gen_random_uuid(), 'efface_moi', '777000')`)
   await q(`INSERT INTO platform_connections (id, channel_id, platform, access_token_enc, refresh_token_enc, updated_at) VALUES (gen_random_uuid(), $1, 'youtube', 'secret-token-ne-doit-pas-sortir', 'secret-refresh', now())`, [gdprId])
   await q(`INSERT INTO studio_sessions (id, channel_id, token_hash, expires_at) VALUES (gen_random_uuid(), $1, $2, now() + interval '1 day')`, [gdprId, sha('jeton-gdpr')])
+  await q(`INSERT INTO channel_billing (id, channel_id, stripe_customer_id, stripe_subscription_id, plan, status, updated_at) VALUES (gen_random_uuid(), $1, 'cus_gdpr', 'sub_gdpr', 'creator', 'active', now())`, [gdprId])
   const me2 = as('jeton-gdpr')
   assert.equal((await call('/api/studio/account/export', { auth: false })).status, 401)
   const exp = await call('/api/studio/account/export', me2)
-  assert.equal(exp.status, 200); assert.ok(!JSON.stringify(exp.json).includes('secret-token'), 'aucun jeton dans l export')
+  assert.equal(exp.status, 200); assert.ok(!JSON.stringify(exp.json).includes('secret-token'), 'aucun jeton dans l export'); assert.ok(!JSON.stringify(exp.json).includes('cus_gdpr') && !JSON.stringify(exp.json).includes('sub_gdpr'), 'aucun identifiant Stripe dans l export'); assert.equal(exp.json.subscription.plan, 'creator')
   assert.equal(JSON.parse(typeof exp.json === 'string' ? exp.json : JSON.stringify(exp.json)).channel.login, 'efface_moi')
   assert.equal((await call('/api/studio/account/delete', { method: 'POST', body: { confirm: 'efface_moi' } })).status, 403, 'l admin ne supprime pas un compte')
   assert.equal((await call('/api/studio/account/delete', { ...me2, method: 'POST', body: { confirm: 'autre' } })).status, 400)
@@ -734,6 +743,8 @@ try {
   assert.equal(gdprDel.status, 200)
   assert.equal((await q(`SELECT count(*)::int AS n FROM channels WHERE id = $1`, [gdprId]))[0].n, 0)
   assert.equal((await q(`SELECT count(*)::int AS n FROM platform_connections WHERE channel_id = $1`, [gdprId]))[0].n, 0)
+  assert.ok(stripeCalls.some(x => x.method === 'DELETE' && x.url === '/v1/subscriptions/sub_gdpr'), 'abonnement annule chez Stripe a la suppression')
+  assert.equal((await q(`SELECT count(*)::int AS n FROM channel_billing WHERE channel_id = $1`, [gdprId]))[0].n, 0)
   assert.equal((await q(`SELECT count(*)::int AS n FROM channel_invites WHERE twitch_login = 'efface_moi'`))[0].n, 0)
   assert.equal((await call('/api/auth/me', me2)).status, 401, 'la session disparait avec le compte')
   ok('mes donnees : export sans jeton, suppression refusee a l admin et sans confirmation, puis chaine, connexions, invitation et session effacees')
@@ -774,6 +785,74 @@ try {
   assert.equal((await putQuota(cid, 40)).status, 200)
   await q(`DELETE FROM channels WHERE id = $1`, [testQid])
   ok('plafond mensuel : lecture par le streamer (sa chaine seulement), echecs non comptes, liste et reglage admin (validation, 404, chaine de test 409, jamais par un streamer), le reglage du streamer ne change pas le plafond')
+
+  // --- facturation Stripe (faux Stripe) : offre visible seulement pour le streamer, paiement et portail, webhook signe, plafond selon l'offre
+  const { createHmac } = await import('node:crypto')
+  const WH = 'whsec_test'
+  const signed = (body, at = Date.now(), secret = WH) => { const t = Math.floor(at / 1000); return `t=${t},v1=${createHmac('sha256', secret).update(`${t}.${body}`).digest('hex')}` }
+  const hook = (evt, headers) => fetch(B + '/api/stripe/webhook', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: typeof evt === 'string' ? evt : JSON.stringify(evt) })
+  const streamerAs = as(sessionCookie.split('=')[1])
+  const bill0 = (await call('/api/studio/billing', streamerAs)).json
+  assert.equal(bill0.available, true)
+  assert.deepEqual([bill0.plan, bill0.planName, bill0.freeClips, bill0.paidClips, bill0.paidName, bill0.price.amount, bill0.price.currency, bill0.price.interval, bill0.canManage, bill0.testMode], ['free', 'Starter', 40, 120, 'Creator', 1900, 'eur', 'month', false, true])
+  assert.equal((await call('/api/studio/billing', { auth: false })).status, 401)
+  assert.equal((await call('/api/studio/billing')).json.available, false) // l'admin ne voit pas d'offre
+  assert.equal((await call('/api/studio/billing/checkout', { method: 'POST' })).status, 403) // ni ne paie a la place d'un streamer
+  const checkout = await call('/api/studio/billing/checkout', { ...streamerAs, method: 'POST' })
+  assert.equal(checkout.status, 200)
+  assert.equal(checkout.json.url, 'https://checkout.stripe.test/c/pay/cs_test_1')
+  const cCall = stripeCalls.filter(c => c.url === '/v1/checkout/sessions').pop()
+  assert.equal(cCall.auth, 'Bearer sk_test_fake')
+  assert.deepEqual([cCall.body.mode, cCall.body['line_items[0][price]'], cCall.body.client_reference_id, cCall.body['subscription_data[metadata][channel_id]']], ['subscription', 'price_test_creator', cid, cid])
+  assert.ok(cCall.body.success_url.endsWith('/studio?billing=ok') && cCall.body.cancel_url.endsWith('/studio?billing=cancel'))
+  assert.equal((await call('/api/studio/billing/portal', { ...streamerAs, method: 'POST' })).status, 409) // pas d'abonnement a gerer
+
+  // Webhook : signature obligatoire
+  const t0 = Math.floor(Date.now() / 1000)
+  const completed = { id: 'evt_1', type: 'checkout.session.completed', created: t0, data: { object: { mode: 'subscription', client_reference_id: cid, customer: 'cus_1', subscription: 'sub_1', payment_status: 'paid' } } }
+  assert.equal((await hook(completed)).status, 400)
+  assert.equal((await hook(completed, { 'stripe-signature': signed(JSON.stringify(completed), Date.now(), 'whsec_autre') })).status, 400)
+  assert.equal((await hook(completed, { 'stripe-signature': signed(JSON.stringify(completed), Date.now() - 10 * 60 * 1000) })).status, 400)
+  assert.equal((await hook(JSON.stringify(completed) + ' ', { 'stripe-signature': signed(JSON.stringify(completed)) })).status, 400) // corps modifie apres signature
+  assert.equal((await q(`SELECT count(*)::int AS n FROM channel_billing`))[0].n, 0)
+  const ok1 = await hook(completed, { 'stripe-signature': signed(JSON.stringify(completed)) })
+  assert.equal(ok1.status, 200)
+  const [b1] = await q(`SELECT plan, status, stripe_customer_id, stripe_subscription_id FROM channel_billing WHERE channel_id = $1`, [cid])
+  assert.deepEqual([b1.plan, b1.status, b1.stripe_customer_id, b1.stripe_subscription_id], ['creator', 'active', 'cus_1', 'sub_1'])
+  assert.equal((await hook(completed, { 'stripe-signature': signed(JSON.stringify(completed)) })).status, 200) // rejoue : meme etat
+  assert.equal((await q(`SELECT count(*)::int AS n FROM channel_billing WHERE channel_id = $1`, [cid]))[0].n, 1)
+  const bill1 = (await call('/api/studio/billing', streamerAs)).json
+  assert.deepEqual([bill1.plan, bill1.planName, bill1.canManage], ['creator', 'Creator', true])
+  assert.equal((await call(qUrl, streamerAs)).json.limit, 120) // le plafond suit l'offre
+  assert.equal((await call('/api/studio/billing/checkout', { ...streamerAs, method: 'POST' })).status, 409) // deja abonne
+  const portal = await call('/api/studio/billing/portal', { ...streamerAs, method: 'POST' })
+  assert.equal(portal.json.url, 'https://billing.stripe.test/p/session')
+  assert.equal(stripeCalls.filter(c => c.url === '/v1/billing_portal/sessions').pop().body.customer, 'cus_1')
+
+  // Abonnement : le plan suit l'etat Stripe ; un evenement ancien ne revient pas sur un plus recent
+  const subEvt = (id, type, status, created, extra = {}) => ({ id, type, created, data: { object: { id: 'sub_1', customer: 'cus_1', status, metadata: { channel_id: cid }, current_period_end: 1900000000, ...extra } } })
+  const send = evt => hook(evt, { 'stripe-signature': signed(JSON.stringify(evt)) })
+  assert.equal((await send(subEvt('evt_2', 'customer.subscription.updated', 'past_due', t0 + 10))).status, 200)
+  assert.equal((await q(`SELECT plan FROM channel_billing WHERE channel_id = $1`, [cid]))[0].plan, 'creator') // grace pendant la relance du paiement
+  const stale = await (await send(subEvt('evt_old', 'customer.subscription.updated', 'canceled', t0 + 5))).json()
+  assert.equal(stale.result, 'stale')
+  assert.equal((await q(`SELECT status FROM channel_billing WHERE channel_id = $1`, [cid]))[0].status, 'past_due')
+  assert.equal((await send(subEvt('evt_3', 'customer.subscription.updated', 'unpaid', t0 + 20))).status, 200)
+  assert.equal((await q(`SELECT plan FROM channel_billing WHERE channel_id = $1`, [cid]))[0].plan, 'free')
+  assert.equal((await call(qUrl, streamerAs)).json.limit, 40) // retour au gratuit
+  assert.equal((await (await send({ id: 'evt_x', type: 'invoice.paid', created: t0 + 30, data: { object: {} } })).json()).result, 'ignored')
+  assert.equal((await (await send(subEvt('evt_y', 'customer.subscription.created', 'active', t0 + 40, { metadata: { channel_id: crypto.randomUUID() }, customer: 'cus_inconnu' }))).json()).result, 'unknown_channel')
+  assert.equal((await send(subEvt('evt_4', 'customer.subscription.created', 'active', t0 + 50))).status, 200) // abonnement avant paiement termine : lie par la metadonnee
+  assert.equal((await call(qUrl, streamerAs)).json.limit, 120)
+  assert.equal((await send(subEvt('evt_5', 'customer.subscription.deleted', 'canceled', t0 + 60))).status, 200)
+  const [b2] = await q(`SELECT plan, status FROM channel_billing WHERE channel_id = $1`, [cid])
+  assert.deepEqual([b2.plan, b2.status], ['free', 'canceled'])
+  assert.equal((await call('/api/studio/billing/checkout', { ...streamerAs, method: 'POST' })).status, 200) // il peut se reabonner, avec son client Stripe
+  assert.equal(stripeCalls.filter(c => c.url === '/v1/checkout/sessions').pop().body.customer, 'cus_1')
+  // Un faux evenement sans la signature Stripe n'ecrit rien
+  assert.equal((await hook(subEvt('evt_forge', 'customer.subscription.created', 'active', t0 + 70))).status, 400)
+  assert.equal((await q(`SELECT status FROM channel_billing WHERE channel_id = $1`, [cid]))[0].status, 'canceled')
+  ok('facturation Stripe (faux Stripe) : offre visible au streamer seulement, paiement et portail, webhook signe (falsifie, ancien ou corps modifie refuses), idempotent, plan et plafond suivent l etat Stripe, evenement ancien ou sans chaine ignore, reabonnement avec le meme client')
 
   console.log('API_IT_OK')
 } catch (error) {

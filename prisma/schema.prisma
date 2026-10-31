@@ -77,6 +77,7 @@ model Channel {
   roadmapVotes   RoadmapVote[]
   roadmapIdeas   RoadmapIdea[]
   notifications  Notification[]
+  billing        ChannelBilling?
 
   @@map("channels")
 }
@@ -287,6 +288,25 @@ model AccessRequest {
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@map("access_requests")
+}
+
+// Abonnement Stripe d'une chaine (une ligne par chaine qui a ouvert un paiement). Aucune donnee de carte : tout reste chez Stripe.
+// `status` est l'etat Stripe (active, past_due, canceled...) ; `lastEventAt` evite qu'un evenement ancien ecrase un plus recent.
+model ChannelBilling {
+  id                   String    @id @default(uuid()) @db.Uuid
+  channelId            String    @unique @map("channel_id") @db.Uuid
+  stripeCustomerId     String?   @unique @map("stripe_customer_id") @db.VarChar(80)
+  stripeSubscriptionId String?   @map("stripe_subscription_id") @db.VarChar(80)
+  plan                 String    @default("free") @db.VarChar(12)
+  status               String?   @db.VarChar(24)
+  currentPeriodEnd     DateTime? @map("current_period_end")
+  lastEventAt          DateTime? @map("last_event_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@map("channel_billing")
 }
 
 // Session d'un streamer connecte : seul le hash SHA-256 du jeton est conserve (le jeton ne vit que dans le cookie).

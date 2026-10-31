@@ -39,6 +39,20 @@ onMounted(async () => {
     studio.goToStep(7)
     await navigateTo({ query: {} }, { replace: true })
   }
+  // Retour de la page de paiement Stripe : l'offre s'active quand Stripe previent Clippeak (quelques secondes), on relit donc l'etat.
+  const paid = String(route.query.billing ?? '')
+  if (paid === 'ok') {
+    studio.notice.value = 'Merci ! Ton offre s’active dans quelques secondes.'
+    for (let i = 0; i < 5 && studio.billing.value?.plan !== 'creator'; i++) {
+      await new Promise(resolve => setTimeout(resolve, 3000))
+      await studio.loadBilling()
+      await studio.loadClips()
+    }
+    await navigateTo({ query: {} }, { replace: true })
+  } else if (paid === 'cancel') {
+    studio.notice.value = 'Paiement annulé : rien n’a été prélevé.'
+    await navigateTo({ query: {} }, { replace: true })
+  }
 })
 </script>
 

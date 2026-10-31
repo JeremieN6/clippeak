@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client'
 import { clipRoom, effectiveQuota, monthStart, quotaView, type QuotaView } from './quota'
+import { PLAN_CLIPS, planFor } from './billing'
 
 // Acces base du plafond mensuel (regles pures : ./quota.ts). Partage par le worker et par les routes du site.
 type Db = Pick<PrismaClient, 'clipJob' | 'channel'>
@@ -10,9 +11,9 @@ export async function monthlyClipUsage(db: Db, channelId: string, now: Date = ne
 }
 
 async function quotaOf(db: Db, channelId: string): Promise<number | null> {
-  const channel = await db.channel.findUnique({ where: { id: channelId }, select: { twitchId: true, settings: { select: { monthlyClipQuota: true } } } })
+  const channel = await db.channel.findUnique({ where: { id: channelId }, select: { twitchId: true, settings: { select: { monthlyClipQuota: true } }, billing: { select: { status: true } } } })
   if (!channel) return null
-  return effectiveQuota({ twitchId: channel.twitchId, setting: channel.settings ? channel.settings.monthlyClipQuota : undefined })
+  return effectiveQuota({ twitchId: channel.twitchId, setting: channel.settings ? channel.settings.monthlyClipQuota : undefined, planClips: channel.billing && planFor(channel.billing.status) === 'creator' ? PLAN_CLIPS.creator : 0 })
 }
 
 // Clips encore possibles ce mois-ci (Infinity si illimite).

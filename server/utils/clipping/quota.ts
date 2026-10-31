@@ -11,10 +11,12 @@ export const monthStart = (now: Date = new Date()): Date => new Date(Date.UTC(no
 export const nextMonthStart = (now: Date = new Date()): Date => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
 
 // Plafond effectif : null = illimite (chaine exemptee, ou plafond retire par l'admin) ; sinon le nombre de clips par mois.
-export function effectiveQuota(input: { twitchId: string, setting: number | null | undefined }): number | null {
+// L'offre payante ajoute de la place sans jamais en retirer : on prend le plus grand entre le reglage de la chaine (defaut 40, releve par
+// l'admin) et le quota de l'offre (`planClips`, 0 si gratuit). Reglage a null (illimite, decide par l'admin) : illimite.
+export function effectiveQuota(input: { twitchId: string, setting: number | null | undefined, planClips?: number }): number | null {
   if (isQuotaExempt(input.twitchId)) return null
-  if (input.setting === undefined) return DEFAULT_MONTHLY_CLIPS
-  return input.setting
+  if (input.setting === null) return null
+  return Math.max(input.setting === undefined ? DEFAULT_MONTHLY_CLIPS : input.setting, input.planClips ?? 0)
 }
 
 // Nombre de clips qu'on peut encore produire ce mois-ci (Infinity si illimite).
