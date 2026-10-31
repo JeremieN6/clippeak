@@ -66,8 +66,6 @@ export function createStudio() {
   const channelId = ref('')
   const detail = ref<any>(null)
   const bank = ref<any>(null)
-  // Pris ici (pendant l'installation du composant) : plus tard, apres un await, le contexte Nuxt n'est plus disponible.
-  const nuxtApp = useNuxtApp()
   const clips = ref<StudioClip[]>([])
   // Offre (Starter / Creator) : absente tant que Stripe n'est pas configure sur le serveur.
   const billing = ref<StudioBilling | null>(null)
@@ -95,8 +93,8 @@ export function createStudio() {
   function track(name: string, props?: Record<string, unknown>) {
     if (mode.value !== 'streamer') return
     const evt = buildEvent(name, props)
-    const ph = nuxtApp.$clientPosthog as { capture: (n: string, p: Record<string, unknown>) => void } | null | undefined
-    if (evt && ph) ph.capture(evt.name, evt.props)
+    // Le client n'existe que si le visiteur a accepte la mesure d'audience.
+    if (evt) getAnalytics()?.capture(evt.name, evt.props)
   }
 
   async function run(task: () => Promise<void>, success = '') {
