@@ -12,8 +12,17 @@ export default defineEventHandler(async (event) => {
   const billing = await prisma.channelBilling.findUnique({ where: { channelId } })
   if (isPayingStatus(billing?.status)) throw createError({ statusCode: 409, statusMessage: 'Tu as déjà l’offre payante. Gère-la depuis « Gérer mon abonnement ».' })
   try {
+    // Client Stripe cree par nos soins (nom de la chaine + mention de TVA en pied de facture) ou mis a jour s'il existe deja.
+    let customerId = billing?.stripeCustomerId ?? null
+    if (!customerId) {
+      const channel = await prisma.channel.findUniqueOrThrow({ where: { id: channelId }, select: { displayName: true } })
+      customerId = (await stripe.createCustomer({ channelId, name: channel.displayName, footer: config.invoiceFooter })).id
+      await prisma.channelBilling.upsert({ where: { channelId }, create: { channelId, stripeCustomerId: customerId }, update: { stripeCustomerId: customerId } })
+    } else if (config.invoiceFooter) {
+      await stripe.setCustomerInvoiceFooter(customerId, config.invoiceFooter).catch(() => {})
+    }
     const session = await stripe.createCheckoutSession({
-      priceId: config.priceId, channelId, customerId: billing?.stripeCustomerId ?? null,
+      priceId: config.priceId, channelId, customerId,
       successUrl: `${config.origin}/studio?billing=ok`, cancelUrl: `${config.origin}/studio?billing=cancel`
     })
     return { url: session.url }

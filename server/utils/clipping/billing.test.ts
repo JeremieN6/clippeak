@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { applySubscriptionEvent, isPayingStatus, periodEnd, PLAN_CLIPS, planFor, signStripePayload, verifyStripeSignature } from './billing.ts'
+import { DEFAULT_INVOICE_FOOTER, invoiceFooter, applySubscriptionEvent, isPayingStatus, periodEnd, PLAN_CLIPS, planFor, signStripePayload, verifyStripeSignature } from './billing.ts'
 
 test('plans : gratuit 40, Creator 120 ; etats payants et grace', () => {
   assert.deepEqual(PLAN_CLIPS, { free: 40, creator: 120 })
@@ -38,4 +38,13 @@ test('evenements d abonnement : cree/mis a jour selon le statut, supprime = grat
   assert.equal(applySubscriptionEvent('customer.subscription.updated', { status: 'unpaid' })?.plan, 'free')
   assert.deepEqual(applySubscriptionEvent('customer.subscription.deleted', { status: 'canceled' }), { plan: 'free', status: 'canceled', periodEnd: null })
   assert.equal(applySubscriptionEvent('invoice.paid', { status: 'active' }), null)
+})
+
+test('pied de facture : mention auto-entrepreneur par defaut, texte libre, none pour ne rien imprimer', () => {
+  assert.equal(invoiceFooter(undefined), DEFAULT_INVOICE_FOOTER)
+  assert.equal(invoiceFooter(''), 'TVA non applicable, art. 293 B du CGI')
+  assert.equal(invoiceFooter('  Mon texte  '), 'Mon texte')
+  assert.equal(invoiceFooter('none'), null)
+  assert.equal(invoiceFooter('NONE'), null)
+  assert.equal(invoiceFooter('x'.repeat(900))?.length, 500)
 })

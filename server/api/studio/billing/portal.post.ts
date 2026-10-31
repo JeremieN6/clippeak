@@ -8,8 +8,8 @@ export default defineEventHandler(async (event) => {
   const config = billingConfig(event)
   const stripe = stripeClient()
   if (!config.configured || !stripe) throw createError({ statusCode: 404, statusMessage: 'Not found' })
-  const billing = await prisma.channelBilling.findUnique({ where: { channelId }, select: { stripeCustomerId: true } })
-  if (!billing?.stripeCustomerId) throw createError({ statusCode: 409, statusMessage: 'Aucun abonnement à gérer.' })
+  const billing = await prisma.channelBilling.findUnique({ where: { channelId }, select: { stripeCustomerId: true, stripeSubscriptionId: true } })
+  if (!billing?.stripeCustomerId || !billing.stripeSubscriptionId) throw createError({ statusCode: 409, statusMessage: 'Aucun abonnement à gérer.' })
   try {
     return { url: (await stripe.createPortalSession({ customerId: billing.stripeCustomerId, returnUrl: `${config.origin}/studio` })).url }
   } catch (error) {
