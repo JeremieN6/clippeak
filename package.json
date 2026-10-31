@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@prisma/client": "^6.15.0",
-    "jszip": "^3.10.1",
     "nuxt": "^4.4.8",
     "nuxt-posthog": "^1.6.3",
     "posthog-js": "1.396.7",
