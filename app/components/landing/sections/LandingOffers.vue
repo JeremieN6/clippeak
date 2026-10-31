@@ -37,7 +37,6 @@
 
         <p class="mt-6 font-display text-5xl font-bold text-white">19€<span class="ml-2 text-2xl text-white/60">/mois</span></p>
         <p class="mt-2 text-sm text-white/70">Pour les streameurs qui publient souvent.</p>
-        <p class="mt-1 text-xs text-white/60">TVA non applicable, art. 293 B du CGI</p>
 
         <ul class="mt-6 space-y-3 text-sm text-white/90">
           <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> 120 clips par mois (au lieu de 40)</li>
