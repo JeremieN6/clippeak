@@ -2,6 +2,7 @@
 // Usage : npx nuxt build && node scripts/integration/ui-serve.mjs <racine du depot>
 // Puis ouvrir http://127.0.0.1:3398/studio (mot de passe jetable affiche au demarrage). Ctrl+C pour arreter ; rien n'est ecrit sur Neon.
 import { spawn, spawnSync } from 'node:child_process'
+import { createServer } from 'node:http'
 import { createHash } from 'node:crypto'
 import { openSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
@@ -57,7 +58,15 @@ for (const [i, c] of clips.entries()) {
   }
 }
 
-const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, TWITCH_CLIENT_ID: 'demo', TWITCH_CLIENT_SECRET: 'demo', GOOGLE_CLIENT_ID: 'demo', GOOGLE_CLIENT_SECRET: 'demo', CLIPPEAK_TOKEN_KEY: Buffer.alloc(32, 7).toString('base64'), CLIPPEAK_FONTS_DIR: join(ROOT, 'public', 'fonts'), PORT: String(PORT), NITRO_PORT: String(PORT) }
+// Faux Stripe (prix seulement) pour voir la carte « Mon offre » ; UI_BILLING=creator affiche l'offre payante deja active.
+createServer((req, res) => {
+  res.setHeader('content-type', 'application/json')
+  if (req.url.startsWith('/v1/prices/')) return res.end(JSON.stringify({ unit_amount: 1900, currency: 'eur', recurring: { interval: 'month' } }))
+  res.statusCode = 404; res.end('{}')
+}).listen(3399, '127.0.0.1')
+if (process.env.UI_BILLING === 'creator') await q(`INSERT INTO channel_billing (id, channel_id, stripe_customer_id, stripe_subscription_id, plan, status, current_period_end, updated_at) VALUES (gen_random_uuid(), $1, 'cus_demo', 'sub_demo', 'creator', $2, now() + interval '20 days', now())`, [channelId, process.env.UI_BILLING_STATUS || 'active'])
+
+const env = { ...process.env, STRIPE_SECRET_KEY: 'sk_test_demo', STRIPE_PRICE_CREATOR: 'price_demo', STRIPE_API_BASE_URL: 'http://127.0.0.1:3399', ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, TWITCH_CLIENT_ID: 'demo', TWITCH_CLIENT_SECRET: 'demo', GOOGLE_CLIENT_ID: 'demo', GOOGLE_CLIENT_SECRET: 'demo', CLIPPEAK_TOKEN_KEY: Buffer.alloc(32, 7).toString('base64'), CLIPPEAK_FONTS_DIR: join(ROOT, 'public', 'fonts'), PORT: String(PORT), NITRO_PORT: String(PORT) }
 const cwd = join(DATA, 'cwd')
 mkdirSync(cwd, { recursive: true })
 const logFd = openSync(join(DATA, 'server.log'), 'w')

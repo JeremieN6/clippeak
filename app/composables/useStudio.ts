@@ -17,6 +17,7 @@ export interface StudioClip {
 export const isPublished = (clip: { status: string, publications: Array<{ status: string }> }) => clip.status === 'approved' && clip.publications.some(p => p.status === 'published')
 
 export interface StudioPublication { id: string, platform: string, status: string, scheduledAt: string, publishedAt: string | null, url: string | null, error: string | null }
+export interface StudioBilling { available: boolean, testMode?: boolean, plan?: 'free' | 'creator', planName?: string, status?: string | null, renewsAt?: string | null, canManage?: boolean, freeClips?: number, paidClips?: number, paidName?: string, price?: { amount: number, currency: string, interval: string | null } }
 export interface VodAlert { id: string, title: string, state: 'blocked' | 'working' | 'restore', since: string | null }
 export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null }
 
@@ -68,6 +69,8 @@ export function createStudio() {
   // Pris ici (pendant l'installation du composant) : plus tard, apres un await, le contexte Nuxt n'est plus disponible.
   const nuxtApp = useNuxtApp()
   const clips = ref<StudioClip[]>([])
+  // Offre (Starter / Creator) : absente tant que Stripe n'est pas configure sur le serveur.
+  const billing = ref<StudioBilling | null>(null)
   // Plafond mensuel de clips (limit null = illimite) : affiche dans le tableau de bord.
   const quota = ref<{ limit: number | null, used: number, remaining: number | null, reached: boolean, resetsAt: string } | null>(null)
   const connections = ref<StudioConnection[]>([])
@@ -140,6 +143,22 @@ export function createStudio() {
     await Promise.all([loadBank(), loadConnections(), loadVodAlerts()])
   }
 
+  async function loadBilling() {
+    billing.value = mode.value === 'streamer' ? await api<StudioBilling>('/api/studio/billing').catch(() => null) : null
+  }
+
+  // Page de paiement Stripe : on y va en quittant le studio, le retour se fait sur /studio?billing=ok.
+  const startCheckout = () => run(async () => {
+    const { url } = await api<{ url: string }>('/api/studio/billing/checkout', { method: 'POST' })
+    track('checkout_started')
+    window.location.href = url
+  })
+
+  const openPortal = () => run(async () => {
+    const { url } = await api<{ url: string }>('/api/studio/billing/portal', { method: 'POST' })
+    window.location.href = url
+  })
+
   async function loadClips() {
     const [data, q] = await Promise.all([
       api<{ clips: StudioClip[] }>('/api/studio/clips', { query: { status: 'all', channel: channelId.value || undefined } }),
@@ -171,7 +190,7 @@ export function createStudio() {
         mode.value = 'admin'
       }
       connected.value = true
-      await Promise.all([loadChannel(), loadClips()])
+      await Promise.all([loadChannel(), loadClips(), loadBilling()])
       view.value = onboarding.value?.completed ? 'dashboard' : 'onboarding'
       step.value = firstOpenStep()
       track('studio_opened', { onboarded: Boolean(onboarding.value?.completed) })
@@ -433,7 +452,7 @@ export function createStudio() {
   }, 'Publication annulée.')
 
   return {
-    connected, error, notice, busy, channels, channelId, detail, bank, clips, quota, connections, vodAlerts, view, step, onboarding, mode,
+    connected, error, notice, busy, channels, channelId, detail, bank, clips, quota, billing, loadBilling, startCheckout, openPortal, connections, vodAlerts, view, step, onboarding, mode,
     disconnectPlatform, publishClip, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
     api, run, track, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, setCaptionTags, advance, finishOnboarding, goToStep, stepStatus,

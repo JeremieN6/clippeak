@@ -8,7 +8,8 @@ export const STUDIO_EVENTS = [
   'clip_reviewed', // approuve / refuse / refait : { action, first } (first = premiere approbation)
   'clip_published', // publication lancee ou programmee : { platform, when, first }
   'roadmap_voted', // vote sur « Prochainement » : { feature, changed }
-  'roadmap_idea_sent' // idee envoyee (le texte n'est JAMAIS envoye)
+  'roadmap_idea_sent', // idee envoyee (le texte n'est JAMAIS envoye)
+  'checkout_started' // clic sur « Passer a Creator » (le paiement lui-meme se passe chez Stripe)
 ] as const
 export type StudioEvent = (typeof STUDIO_EVENTS)[number]
 

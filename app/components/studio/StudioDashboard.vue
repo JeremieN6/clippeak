@@ -152,6 +152,8 @@ const selectClass = 'st-field !min-h-11 !w-full'
       </div>
       <p v-else-if="studio.quota.value && studio.quota.value.limit !== null" class="m-0 -mt-4 text-[13px] st-muted">Clips ce mois-ci : {{ studio.quota.value.used }} / {{ studio.quota.value.limit }}</p>
 
+      <StudioBilling />
+
       <div v-if="progress" class="st-alert st-alert-info st-rise flex-col !gap-2.5" role="status">
         <div class="flex items-center gap-2 font-bold">
           <svg class="flex-none" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" opacity=".3" /><path d="M12 3a9 9 0 0 1 9 9" /></svg>

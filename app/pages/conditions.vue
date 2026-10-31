@@ -12,6 +12,9 @@ useHead({ title: 'Conditions d’utilisation – Clippeak' })
     <h2>Accès sur invitation</h2>
     <p>L’accès est limité aux chaînes invitées, pour que le service reste rapide pour chacun. Une invitation peut être retirée ; tes données sont alors conservées jusqu’à ta demande de suppression (voir la <NuxtLink to="/confidentialite">politique de confidentialité</NuxtLink>).</p>
 
+    <h2>Offres et limites</h2>
+    <p>Le nombre de clips que Clippeak prépare chaque mois est limité selon ton offre. Une offre payante peut être proposée : le paiement et la gestion de l’abonnement (carte, factures, annulation) se font chez Stripe. Quand ta limite du mois est atteinte, tes lives sont mis en attente et reprennent le mois suivant ; tes clips déjà préparés restent disponibles. Les offres, limites et prix peuvent évoluer, et tu en es informé avant tout changement qui te concerne.</p>
+
     <h2>Ton contenu</h2>
     <ul>
       <li>Tu restes propriétaire de tes lives, de tes fichiers et de tes clips.</li>

@@ -21,6 +21,15 @@ test('plafond effectif : reglage, defaut, illimite', () => {
   assert.equal(effectiveQuota({ twitchId: '1', setting: undefined }), DEFAULT_MONTHLY_CLIPS)
 })
 
+test('offre payante : plus grand entre reglage et offre, jamais moins ; illimite reste illimite', () => {
+  assert.equal(effectiveQuota({ twitchId: '1', setting: 40, planClips: 120 }), 120)
+  assert.equal(effectiveQuota({ twitchId: '1', setting: 200, planClips: 120 }), 200)
+  assert.equal(effectiveQuota({ twitchId: '1', setting: 10, planClips: 0 }), 10)
+  assert.equal(effectiveQuota({ twitchId: '1', setting: undefined, planClips: 120 }), 120)
+  assert.equal(effectiveQuota({ twitchId: '1', setting: null, planClips: 120 }), null)
+  assert.equal(effectiveQuota({ twitchId: 'test-x', setting: 5, planClips: 120 }), null)
+})
+
 test('clipRoom : jamais negatif, illimite = Infinity', () => {
   assert.equal(clipRoom(40, 12), 28)
   assert.equal(clipRoom(40, 40), 0)
