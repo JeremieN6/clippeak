@@ -28,10 +28,10 @@ case "${1:-}" in
   stripe)
     echo "Cles Stripe du compte Clippeak (mode test) : rien ne s'affiche en tapant."
     read -rsp "Cle secrete (sk_test_... ou rk_test_...) : " SK; echo
-    read -rsp "Secret du webhook (whsec_...) : " WH; echo
+    read -rsp "Secret du webhook (whsec_...), vide = garder celui deja en place : " WH; echo
     PRICE_DEFAULT="${STRIPE_PRICE_CREATOR:-price_1UWPYcEZhvrLO8HBxkKnEWsP}"
     read -rp "Identifiant du prix Creator [$PRICE_DEFAULT] : " PRICE; PRICE="${PRICE:-$PRICE_DEFAULT}"
-    [ -n "$SK" ] && [ -n "$WH" ] || { echo "Une des deux cles est vide."; exit 1; }
+    [ -n "$SK" ] || { echo "La cle secrete est vide."; exit 1; }
     "${SCP[@]}" scripts/ops/vps-stripe.sh "$USER_@$HOST:/tmp/vps-stripe.sh"
     printf '%s\n%s\n%s\n' "$SK" "$WH" "$PRICE" | "${SSH[@]}" "bash /tmp/vps-stripe.sh; rc=\$?; rm -f /tmp/vps-stripe.sh; exit \$rc"
     unset SK WH PRICE

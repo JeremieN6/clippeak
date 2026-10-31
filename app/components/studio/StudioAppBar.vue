@@ -21,6 +21,14 @@ onBeforeUnmount(() => { document.removeEventListener('click', away); document.re
 
 const go = (v: 'dashboard' | 'roadmap' | 'account') => { view.value = v; open.value = false }
 
+// « Mon abonnement » : avec un abonnement, on va droit au portail Stripe (changer de carte, factures, RESILIER) ; sans, a la carte « Mon offre ».
+const hasSubscription = computed(() => Boolean(studio.billing.value?.canManage))
+function subscription() {
+  open.value = false
+  if (hasSubscription.value) studio.openPortal()
+  else view.value = 'dashboard'
+}
+
 async function switchChannel() {
   await navigateTo({ query: { channel: channelId.value } }, { replace: true })
   await studio.switchChannel()
@@ -93,6 +101,10 @@ async function logout() {
           <button v-if="view !== 'roadmap'" type="button" role="menuitem" class="st-menu-item sm:hidden" @click="go('roadmap')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.2 5.3L20 10l-4.3 3.8L17 20l-5-3-5 3 1.3-6.2L4 10l5.8-1.7z" /></svg>
             Prochainement
+          </button>
+          <button v-if="studio.billing.value?.available" type="button" role="menuitem" class="st-menu-item" :disabled="busy" @click="subscription">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5" /><path d="M3 10h18M7 15h3" /></svg>
+            {{ hasSubscription ? 'Mon abonnement' : 'Mon offre' }}
           </button>
           <button v-if="view !== 'account'" type="button" role="menuitem" class="st-menu-item" @click="go('account')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z" /></svg>
