@@ -5,30 +5,30 @@
     <article class="space-y-6">
       <p class="text-xs uppercase tracking-[0.26em] text-clippeak-violetLight/80">En un coup d'œil</p>
       <h2 class="font-display text-4xl font-extrabold leading-tight sm:text-5xl">
-        Colle le lien,
+        Connecte ta chaîne,
         <span class="block text-clippeak-violetLight">reçois tes meilleurs clips.</span>
       </h2>
       <p class="text-base leading-7 text-clippeak-muted">
-        Clippeak lit ta VOD Twitch, détecte chaque pic d'activité du chat, et te sort un ZIP prêt à poster — sans que tu aies à regarder une seule seconde de footage.
+        Clippeak analyse tes lives Twitch, détecte chaque pic d'activité du chat, et prépare des clips verticaux à valider — sans que tu aies à regarder une seule seconde de footage.
       </p>
 
       <ol class="space-y-4">
         <li class="flex items-start gap-4">
           <span class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-clippeak-violet/25 text-xs font-bold text-clippeak-violetLight">1</span>
-          <span class="text-sm leading-6 text-white/85">Tu colles ton lien Twitch. Rien d'autre.</span>
+          <span class="text-sm leading-6 text-white/85">Tu te connectes avec Twitch (accès sur invitation).</span>
         </li>
         <li class="flex items-start gap-4">
           <span class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-clippeak-violet/25 text-xs font-bold text-clippeak-violetLight">2</span>
-          <span class="text-sm leading-6 text-white/85">Clippeak analyse le chat et extrait les moments forts automatiquement.</span>
+          <span class="text-sm leading-6 text-white/85">Clippeak analyse le chat et monte les moments forts automatiquement.</span>
         </li>
         <li class="flex items-start gap-4">
           <span class="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-clippeak-violet/25 text-xs font-bold text-clippeak-violetLight">3</span>
-          <span class="text-sm leading-6 text-white/85">Tu télécharges un ZIP de clips optimisés pour TikTok, Reels et Shorts.</span>
+          <span class="text-sm leading-6 text-white/85">Tu valides tes clips, puis tu les télécharges ou tu les publies sur YouTube Shorts.</span>
         </li>
       </ol>
 
-      <a href="/try-now" class="inline-flex items-center gap-2 rounded-xl bg-clippeak-violet px-5 py-3 text-sm font-semibold text-white transition hover:bg-clippeak-violetLight">
-        Essayer gratuitement
+      <a href="/connexion" class="inline-flex items-center gap-2 rounded-xl bg-clippeak-violet px-5 py-3 text-sm font-semibold text-white transition hover:bg-clippeak-violetLight">
+        Se connecter avec Twitch
         <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
     </article>
@@ -104,7 +104,7 @@
 
             <!-- Bouton download -->
             <button type="button" class="w-full rounded-xl bg-clippeak-violet py-2.5 text-xs font-semibold text-white">
-              Télécharger le ZIP (3 clips · 5h42 analysée)
+              Valider les clips (3 clips · 5h42 analysée)
             </button>
           </div>
         </div>

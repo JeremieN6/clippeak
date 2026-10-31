@@ -6,7 +6,6 @@ import LandingProblem from '../components/landing/sections/LandingProblem.vue'
 import LandingHowItWorks from '../components/landing/sections/LandingHowItWorks.vue'
 import LandingFeatures from '../components/landing/sections/LandingFeatures.vue'
 import LandingOffers from '../components/landing/sections/LandingOffers.vue'
-import LandingTestimonials from '../components/landing/sections/LandingTestimonials.vue'
 import LandingFaq from '../components/landing/sections/LandingFaq.vue'
 import LandingFinalCta from '../components/landing/sections/LandingFinalCta.vue'
 import LandingFooter from '../components/landing/sections/LandingFooter.vue'
@@ -17,26 +16,33 @@ const sectionIds = {
   how: 'how-it-works',
   features: 'features',
   offers: 'offers',
-  testimonials: 'testimonials',
   faq: 'faq',
   cta: 'cta-final'
 }
 
 const navLinks = [
-      { href: '/try-now', label: 'Try now' },
-  { href: `#${sectionIds.features}`, label: 'Benefices' },
+  { href: '/try-now', label: 'Voir la démo' },
+  { href: `#${sectionIds.features}`, label: 'Bénéfices' },
   { href: `#${sectionIds.how}`, label: 'Comment ça marche' },
   { href: `#${sectionIds.offers}`, label: 'Offres' },
-  { href: `#${sectionIds.testimonials}`, label: 'Temoignages' },
-  { href: `#${sectionIds.faq}`, label: 'FAQ' },
+  { href: `#${sectionIds.faq}`, label: 'FAQ' }
 ]
+
+useSeoMeta({
+  title: 'Clippeak : tes meilleurs moments Twitch, en clips verticaux',
+  description: 'Clippeak repère les pics de réaction de ton chat Twitch et prépare des clips verticaux avec titre et sous-titres. Tu valides, puis tu publies. Bêta sur invitation.',
+  ogTitle: 'Clippeak : tes meilleurs moments Twitch, en clips verticaux',
+  ogDescription: 'Des clips verticaux prêts à valider, tirés de tes lives Twitch. Bêta sur invitation, gratuite jusqu’à 40 clips par mois.',
+  ogType: 'website',
+  twitterCard: 'summary'
+})
 </script>
 
 <template>
   <main class="mx-auto w-full max-w-7xl px-5 pb-14 pt-6 sm:px-8 sm:pt-8">
-    <LandingNavbar :links="navLinks" primary-href="/try-now" />
+    <LandingNavbar :links="navLinks" primary-href="/connexion" />
 
-    <LandingHero primary-href="/try-now" />
+    <LandingHero primary-href="/connexion" secondary-href="/try-now" />
 
     <section :id="sectionIds.visual" class="mt-12 scroll-mt-24">
       <LandingVisual />
@@ -60,10 +66,6 @@ const navLinks = [
 
     <section :id="sectionIds.offers" class="mt-14 scroll-mt-24">
       <LandingOffers />
-    </section>
-
-    <section :id="sectionIds.testimonials" class="mt-14 scroll-mt-24">
-      <LandingTestimonials />
     </section>
 
     <section :id="sectionIds.faq" class="mt-14 scroll-mt-24">

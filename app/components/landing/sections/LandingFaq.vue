@@ -11,16 +11,20 @@ const faqs = [
     a: "Pour l'instant Clippeak est optimisé pour Twitch, dont on exploite le chat pour détecter les moments forts. YouTube sera supporté dans une version future."
   },
   {
+    q: 'Comment avoir accès ?',
+    a: "L'accès se fait sur invitation pendant la bêta. Connecte-toi avec Twitch : si ta chaîne n'est pas encore invitée, tu peux demander à être prévenu dès qu'une place s'ouvre."
+  },
+  {
     q: 'Combien de clips vais-je obtenir ?',
-    a: "Ça dépend de l'activité de ton chat. En moyenne, un live de 3-4h génère entre 8 et 15 clips."
+    a: "Clippeak prépare jusqu'à 8 clips par live, classés par note et présentés par lots de 4. Ça dépend ensuite de l'activité de ton chat, et de ton plafond mensuel (40 clips en gratuit)."
   },
   {
     q: 'Mes données sont-elles conservées ?',
-    a: 'Non. Tes clips sont disponibles au téléchargement pendant 30 minutes après génération, puis tout est supprimé de nos serveurs.'
+    a: 'Tes clips, tes photos et tes réglages restent dans ton espace tant que ton compte existe. Les vidéos des clips refusés sont supprimées après 14 jours. Tu peux tout exporter ou supprimer toi-même depuis « Mes données ». Les détails sont dans la politique de confidentialité.'
   },
   {
     q: 'C’est gratuit ?',
-    a: 'Oui, complètement gratuit pendant la période de bêta.'
+    a: "Oui, pendant la bêta : jusqu'à 40 clips par mois. Une offre payante (120 clips par mois) arrive ensuite, résiliable à tout moment."
   }
 ]
 

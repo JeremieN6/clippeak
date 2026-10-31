@@ -5,7 +5,7 @@
       Simple pendant la beta,
       <span class="text-clippeak-violetLight">évolue ensuite.</span>
     </h2>
-    <p class="mt-3 text-center text-base text-clippeak-muted">Accès gratuit pendant la période de test. Upgrade quand tu scales.</p>
+    <p class="mt-3 text-center text-base text-clippeak-muted">Accès gratuit pendant la période de test, sur invitation. Passe à l'offre payante quand tu as besoin de plus de clips.</p>
 
     <div class="mx-auto mt-10 grid max-w-4xl gap-6 md:grid-cols-2">
       <article class="rounded-3xl bg-black/20 p-8">
@@ -18,14 +18,14 @@
         <p class="mt-2 text-sm text-clippeak-muted">Pendant toute la période bêta.</p>
 
         <ul class="mt-6 space-y-3 text-sm text-white/85">
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> 10 VOD traitées / mois</li>
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Détection automatique par chat</li>
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Export ZIP instantané</li>
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Aucun compte requis</li>
+          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> 40 clips par mois</li>
+          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Détection par chat et montage vertical</li>
+          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Validation par lots de 4 clips</li>
+          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Téléchargement des clips validés</li>
         </ul>
 
-        <a href="/try-now" class="mt-8 block w-full rounded-2xl bg-clippeak-violet px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-clippeak-violetLight">
-          Essayer maintenant
+        <a href="/connexion" class="mt-8 block w-full rounded-2xl bg-clippeak-violet px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-clippeak-violetLight">
+          Se connecter avec Twitch
         </a>
       </article>
 
@@ -36,18 +36,16 @@
         </div>
 
         <p class="mt-6 font-display text-5xl font-bold text-white">19€<span class="ml-2 text-2xl text-white/60">/mois</span></p>
-        <p class="mt-2 text-sm text-white/70">Pour les streameurs qui publient tous les jours.</p>
+        <p class="mt-2 text-sm text-white/70">Pour les streameurs qui publient souvent.</p>
 
         <ul class="mt-6 space-y-3 text-sm text-white/90">
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> VOD illimitées</li>
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Traitement prioritaire</li>
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Envoi automatique après le live</li>
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Lancement d'un clip par commande vocal pendant le live</li>
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Discord / Telegram / Mail</li>
+          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> 120 clips par mois (au lieu de 40)</li>
+          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Tout ce qui est dans Starter</li>
+          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Résiliable à tout moment</li>
         </ul>
 
         <button type="button" disabled class="mt-8 w-full rounded-2xl bg-clippeak-violet px-5 py-3 text-sm font-semibold text-white opacity-60">
-          Rejoindre la liste d'attente
+          Bientôt disponible
         </button>
       </article>
     </div>
