@@ -9,7 +9,7 @@ const visible = computed(() => consent.ready.value && consent.state.value === 'p
 <template>
   <section v-if="visible" class="fixed inset-x-3 bottom-3 z-[60] mx-auto max-w-xl rounded-2xl border border-white/20 bg-[#14121c] p-4 text-white sm:bottom-5" role="dialog" aria-labelledby="cookie-title" aria-describedby="cookie-text">
     <!-- <h2 id="cookie-title" class="m-0 text-base font-bold">Mesure d’audience</h2> -->
-    <h2 id="cookie-title" class="m-0 text-base font-bold">Salut, c'est nous <strong>les cookies</strong></h2>
+    <h2 id="cookie-title" class="m-0 text-base font-bold">Salut, c'est nous <span class="font-bolder">les cookies</span>🍪</h2>
     <p id="cookie-text" class="mb-3 mt-1.5 text-sm leading-6 text-white/80">
       Clippeak voudrait mesurer comment le site est utilisé (pages vues, étapes du parcours) avec des outils d'analyses de trafic, pour l’améliorer. Cela utilise le stockage de ton navigateur. Rien n’est enregistré sans ton accord, et tu peux changer d’avis à tout moment.
       <NuxtLink to="/confidentialite#cookies" class="font-semibold text-white underline">En savoir plus</NuxtLink>
