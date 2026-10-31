@@ -30,7 +30,7 @@ const props = defineProps<{
         :href="props.primaryHref"
         class="rounded-xl bg-clippeak-violet px-4 py-2 text-sm font-semibold transition hover:bg-clippeak-violetLight"
       >
-        Essayer maintenant
+        Se connecter
       </a>
     </div>
   </header>

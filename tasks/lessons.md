@@ -199,3 +199,7 @@
 - **Erreur** : `NUXT_PUBLIC_POSTHOG_KEY` etait dans `.env.local` du VPS, mais le build Nuxt n'y lit rien : la prod embarquait `publicKey:""` et PostHog n'a jamais recu un seul evenement, sans erreur visible.
 - **Regle** : apres avoir pose une cle, verifier l'EFFET en production (config de la page, premier evenement recu cote outil), pas seulement la presence de la ligne dans un fichier. Les variables de BUILD vont dans `.env` du VPS ; celles lues par le serveur au demarrage passent par `readEnv` (`.env.local`).
 
+## 2026-10-31 : la page d'accueil n'avait pas suivi le produit (et contenait de faux temoignages)
+- **Erreur** : la landing V1 (simulation) est restee en ligne pendant que le vrai produit se construisait : promesses fausses (aucun compte, ZIP, suppression apres 30 minutes, offres inexistantes), aucun lien de connexion, et temoignages inventes. Personne ne l'avait relue depuis juillet.
+- **Regle** : avant toute ouverture, relire la page publique AVEC la liste de ce que le produit fait vraiment ; jamais de temoignage, de chiffre ou de photo qui ne soit pas reel ; toute promesse de la page (donnees, prix, fonctions) doit pouvoir etre verifiee dans le code ou la politique de confidentialite.
+

@@ -12,12 +12,12 @@
         <article class="relative rounded-2xl bg-clippeak-surface/30 p-6">
           <p class="absolute right-4 top-4 font-display text-6xl font-black text-clippeak-violet/15">01</p>
           <p class="text-xs font-bold uppercase tracking-wider text-clippeak-violetLight">Étape 01</p>
-          <h3 class="mt-4 text-2xl font-extrabold leading-tight">Colle le lien de ta VOD</h3>
+          <h3 class="mt-4 text-2xl font-extrabold leading-tight">Connecte ta chaîne Twitch</h3>
           <p class="mt-3 text-sm leading-6 text-clippeak-muted">
-            Tu colles simplement l'URL Twitch de ton stream. Clippeak s'occupe du reste : aucun compte, aucun plugin, aucune config.
+            Tu te connectes avec Twitch (accès sur invitation pendant la bêta) et tu montres à Clippeak quelques clips qui ont bien marché chez toi.
           </p>
           <p class="mt-4 text-sm font-semibold text-clippeak-violetLight/90">
-            Aucune configuration. Aucun plugin.
+            Le look de tes clips se règle en quelques questions.
           </p>
         </article>
 
@@ -26,7 +26,7 @@
           <p class="text-xs font-bold uppercase tracking-wider text-clippeak-violetLight">Étape 02</p>
           <h3 class="mt-4 text-2xl font-extrabold leading-tight">Clippeak analyse ton chat</h3>
           <p class="mt-3 text-sm leading-6 text-clippeak-muted">
-            L'IA scanne les pics d'activité du chat, détecte les moments de hype et extrait automatiquement les séquences les plus fortes.
+            Clippeak analyse le chat de tes lives, détecte les pics de réaction, puis monte chaque moment fort en clip vertical avec titre et sous-titres.
           </p>
           <p class="mt-4 text-sm font-semibold text-clippeak-violetLight/90">
             Chaque stream a son rythme — Clippeak s'y adapte.
@@ -36,12 +36,12 @@
         <article class="relative rounded-2xl bg-clippeak-surface/30 p-6">
           <p class="absolute right-4 top-4 font-display text-6xl font-black text-clippeak-violet/15">03</p>
           <p class="text-xs font-bold uppercase tracking-wider text-clippeak-violetLight">Étape 03</p>
-          <h3 class="mt-4 text-2xl font-extrabold leading-tight">Télécharge et publie</h3>
+          <h3 class="mt-4 text-2xl font-extrabold leading-tight">Valide, puis publie</h3>
           <p class="mt-3 text-sm leading-6 text-clippeak-muted">
-            Tu reçois un ZIP de tes meilleurs moments, découpés et prêts à poster sur TikTok, Instagram Reels ou YouTube Shorts.
+            Les clips arrivent par lots de 4 dans ton espace. Tu valides, tu ajustes le titre si besoin, puis tu les télécharges ou tu les publies sur YouTube Shorts. TikTok et Instagram arrivent.
           </p>
           <p class="mt-4 text-sm font-semibold text-clippeak-violetLight/90">
-            Tu publies. C'est tout.
+            Rien n'est publié sans ton accord.
           </p>
         </article>
       </div>

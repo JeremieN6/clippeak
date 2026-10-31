@@ -12,22 +12,22 @@
       <div class="mt-10 grid gap-4 md:grid-cols-2">
       <article class="rounded-2xl border border-clippeak-violet/25 bg-black/30 p-6">
         <h3 class="font-semibold">Détection par pic de chat</h3>
-        <p class="mt-2 text-sm text-clippeak-muted">Quand ton chat explose, Clippeak le détecte et extrait la séquence automatiquement.</p>
+        <p class="mt-2 text-sm text-clippeak-muted">Quand ton chat explose, Clippeak le détecte, puis écoute ce que tu dis pour garder le moment qui a un vrai début et une vraie fin.</p>
       </article>
 
       <article class="rounded-2xl border border-clippeak-violet/25 bg-black/30 p-6">
         <h3 class="font-semibold">Découpage intelligent</h3>
-        <p class="mt-2 text-sm text-clippeak-muted">On coupe 20 secondes avant le pic et 5 secondes après le calme pour ne rien rater.</p>
+        <p class="mt-2 text-sm text-clippeak-muted">Le clip commence au début d'une phrase et se termine proprement après la chute, sans couper au milieu.</p>
       </article>
 
       <article class="rounded-2xl border border-clippeak-violet/25 bg-black/30 p-6">
-        <h3 class="font-semibold">Clips multi-parts</h3>
-        <p class="mt-2 text-sm text-clippeak-muted">Si un moment est trop long, il est découpé automatiquement en parts numérotées.</p>
+        <h3 class="font-semibold">Montage vertical</h3>
+        <p class="mt-2 text-sm text-clippeak-muted">Format 9:16 avec titre, sous-titres mot par mot et zoom d'ouverture, selon le style que tu as choisi.</p>
       </article>
 
       <article class="rounded-2xl border border-clippeak-violet/25 bg-black/30 p-6">
-        <h3 class="font-semibold">ZIP prêt à publier</h3>
-        <p class="mt-2 text-sm text-clippeak-muted">Tu reçois tous tes clips dans un ZIP optimisé pour TikTok et Reels.</p>
+        <h3 class="font-semibold">Validation et publication</h3>
+        <p class="mt-2 text-sm text-clippeak-muted">Tu valides chaque clip, puis tu le télécharges ou tu le publies sur YouTube Shorts, tout de suite ou à l'heure que tu choisis.</p>
       </article>
       </div>
     </div>
