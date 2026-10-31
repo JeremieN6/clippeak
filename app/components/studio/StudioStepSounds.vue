@@ -1,6 +1,9 @@
 <script setup lang="ts">
 const studio = useStudio()
 const detail = studio.detail
+// Premiere fois : petites questions ; une etape deja faite s'ouvre sur les reglages detailles.
+const quick = ref(!studio.onboarding.value?.done?.includes(4))
+const resume = ref(false)
 const input = ref<HTMLInputElement | null>(null)
 const playing = ref('')
 
@@ -42,8 +45,13 @@ const situationDesc: Record<string, string> = {
 <template>
   <div v-if="detail" class="flex max-w-[820px] flex-col gap-6">
     <StudioStepHeader :n="4" tag="Facultatif" title="Les sons de tes clips">
-      De petits sons pour rythmer chaque moment de tes clips.
+      {{ quick ? 'Réponds en un clic, un son pour chaque moment.' : 'De petits sons pour rythmer chaque moment de tes clips.' }}
     </StudioStepHeader>
+
+    <StudioQuickSounds v-if="quick" :resume="resume" @detailed="quick = false; resume = true" />
+
+    <template v-else>
+    <div><button type="button" class="min-h-11 border-0 bg-transparent p-0 text-sm font-bold text-st-accentLight" @click="quick = true; resume = true">Revenir aux petites questions</button></div>
 
     <section class="st-card flex flex-col gap-4 !py-3">
       <div class="flex min-h-16 items-center justify-between gap-4">
@@ -100,5 +108,6 @@ const situationDesc: Record<string, string> = {
         <input ref="input" type="file" multiple accept=".mp3,.wav,.ogg,.m4a" class="hidden" aria-label="Ajouter des sons" @change="pick">
       </div>
     </section>
+    </template>
   </div>
 </template>

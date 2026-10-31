@@ -25,11 +25,9 @@
 - Tables : blocs de vote, fonctions, votes, idees (migration a appliquer par le porteur).
 - Ordre : apres le recadrage UI (1.4), pour la construire avec les composants propres.
 
-### 1.5 Refonte de l'onboarding (colonne de droite immersive) — P2, M a L
-**Demande du porteur (2026-10-29)** : la colonne de gauche (suivi des etapes) est correcte et reste ; la partie droite doit devenir plus **immersive**, comme **une conversation**, avec une trame et un suivi : Clippeak « parle », le streamer repond, une question a la fois, au lieu d'un formulaire par etape.
-- Reference : le porteur donnera l'exemple du site **rustine.io** au moment de s'y mettre ; ne rien concevoir avant.
-- Garde : les 8 etapes, l'enregistrement a chaque reponse, « plus tard », le retour a une etape depuis la colonne de gauche, l'apercu en direct de l'etape « look ».
-- A traiter apres le recadrage UI (composants propres) et avant l'ouverture aux streamers : c'est la premiere impression.
+### 1.5 Refonte de l'onboarding (colonne de droite immersive) — P2, M a L — LOOK ET SONS FAITS EN PETITES QUESTIONS (2026-10-31)
+- Version 1 (2026-10-30) : conversation avec etapes repliees et bulles de Clippeak. Version 2 (2026-10-31, branche `feat/quick-questions-onboarding`) : les etapes 3 (look) et 4 (sons) sont des petites questions d'un clic, avec apercu en direct, « Garder le style par defaut » et « Reglages detailles » en repli (voir CLAUDE.md).
+- Reste : decouper de la meme facon les etapes 5 a 7 si l'envie est la ; question « comment veux-tu etre prevenu » a l'etape 7 (retiree du backlog tant qu'il n'y a pas de streamers).
 
 ### 1.2 Statistiques des videos par plateforme dans le tableau de bord — P2, L
 - YouTube : vues, J'aime, commentaires par video publiee (YouTube Data API, lecture). Ajoute une portee OAuth de lecture : les streamers deja connectes devront reautoriser, et cela entre dans le dossier d'audit Google.

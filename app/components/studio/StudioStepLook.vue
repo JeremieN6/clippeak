@@ -2,6 +2,9 @@
 // Etape 3 : titre, sous-titres, zoom d'ouverture, cadrage, avatar et illustrations, avec un apercu en direct du rendu 1080x1920 (echelle 1/4).
 const studio = useStudio()
 const detail = studio.detail
+// Premiere fois : petites questions ; une etape deja faite s'ouvre sur les reglages detailles (le streamer veut ajuster). Les deux restent accessibles.
+const quick = ref(!studio.onboarding.value?.done?.includes(3))
+const resume = ref(false)
 const avatarInput = ref<HTMLInputElement | null>(null)
 
 const PREVIEW_W = 270
@@ -129,8 +132,13 @@ async function pickAvatar(event: Event) {
   <div v-if="detail" class="grid max-w-[1100px] gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
     <div class="flex min-w-0 flex-col gap-6">
       <StudioStepHeader :n="3" tag="Facultatif" title="Le look de tes clips">
-        Règle le titre, les sous-titres et le cadrage. L’aperçu bouge en direct.
+        {{ quick ? 'Réponds en un clic : l’aperçu bouge à chaque réponse.' : 'Règle le titre, les sous-titres et le cadrage. L’aperçu bouge en direct.' }}
       </StudioStepHeader>
+
+      <StudioQuickLook v-if="quick" :resume="resume" @detailed="quick = false; resume = true" />
+
+      <template v-else>
+      <div><button type="button" class="min-h-11 border-0 bg-transparent p-0 text-sm font-bold text-st-accentLight" @click="quick = true; resume = true">Revenir aux petites questions</button></div>
 
       <!-- Titre -->
       <section class="st-card flex flex-col gap-4">
@@ -274,6 +282,7 @@ async function pickAvatar(event: Event) {
           <input v-model.number="detail.style.illustrations.maxPerClip" type="range" min="0" max="4" class="st-range">
         </label>
       </section>
+      </template>
     </div>
 
     <!-- Apercu en direct -->
