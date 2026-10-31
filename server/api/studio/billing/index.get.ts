@@ -28,7 +28,8 @@ export default defineEventHandler(async (event) => {
     planName: PLAN_NAMES[plan],
     status: channel.billing?.status ?? null,
     renewsAt: channel.billing?.currentPeriodEnd ?? null,
-    canManage: Boolean(channel.billing?.stripeCustomerId),
+    // « Gerer mon abonnement » seulement apres un vrai abonnement : un client Stripe cree au clic sur « Passer a Creator » ne compte pas.
+    canManage: Boolean(channel.billing?.stripeSubscriptionId),
     freeClips: PLAN_CLIPS.free,
     paidClips: PLAN_CLIPS.creator,
     paidName: PLAN_NAMES.creator,

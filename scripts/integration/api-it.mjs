@@ -89,6 +89,8 @@ const fakeTwitch = createServer((req, res) => {
     }
     if (req.url.startsWith('/v1/')) {
       stripeCalls.push({ method: req.method, url: req.url, body: Object.fromEntries(new URLSearchParams(body)), auth: req.headers.authorization })
+      if (req.url === '/v1/customers') return res.end(JSON.stringify({ id: 'cus_new_1' }))
+      if (req.url.startsWith('/v1/customers/')) return res.end(JSON.stringify({ id: req.url.split('/').pop() }))
       if (req.url === '/v1/checkout/sessions') return res.end(JSON.stringify({ id: 'cs_test_1', url: 'https://checkout.stripe.test/c/pay/cs_test_1' }))
       if (req.url === '/v1/billing_portal/sessions') return res.end(JSON.stringify({ url: 'https://billing.stripe.test/p/session' }))
       if (req.url.startsWith('/v1/prices/')) return res.end(JSON.stringify({ unit_amount: 1900, currency: 'eur', recurring: { interval: 'month' } }))
@@ -803,6 +805,10 @@ try {
   assert.equal(checkout.json.url, 'https://checkout.stripe.test/c/pay/cs_test_1')
   const cCall = stripeCalls.filter(c => c.url === '/v1/checkout/sessions').pop()
   assert.equal(cCall.auth, 'Bearer sk_test_fake')
+  // Le client Stripe est cree AVANT le paiement : nom de la chaine, identifiant de chaine et mention de TVA en pied de facture
+  const custCall = stripeCalls.filter(c => c.url === '/v1/customers').pop()
+  assert.deepEqual([custCall.body.name, custCall.body['metadata[channel_id]'], custCall.body['invoice_settings[footer]']], ['Invitee', cid, 'TVA non applicable, art. 293 B du CGI'])
+  assert.equal(cCall.body.customer, 'cus_new_1')
   assert.deepEqual([cCall.body.mode, cCall.body['line_items[0][price]'], cCall.body.client_reference_id, cCall.body['subscription_data[metadata][channel_id]']], ['subscription', 'price_test_creator', cid, cid])
   assert.ok(cCall.body.success_url.endsWith('/studio?billing=ok') && cCall.body.cancel_url.endsWith('/studio?billing=cancel'))
   assert.equal((await call('/api/studio/billing/portal', { ...streamerAs, method: 'POST' })).status, 409) // pas d'abonnement a gerer
@@ -814,7 +820,8 @@ try {
   assert.equal((await hook(completed, { 'stripe-signature': signed(JSON.stringify(completed), Date.now(), 'whsec_autre') })).status, 400)
   assert.equal((await hook(completed, { 'stripe-signature': signed(JSON.stringify(completed), Date.now() - 10 * 60 * 1000) })).status, 400)
   assert.equal((await hook(JSON.stringify(completed) + ' ', { 'stripe-signature': signed(JSON.stringify(completed)) })).status, 400) // corps modifie apres signature
-  assert.equal((await q(`SELECT count(*)::int AS n FROM channel_billing`))[0].n, 0)
+  const [pre] = await q(`SELECT plan, status, stripe_customer_id FROM channel_billing WHERE channel_id = $1`, [cid])
+  assert.deepEqual([pre.plan, pre.status, pre.stripe_customer_id], ['free', null, 'cus_new_1']) // client cree, rien de paye : toujours gratuit
   const ok1 = await hook(completed, { 'stripe-signature': signed(JSON.stringify(completed)) })
   assert.equal(ok1.status, 200)
   const [b1] = await q(`SELECT plan, status, stripe_customer_id, stripe_subscription_id FROM channel_billing WHERE channel_id = $1`, [cid])
@@ -849,6 +856,7 @@ try {
   assert.deepEqual([b2.plan, b2.status], ['free', 'canceled'])
   assert.equal((await call('/api/studio/billing/checkout', { ...streamerAs, method: 'POST' })).status, 200) // il peut se reabonner, avec son client Stripe
   assert.equal(stripeCalls.filter(c => c.url === '/v1/checkout/sessions').pop().body.customer, 'cus_1')
+  assert.ok(stripeCalls.some(x => x.url === '/v1/customers/cus_1' && x.body['invoice_settings[footer]'] === 'TVA non applicable, art. 293 B du CGI'), 'pied de facture remis sur un client existant')
   // Un faux evenement sans la signature Stripe n'ecrit rien
   assert.equal((await hook(subEvt('evt_forge', 'customer.subscription.created', 'active', t0 + 70))).status, 400)
   assert.equal((await q(`SELECT status FROM channel_billing WHERE channel_id = $1`, [cid]))[0].status, 'canceled')

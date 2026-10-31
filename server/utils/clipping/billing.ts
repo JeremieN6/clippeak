@@ -3,6 +3,16 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 // Offres et facturation (Stripe) : regles pures, testables. Une seule offre payante pour commencer (decision du porteur, 2026-10-31).
 // Les prix et les noms vivent dans Stripe ; ici seulement ce que Clippeak en deduit : quel plan, combien de clips.
 
+// Mention imprimee en pied de chaque facture Stripe (le porteur est auto-entrepreneur, franchise en base de TVA). Modifiable sans code :
+// variable `STRIPE_INVOICE_FOOTER` (texte libre ; « none » pour ne rien imprimer, par exemple si la TVA devient applicable).
+export const DEFAULT_INVOICE_FOOTER = 'TVA non applicable, art. 293 B du CGI'
+export function invoiceFooter(raw: string | null | undefined): string | null {
+  const value = (raw ?? '').trim()
+  if (!value) return DEFAULT_INVOICE_FOOTER
+  if (value.toLowerCase() === 'none') return null
+  return value.slice(0, 500)
+}
+
 export type Plan = 'free' | 'creator'
 
 // Clips par mois selon l'offre. Gratuit : 40 (decision du porteur). Creator : 120, valeur de depart a ajuster (le porteur n'avait pas de chiffre).

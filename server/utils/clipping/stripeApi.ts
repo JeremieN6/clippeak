@@ -11,6 +11,8 @@ export interface StripeClient {
   createCheckoutSession(input: { priceId: string, channelId: string, customerId: string | null, successUrl: string, cancelUrl: string }): Promise<{ url: string }>
   createPortalSession(input: { customerId: string, returnUrl: string }): Promise<{ url: string }>
   cancelSubscription(subscriptionId: string): Promise<void>
+  createCustomer(input: { channelId: string, name: string, footer: string | null }): Promise<{ id: string }>
+  setCustomerInvoiceFooter(customerId: string, footer: string): Promise<void>
   getPrice(priceId: string): Promise<{ amount: number, currency: string, interval: string | null }>
 }
 
@@ -57,6 +59,17 @@ export function createStripeClient(config: { secretKey: string, apiBase?: string
     async getPrice(priceId) {
       const price = await call<{ unit_amount?: number | null, currency?: string, recurring?: { interval?: string } | null }>('GET', `/v1/prices/${encodeURIComponent(priceId)}`)
       return { amount: price.unit_amount ?? 0, currency: price.currency ?? 'eur', interval: price.recurring?.interval ?? null }
+    },
+    // Le client est cree par Clippeak AVANT le paiement : son nom et le pied de ses factures (mention de TVA) figurent des la premiere facture.
+    async createCustomer({ channelId, name, footer }) {
+      const form: Record<string, string> = { name: name.slice(0, 120), 'metadata[channel_id]': channelId, 'preferred_locales[0]': 'fr' }
+      if (footer) form['invoice_settings[footer]'] = footer
+      const customer = await call<{ id?: string }>('POST', '/v1/customers', form)
+      if (!customer.id) throw new StripeError('Stripe n’a pas créé le client.', 502)
+      return { id: customer.id }
+    },
+    async setCustomerInvoiceFooter(customerId, footer) {
+      await call('POST', `/v1/customers/${encodeURIComponent(customerId)}`, { 'invoice_settings[footer]': footer })
     },
     async cancelSubscription(subscriptionId) {
       await call('DELETE', `/v1/subscriptions/${encodeURIComponent(subscriptionId)}`)
