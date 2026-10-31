@@ -203,3 +203,7 @@
 - **Erreur** : la landing V1 (simulation) est restee en ligne pendant que le vrai produit se construisait : promesses fausses (aucun compte, ZIP, suppression apres 30 minutes, offres inexistantes), aucun lien de connexion, et temoignages inventes. Personne ne l'avait relue depuis juillet.
 - **Regle** : avant toute ouverture, relire la page publique AVEC la liste de ce que le produit fait vraiment ; jamais de temoignage, de chiffre ou de photo qui ne soit pas reel ; toute promesse de la page (donnees, prix, fonctions) doit pouvoir etre verifiee dans le code ou la politique de confidentialite.
 
+## 2026-10-31 : un module d'analyse qui demarre tout seul n'est pas conforme
+- **Erreur** : `nuxt-posthog` chargeait PostHog et ecrivait un cookie des la premiere page, sans consentement, et appelait PostHog depuis le serveur a chaque rendu.
+- **Regle** : tout traceur (mesure d'audience, pixel) demarre APRES accord, et on le verifie dans le navigateur : avant le choix, zero requete, zero cookie, zero cle stockee. Un module qui « fait tout » doit etre desactive et remplace par une initialisation que l'on controle.
+

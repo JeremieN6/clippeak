@@ -36,6 +36,7 @@
                         <li><a href="/confidentialite" class="text-sm text-slate-400 transition hover:text-white">Politique de
                                 confidentialite</a></li>
                         <li><a href="/conditions" class="text-sm text-slate-400 transition hover:text-white">Conditions d'utilisation</a></li>
+                        <li><ClientOnly><button type="button" class="p-0 text-sm text-slate-400 transition hover:text-white" @click="useConsent().reopen()">Gerer mes cookies</button></ClientOnly></li>
                         <li><a href="mailto:contact.clippeak@sassify.fr"
                                 class="text-sm text-slate-400 transition hover:text-white">Contact</a></li>
                     </ul>
