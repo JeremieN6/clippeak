@@ -199,6 +199,8 @@ Direction : passer de la simulation a un pipeline reel, inspire d'un workflow de
 
 - **2026-10-27 (connexion Twitch)** : decision du porteur : les streamers se connectent avec Twitch, sur invitation de l'ADMIN (liste de pseudos geree par le porteur, pas de parrainage entre streamers) pour maitriser la charge CPU du VPS ; la page a mot de passe reste reservee a l'admin. Remplace la decision du 2026-10-23 « pas d'OAuth streamer en V2 ».
 
+- **2026-11-01 (preparation production Stripe + TikTok)** : branche `docs/checklist-ouverture` (PR #66). Compte Stripe REEL `acct_1UWPUgIrL7WyQoMK` lu en lecture seule : produits Starter (0 EUR) et Creator (19 EUR/mois, prix reel `price_1UWPejIrL7WyQoMKr2CIrS37`) existent deja ; AUCUN webhook ni portail client en reel. Le connecteur Stripe refuse l'ecriture en mode reel (permissions a rouvrir par le porteur) ; aucune cle `sk_live_` posee. Le porteur estime que Stripe gere les factures (reglages verifies par lui) : le code garde le pied de facture, `STRIPE_INVOICE_FOOTER=none` si le modele Stripe a deja la mention. `CHECKLIST-OUVERTURE.md` mise a jour ; `PROCEDURE-TIKTOK.md` ajoute (sources officielles TikTok lues le 2026-11-01 : revue d'application + audit separe, videos privees et 5 utilisateurs/24 h avant audit, formulaire de publication impose, jeton d'acces 24 h / renouvellement 365 jours ; page du formulaire d'audit illisible). Code TikTok non ecrit.
+
 ---
 
 ## Lecons Apprises
