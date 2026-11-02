@@ -3,6 +3,7 @@ import { readEnv } from './env'
 import { tokenKey } from './publishConfig'
 import { decryptToken } from './clipping/tokenVault'
 import { revokeGoogleToken } from './clipping/googleOAuth'
+import { revokeTiktokToken } from './clipping/tiktokApi'
 import { createTwitchApi } from './clipping/twitchApi'
 import { eraseChannel, isDemoTwitchId, isTestTwitchId } from './demoChannel'
 import { stripeClient } from './billingConfig'
@@ -60,8 +61,14 @@ export async function deleteChannelAccount(channelId: string): Promise<DeleteRes
 
   const key = tokenKey()
   for (const c of channel.connections) {
-    if (!key || !c.refreshTokenEnc) continue
-    try { await revokeGoogleToken(fetch, decryptToken(c.refreshTokenEnc, key)); steps.push(`autorisation ${c.platform} retirée`) } catch { steps.push(`autorisation ${c.platform} : à retirer toi-même dans ton compte Google`) }
+    if (!key) continue
+    try {
+      // Chaque plateforme a sa propre revocation : un jeton TikTok ne doit jamais partir chez Google (ni l'inverse).
+      if (c.platform === 'tiktok') await revokeTiktokToken(fetch, { clientKey: readEnv('TIKTOK_CLIENT_KEY'), clientSecret: readEnv('TIKTOK_CLIENT_SECRET'), token: decryptToken(c.accessTokenEnc, key), apiBase: readEnv('TIKTOK_API_BASE_URL') || undefined })
+      else if (c.refreshTokenEnc) await revokeGoogleToken(fetch, decryptToken(c.refreshTokenEnc, key))
+      else continue
+      steps.push(`autorisation ${c.platform} retirée`)
+    } catch { steps.push(`autorisation ${c.platform} : à retirer toi-même dans les réglages de ton compte`) }
   }
 
   const clientId = readEnv('TWITCH_CLIENT_ID')
