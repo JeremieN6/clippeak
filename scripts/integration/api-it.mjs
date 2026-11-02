@@ -45,6 +45,7 @@ await q(`UPDATE clip_jobs SET output_path = $1 WHERE id = $2`, [rel, reviewId])
 let open666 = false
 const stripeCalls = []
 // --- faux Twitch (jeton et profil) pour jouer le retour de connexion sans le vrai service
+const tiktokRevoked = []
 const fakeTwitch = createServer((req, res) => {
   let body = ''
   req.on('data', c => { body += c })
@@ -71,6 +72,16 @@ const fakeTwitch = createServer((req, res) => {
       res.statusCode = 400
       return res.end('{}')
     }
+    if (req.url === '/v2/oauth/token/') {
+      const code = new URLSearchParams(body).get('code')
+      const scope = code === 't-noscope' ? 'user.info.basic' : 'user.info.basic,video.publish'
+      if (code === 't-code' || code === 't-noscope') return res.end(JSON.stringify({ access_token: 'ta-access', refresh_token: 'tr-refresh', expires_in: 86400, scope, open_id: 'oid-1' }))
+      res.statusCode = 400
+      return res.end(JSON.stringify({ error: 'invalid_grant' }))
+    }
+    if (req.url.startsWith('/v2/user/info/')) return res.end(JSON.stringify({ data: { user: { open_id: 'oid-1', display_name: 'Pseudo TikTok' } } }))
+    if (req.url === '/v2/oauth/revoke/') { tiktokRevoked.push(body); return res.end('{}') }
+    if (req.url === '/v2/post/publish/creator_info/query/') return res.end(JSON.stringify({ data: { creator_nickname: 'Pseudo TikTok', creator_username: 'pseudo', privacy_level_options: ['SELF_ONLY', 'PUBLIC_TO_EVERYONE'], comment_disabled: false, duet_disabled: true, stitch_disabled: false, max_video_post_duration_sec: 600 }, error: { code: 'ok' } }))
     if (req.url === '/open-666666') { open666 = true; return res.end('{}') }
     if (req.url === '/gql' && req.method === 'POST') {
       const asked = JSON.parse(body || '{}')
@@ -103,7 +114,7 @@ const fakeTwitch = createServer((req, res) => {
 await new Promise(r => fakeTwitch.listen(3397, '127.0.0.1', r))
 
 // --- serveur
-const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_GQL_URL: 'http://127.0.0.1:3397/gql', TWITCH_USHER_URL: 'http://127.0.0.1:3397/usher/vod', CLIPPEAK_RECHECK_COOLDOWN_MS: '0', GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsec', GOOGLE_TOKEN_URL: 'http://127.0.0.1:3397/token', CLIPPEAK_TOKEN_KEY: randomBytes(32).toString('base64'), STRIPE_SECRET_KEY: 'sk_test_fake', STRIPE_PRICE_CREATOR: 'price_test_creator', STRIPE_WEBHOOK_SECRET: 'whsec_test', STRIPE_API_BASE_URL: 'http://127.0.0.1:3397' }
+const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_GQL_URL: 'http://127.0.0.1:3397/gql', TIKTOK_CLIENT_KEY: 'tkey', TIKTOK_CLIENT_SECRET: 'tsec', TIKTOK_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_USHER_URL: 'http://127.0.0.1:3397/usher/vod', CLIPPEAK_RECHECK_COOLDOWN_MS: '0', GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsec', GOOGLE_TOKEN_URL: 'http://127.0.0.1:3397/token', CLIPPEAK_TOKEN_KEY: randomBytes(32).toString('base64'), STRIPE_SECRET_KEY: 'sk_test_fake', STRIPE_PRICE_CREATOR: 'price_test_creator', STRIPE_WEBHOOK_SECRET: 'whsec_test', STRIPE_API_BASE_URL: 'http://127.0.0.1:3397' }
 const cwd = join(DATA, 'cwd'); mkdirSync(cwd, { recursive: true })
 const logFd = openSync(join(DATA, 'server.log'), 'w')
 const server = spawn('node', [join(ROOT, '.output', 'server', 'index.mjs')], { env, cwd, stdio: ['ignore', logFd, logFd] })
@@ -481,12 +492,12 @@ try {
   await q(`INSERT INTO studio_sessions (id, channel_id, token_hash, expires_at) VALUES (gen_random_uuid(), $1, $2, now() + interval '1 day')`, [channelId, sha('jeton-pub')])
   const pub = as('jeton-pub')
   const conns = (await call(`/api/studio/channels/${channelId}/connections`, pub)).json.connections
-  assert.deepEqual(conns.map(c => [c.platform, c.available, c.connected]), [['youtube', true, false], ['tiktok', false, false], ['instagram', false, false]])
+  assert.deepEqual(conns.map(c => [c.platform, c.available, c.connected]), [['youtube', true, false], ['tiktok', true, false], ['instagram', false, false]])
   assert.equal((await call(`/api/studio/channels/${channelId}/connections`, as(sessionCookie.split('=')[1]))).status, 404)
   const publish = (id, body, who = pub) => call(`/api/studio/clips/${id}/publish`, { ...who, method: 'POST', body })
   assert.equal((await publish(reviewId, { platform: 'youtube' })).status, 409)
   assert.equal((await publish(queuedId, { platform: 'youtube' })).status, 409)
-  ok('connexions : YouTube disponible et non connecte, TikTok / Instagram pas encore ; publier sans compte connecte ou sans approbation = 409')
+  ok('connexions : YouTube disponible et non connecte, TikTok disponible, Instagram pas encore ; publier sans compte connecte ou sans approbation = 409')
 
   const ytStart = await redirect('/api/auth/youtube')
   assert.equal(ytStart.status, 302); assert.equal(ytStart.headers.get('location'), '/connexion')
@@ -513,7 +524,8 @@ try {
   assert.equal((await call(`/api/studio/channels/${channelId}/connections`, pub)).json.connections[0].connected, true)
   ok('connexion YouTube : depart vers Google (portee minimale, hors ligne, etat en cookie HttpOnly), etat faux / droit refuse / sans session / annulation geres, jetons CHIFFRES en base')
 
-  assert.equal((await publish(reviewId, { platform: 'tiktok' })).status, 400)
+  assert.equal((await publish(reviewId, { platform: 'tiktok' })).status, 409) // TikTok existe mais le compte n'est pas connecte
+  assert.equal((await publish(reviewId, { platform: 'instagram' })).status, 400) // plateforme pas encore geree
   assert.equal((await publish(reviewId, { platform: 'youtube', at: 'demain' })).status, 400)
   assert.equal((await publish(reviewId, { platform: 'youtube', at: new Date(Date.now() + 90 * 24 * 3600 * 1000).toISOString() })).status, 400)
   assert.equal((await publish(otherClip, { platform: 'youtube' })).status, 404)
@@ -548,6 +560,57 @@ try {
   assert.equal((await q(`SELECT 1 FROM platform_connections WHERE channel_id = $1`, [channelId])).length, 0)
   assert.equal((await call(`/api/studio/channels/${channelId}/connections/youtube`, { ...pub, method: 'DELETE' })).status, 404)
   ok('publie = ni reprogrammable ni annulable (409) ; deconnecter efface les jetons et annule les publications programmees')
+
+  // --- connexion TikTok (faux TikTok) : depart, retour, informations du compte, controle des reglages, publication, deconnexion
+  const ttGo = await fetch(B + '/api/auth/tiktok', { redirect: 'manual', headers: { cookie: 'clippeak_session=jeton-pub' } })
+  const ttUrl = new URL(ttGo.headers.get('location'))
+  assert.equal(ttUrl.origin + ttUrl.pathname, 'https://www.tiktok.com/v2/auth/authorize/')
+  assert.equal(ttUrl.searchParams.get('scope'), 'user.info.basic,video.publish')
+  const ttState = ttUrl.searchParams.get('state')
+  const ttSetCookie = ttGo.headers.getSetCookie().find(c => c.startsWith('clippeak_oauth_tt='))
+  const ttCookie = ttSetCookie.split(';')[0]
+  assert.ok(ttSetCookie.includes('HttpOnly'))
+  assert.equal((await fetch(B + '/api/auth/tiktok', { redirect: 'manual', headers: { cookie: adminCookie } })).headers.get('location'), '/studio?connect=admin')
+  assert.equal((await fetch(B + '/api/auth/tiktok', { redirect: 'manual' })).headers.get('location'), '/connexion')
+  const ttCb = (code, st, cookie) => fetch(B + `/api/auth/tiktok/callback?code=${code}&state=${st}`, { redirect: 'manual', headers: { cookie } })
+  assert.equal((await ttCb('t-code', 'autre', `clippeak_session=jeton-pub; ${ttCookie}`)).headers.get('location'), '/studio?connect=error')
+  assert.equal((await ttCb('t-noscope', ttState, `clippeak_session=jeton-pub; ${ttCookie}`)).headers.get('location'), '/studio?connect=error')
+  assert.equal((await ttCb('t-code', ttState, ttCookie)).headers.get('location'), '/connexion')
+  assert.equal((await fetch(B + '/api/auth/tiktok/callback?error=access_denied', { redirect: 'manual', headers: { cookie: 'clippeak_session=jeton-pub' } })).headers.get('location'), '/studio?connect=cancelled')
+  assert.equal((await ttCb('t-code', ttState, `clippeak_session=jeton-pub; ${ttCookie}`)).headers.get('location'), '/studio?connect=tiktok')
+  const [ttSaved] = await q(`SELECT account_name, access_token_enc, refresh_token_enc FROM platform_connections WHERE channel_id = $1 AND platform = 'tiktok'`, [channelId])
+  assert.equal(ttSaved.account_name, 'Pseudo TikTok')
+  assert.ok(ttSaved.refresh_token_enc.startsWith('v1.') && !ttSaved.refresh_token_enc.includes('tr-refresh') && !ttSaved.access_token_enc.includes('ta-access'))
+  const ttConn = (await call(`/api/studio/channels/${channelId}/connections`, pub)).json.connections.find(c => c.platform === 'tiktok')
+  assert.deepEqual([ttConn.available, ttConn.connected, ttConn.accountName], [true, true, 'Pseudo TikTok'])
+  ok('connexion TikTok : portees minimales, etat en cookie HttpOnly, etat faux / droit de publier refuse / sans session / annulation geres, jetons CHIFFRES, pseudo affiche')
+
+  const creatorRes = await call(`/api/studio/channels/${channelId}/tiktok-creator`, pub)
+  assert.equal(creatorRes.status, 200)
+  assert.deepEqual([creatorRes.json.nickname, creatorRes.json.privacyOptions, creatorRes.json.duetDisabled], ['Pseudo TikTok', ['SELF_ONLY', 'PUBLIC_TO_EVERYONE'], true])
+  assert.equal((await call(`/api/studio/channels/${channelId}/tiktok-creator`, as(sessionCookie.split('=')[1]))).status, 404)
+  assert.equal((await call(`/api/studio/channels/${channelId}/tiktok-creator`, { auth: false })).status, 401)
+  const tiktokOptions = { title: 'Mon clip #twitch', privacyLevel: 'SELF_ONLY', disableComment: true, disableDuet: true, disableStitch: true, brandOrganic: false, brandContent: false, consent: true }
+  assert.equal((await publish(reviewId, { platform: 'tiktok' })).status, 400)
+  assert.equal((await publish(reviewId, { platform: 'tiktok', options: { ...tiktokOptions, privacyLevel: undefined } })).status, 400)
+  assert.equal((await publish(reviewId, { platform: 'tiktok', options: { ...tiktokOptions, consent: false } })).status, 400)
+  assert.equal((await publish(reviewId, { platform: 'tiktok', options: { ...tiktokOptions, privacyLevel: 'FOLLOWER_OF_CREATOR' } })).status, 400)
+  assert.equal((await publish(reviewId, { platform: 'tiktok', options: { ...tiktokOptions, disableDuet: false } })).status, 400)
+  assert.equal((await publish(reviewId, { platform: 'tiktok', options: { ...tiktokOptions, brandContent: true } })).status, 400)
+  assert.equal((await publish(reviewId, { platform: 'tiktok', options: tiktokOptions, at: new Date(Date.now() + 3600_000).toISOString() })).status, 400)
+  assert.equal((await q(`SELECT 1 FROM publications WHERE clip_job_id = $1 AND platform = 'tiktok'`, [reviewId])).length, 0)
+  const ttPub = await publish(reviewId, { platform: 'tiktok', options: tiktokOptions })
+  assert.equal(ttPub.status, 200)
+  const [ttRow] = await q(`SELECT status, options FROM publications WHERE id = $1`, [ttPub.json.id])
+  assert.equal(ttRow.status, 'scheduled')
+  assert.deepEqual(ttRow.options, { title: 'Mon clip #twitch', privacyLevel: 'SELF_ONLY', disableComment: true, disableDuet: true, disableStitch: true, brandOrganic: false, brandContent: false })
+  ok('publication TikTok : visibilite sans valeur par defaut, accord obligatoire, choix controles contre le compte (visibilite, duo, contenu de marque prive), pas de programmation, reglages gardes sans l accord')
+  assert.equal((await call(`/api/studio/channels/${channelId}/connections/tiktok`, { ...pub, method: 'DELETE' })).status, 200)
+  assert.equal(tiktokRevoked.length, 1)
+  assert.ok(tiktokRevoked[0].includes('token=ta-access') && tiktokRevoked[0].includes('client_key=tkey'))
+  assert.equal((await q(`SELECT status FROM publications WHERE id = $1`, [ttPub.json.id]))[0].status, 'cancelled')
+  assert.equal((await q(`SELECT 1 FROM platform_connections WHERE channel_id = $1`, [channelId])).length, 0)
+  ok('deconnexion TikTok : autorisation retiree chez TikTok, jetons effaces, publication programmee annulee')
 
   // --- ajout manuel de VOD (admin) avec un faux Helix
   const addVod = (body, who = {}) => call('/api/admin/vods', { method: 'POST', body, ...who })

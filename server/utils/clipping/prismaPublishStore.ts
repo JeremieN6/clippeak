@@ -26,7 +26,7 @@ export function createPrismaPublishStore(db: PrismaClient, vault: TokenVault): P
 
     async claimDue() {
       // Heure de la base (UTC, comme les colonnes de Prisma) : un Date passe en parametre brut peut etre decale par le fuseau. SKIP LOCKED : jamais prise deux fois.
-      const rows = await db.$queryRaw<Array<{ id: string, platform: string, attempts: number, clip_job_id: string }>>`
+      const rows = await db.$queryRaw<Array<{ id: string, platform: string, attempts: number, clip_job_id: string, options: unknown }>>`
         UPDATE "public"."publications" SET "status" = 'publishing', "attempts" = "attempts" + 1, "updated_at" = now()
         WHERE "id" = (
           SELECT "id" FROM "public"."publications"
@@ -35,7 +35,7 @@ export function createPrismaPublishStore(db: PrismaClient, vault: TokenVault): P
           LIMIT 1
           FOR UPDATE SKIP LOCKED
         )
-        RETURNING "id", "platform", "attempts" - 1 AS "attempts", "clip_job_id"`
+        RETURNING "id", "platform", "attempts" - 1 AS "attempts", "clip_job_id", "options"`
       const row = rows[0]
       if (!row) return null
 
@@ -50,6 +50,7 @@ export function createPrismaPublishStore(db: PrismaClient, vault: TokenVault): P
         id: row.id,
         platform: row.platform,
         attempts: Number(row.attempts),
+        options: row.options && typeof row.options === 'object' ? row.options as Record<string, unknown> : null,
         clip: {
           id: row.clip_job_id,
           title: job?.title ?? '',
@@ -66,8 +67,8 @@ export function createPrismaPublishStore(db: PrismaClient, vault: TokenVault): P
     },
 
     async saveAccessToken(connectionId, token) {
-      // Le jeton arrive deja chiffre (voir server/worker/publish.ts).
-      await db.platformConnection.update({ where: { id: connectionId }, data: { accessTokenEnc: token.value, expiresAt: token.expiresAt } })
+      // Les jetons arrivent deja chiffres (voir server/worker/publish.ts).
+      await db.platformConnection.update({ where: { id: connectionId }, data: { accessTokenEnc: token.value, expiresAt: token.expiresAt, ...(token.refreshToken ? { refreshTokenEnc: token.refreshToken } : {}) } })
     },
 
     async markPublished(id, result, at) {

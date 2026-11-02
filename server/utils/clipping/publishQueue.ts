@@ -9,12 +9,13 @@ export interface DuePublication {
   attempts: number
   clip: { id: string, title: string, caption: string, hashtags: string, videoPath: string | null, status: string }
   connection: { id: string, refreshToken: string | null, accessToken: string | null, expiresAt: Date | null } | null
+  options: Record<string, unknown> | null
 }
 
 export interface PublishStore {
   requeueInterrupted: () => Promise<number>
   claimDue: (now: Date) => Promise<DuePublication | null>
-  saveAccessToken: (connectionId: string, token: { value: string, expiresAt: Date }) => Promise<void>
+  saveAccessToken: (connectionId: string, token: { value: string, expiresAt: Date, refreshToken?: string }) => Promise<void>
   markPublished: (id: string, result: Pick<PublishResult, 'externalId' | 'url'>, at: Date) => Promise<void>
   // retryAt : nouvelle heure de tentative (erreur passagere) ; sinon la publication est en echec definitif.
   markFailed: (id: string, error: string, retryAt: Date | null) => Promise<void>
@@ -53,6 +54,7 @@ export async function runPublishOnce(deps: PublishStepDeps): Promise<boolean> {
         caption: due.clip.caption,
         hashtags: due.clip.hashtags,
         videoPath: due.clip.videoPath,
+        options: due.options,
         refreshToken: due.connection.refreshToken,
         accessToken: due.connection.accessToken,
         expiresAt: due.connection.expiresAt
@@ -61,6 +63,7 @@ export async function runPublishOnce(deps: PublishStepDeps): Promise<boolean> {
       await deps.store.markPublished(due.id, result, now())
       deps.log?.(`publication ${due.id} (${due.platform}) : publiée`)
     } catch (error) {
+      if (error instanceof PublishError && error.renewed) await deps.store.saveAccessToken(due.connection.id, error.renewed).catch(() => {})
       if (error instanceof PublishError) await fail(error.message, error.kind === 'transient')
       else await fail('Erreur inattendue pendant la publication.', true)
     }

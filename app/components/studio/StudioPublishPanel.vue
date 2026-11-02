@@ -35,7 +35,7 @@ async function schedule() {
     <h4 class="m-0 text-sm font-bold">Publier</h4>
 
     <p v-if="!connected.length" class="m-0 text-[13px] leading-5 st-muted">
-      Approuvé : rien n’est publié. Connecte YouTube à l’étape « Tes plateformes » pour publier d’ici, ou télécharge le clip pour le publier toi-même.
+      Approuvé : rien n’est publié. Connecte YouTube ou TikTok à l’étape « Tes plateformes » pour publier d’ici, ou télécharge le clip pour le publier toi-même.
     </p>
 
     <template v-else>
@@ -55,7 +55,9 @@ async function schedule() {
         </li>
       </ul>
 
-      <template v-if="!busyOrDone">
+      <StudioTiktokPublish v-if="platform === 'tiktok' && !busyOrDone" :key="clip.id" :clip="clip" />
+
+      <template v-else-if="!busyOrDone">
         <div class="flex flex-wrap gap-2">
           <button type="button" class="st-btn" :disabled="studio.busy.value" @click="studio.publishClip(clip, platform, null)">Publier maintenant</button>
         </div>

@@ -36,5 +36,15 @@ case "${1:-}" in
     printf '%s\n%s\n%s\n' "$SK" "$WH" "$PRICE" | "${SSH[@]}" "bash /tmp/vps-stripe.sh; rc=\$?; rm -f /tmp/vps-stripe.sh; exit \$rc"
     unset SK WH PRICE
     ;;
-  *) echo "Usage : bash scripts/ops/run-on-vps.sh prerequisites|mega|stripe"; exit 1 ;;
+  tiktok)
+    echo "Identifiants de l'application TikTok for Developers : rien ne s'affiche en tapant."
+    read -rsp "Client key : " TK; echo
+    read -rsp "Client secret : " TS; echo
+    [ -n "$TK" ] && [ -n "$TS" ] || { echo "Client key ou Client secret vide."; exit 1; }
+    tr -d '\r' < scripts/ops/vps-tiktok.sh > /tmp/vps-tiktok.sh
+    "${SCP[@]}" /tmp/vps-tiktok.sh "$USER_@$HOST:/tmp/vps-tiktok.sh"; rm -f /tmp/vps-tiktok.sh
+    printf '%s\n%s\n' "$TK" "$TS" | "${SSH[@]}" "bash /tmp/vps-tiktok.sh; rc=\$?; rm -f /tmp/vps-tiktok.sh; exit \$rc"
+    unset TK TS
+    ;;
+  *) echo "Usage : bash scripts/ops/run-on-vps.sh prerequisites|mega|stripe|tiktok"; exit 1 ;;
 esac

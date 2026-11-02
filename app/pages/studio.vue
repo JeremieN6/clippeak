@@ -22,9 +22,10 @@ onBeforeUnmount(() => { if (noticeTimer) clearTimeout(noticeTimer) })
 // Retour d'une connexion de plateforme (voir /api/auth/youtube) : message, puis retour a l'etape des plateformes.
 const connectMessages: Record<string, string> = {
   youtube: 'YouTube est connecté.',
+  tiktok: 'TikTok est connecté.',
   cancelled: 'Connexion annulée.',
   error: 'La connexion a échoué. Réessaie dans un instant.',
-  unavailable: 'La publication YouTube n’est pas encore activée.',
+  unavailable: 'Cette publication n’est pas encore activée.',
   admin: 'Connecte une plateforme depuis un compte streamer.'
 }
 
@@ -34,7 +35,7 @@ onMounted(async () => {
   checking.value = false
   const result = String(route.query.connect ?? '')
   if (result) {
-    if (result === 'youtube') studio.notice.value = connectMessages.youtube
+    if (result === 'youtube' || result === 'tiktok') studio.notice.value = connectMessages[result]
     else studio.error.value = connectMessages[result] ?? ''
     studio.goToStep(7)
     await navigateTo({ query: {} }, { replace: true })

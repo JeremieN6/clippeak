@@ -354,6 +354,8 @@ model Publication {
   externalUrl String?   @map("external_url") @db.VarChar(300)
   error       String?
   attempts    Int       @default(0)
+  // Reglages choisis par le streamer pour cette plateforme (TikTok : visibilite, commentaires, duo, stitch, contenu commercial, titre).
+  options     Json?
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 

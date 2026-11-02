@@ -16,3 +16,13 @@ export function youtubeConfig(event: H3Event) {
   const redirectUri = readEnv('GOOGLE_REDIRECT_URL') || `${origin}/api/auth/youtube/callback`
   return { clientId, clientSecret, redirectUri, configured: Boolean(clientId && clientSecret && tokenKey()) }
 }
+
+// Reglages de la connexion TikTok. L'adresse de retour doit etre declaree telle quelle dans le portail TikTok for Developers.
+export function tiktokConfig(event: H3Event) {
+  const clientKey = readEnv('TIKTOK_CLIENT_KEY')
+  const clientSecret = readEnv('TIKTOK_CLIENT_SECRET')
+  const publicUrl = readEnv('CLIPPEAK_PUBLIC_URL').replace(/\/+$/, '')
+  const origin = publicUrl || `${getRequestProtocol(event, { xForwardedProto: true })}://${getRequestHost(event, { xForwardedHost: true })}`
+  const redirectUri = readEnv('TIKTOK_REDIRECT_URL') || `${origin}/api/auth/tiktok/callback`
+  return { clientKey, clientSecret, redirectUri, apiBase: readEnv('TIKTOK_API_BASE_URL') || undefined, configured: Boolean(clientKey && clientSecret && tokenKey()) }
+}
