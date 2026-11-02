@@ -13,9 +13,9 @@ Donner a voir, sans backend de production reel, ce a quoi ressemblerait un servi
 ---
 
 ## Statut actuel
-Clippeak est une landing page interactive complete et deployee en continu : un visiteur peut coller une URL Twitch, regarder une simulation de traitement (~58 secondes, avec etapes et estimation), telecharger un ZIP de demonstration, puis donner son avis via un formulaire de feedback. Un espace admin protege par mot de passe permet de consulter les retours collectes.
+Clippeak est un vrai produit en bêta sur invitation. Un streamer se connecte avec Twitch ; l'outil détecte ses VODs, repère les moments forts (chat + transcription), découpe et monte des clips verticaux avec sa direction artistique, et lui propose des lots à valider dans un studio. Rien n'est publié sans son accord ; la publication YouTube fonctionne (en privé tant que Google n'a pas audité l'application). Un plafond gratuit de 40 clips par mois protège le serveur ; un plan payant « Creator » à 19 EUR par mois est branché sur Stripe, passé en production le 2026-11-02. La page d'accueil décrit le produit réel, la démo `/try-now` reste une simulation annoncée comme telle.
 
-Le produit reel de clipping n'existe pas encore : tout le "traitement" est simule cote front. Depuis octobre 2026, les fondations du vrai moteur sont en construction (detection des moments forts du chat, recuperation automatique des VODs), pas encore testees en conditions reelles ; le detail est dans `BRIEF-V2.md`.
+Pas encore ouvert au public : réponses de Google et YouTube attendues, TikTok et Instagram à obtenir, premiers vrais streamers à inviter. Le suivi détaillé est dans `CHECKLIST-OUVERTURE.md`.
 
 ---
 
@@ -87,5 +87,8 @@ Pour que les clips publies sur YouTube soient visibles de tous (et pas seulement
 ## 2026-10-31 -- Le modele economique prend forme : gratuit avec plafond, un seul plan payant
 Decisions du porteur : beta gratuite sur invitation avec un plafond de 40 clips par mois et par chaine (le serveur de 2 coeurs est la vraie ressource limitee), un seul plan payant « Creator » (120 clips par mois, 19 EUR par mois : prix mis au hasard, a ajuster), pas de plan multiple au depart. Le paiement (Stripe, mode test) est branche avant l'ouverture publique, contrairement au plan initial « apres 5 a 10 streamers » : le porteur veut pouvoir tester le parcours complet des maintenant. La resiliation est libre (portail Stripe, jamais bloquee). Pas de vrais paiements tant que prix, TVA et conditions ne sont pas valides. Apprentissage : le suivi PostHog n'avait jamais fonctionne en production (cle vide au build) : il faut verifier l'effet reel d'un outil de mesure, pas seulement sa presence.
 
+## 2026-11-02 -- Premiers paiements réels possibles
+Le porteur est auto-entrepreneur, sans TVA (franchise en base) : le client paie 19 EUR, la mention légale est en pied de facture Stripe. Les clés Stripe de production (clé restreinte), le webhook et le prix réel sont posés sur le serveur. Reste à enregistrer le portail client réel dans Stripe et à faire un vrai paiement de 19 EUR remboursé. Apprentissage : un test d'API « à vide » peut créer de vraies données en production (un client vide créé puis supprimé) : ne jamais sonder une écriture avec une clé réelle. Côté outillage, le fichier de mémoire du projet avait grossi jusqu'à 100 Ko et était rechargé à chaque échange : l'historique détaillé est maintenant archivé dans `docs/HISTORIQUE-PROJET.md`.
+
 ## Derniere mise a jour
-2026-10-25 -- Banque de reference redefinie (base de tout). 2026-10-24 -- Ajout du bilan du pipeline de clips (verifie en local, non deploye). Pivot V2 du 2026-10-23 conserve. Creation initiale du fichier le 2026-08-27 a partir de l'historique git et de `tasks/lessons.md`.
+2026-11-02 -- Statut mis a jour (produit reel, Stripe en production). 2026-10-25 -- Banque de reference redefinie (base de tout). 2026-10-24 -- Ajout du bilan du pipeline de clips (verifie en local, non deploye). Pivot V2 du 2026-10-23 conserve. Creation initiale du fichier le 2026-08-27 a partir de l'historique git et de `tasks/lessons.md`.
