@@ -9,7 +9,8 @@ const creator = ref<TiktokCreator | null>(null)
 const loadError = ref('')
 const loading = ref(true)
 
-const title = ref([props.clip.title, props.clip.caption].filter(Boolean).join('\n\n').slice(0, 2200) || props.clip.title || '')
+// La legende du clip contient deja le titre puis les hashtags : on part d'elle seule (sinon le titre apparait deux fois).
+const title = ref((props.clip.caption || props.clip.title || '').slice(0, 2200))
 const privacy = ref('')
 const allowComment = ref(false)
 const allowDuet = ref(false)
@@ -76,7 +77,7 @@ async function publish() {
       <div v-if="tooLong" class="st-alert st-alert-warn"><div>Ce clip dure plus que ce que ton compte TikTok permet ({{ creator.maxVideoDurationSec }} s).</div></div>
 
       <label class="flex flex-col gap-1.5">
-        <span class="st-label !text-[13px]">Titre et hashtags</span>
+        <span class="st-label !text-[13px]">Titre et hashtags sur TikTok</span>
         <textarea v-model="title" rows="4" maxlength="2200" class="st-field" />
       </label>
 
