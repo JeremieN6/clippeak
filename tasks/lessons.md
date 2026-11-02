@@ -207,3 +207,6 @@
 - **Erreur** : `nuxt-posthog` chargeait PostHog et ecrivait un cookie des la premiere page, sans consentement, et appelait PostHog depuis le serveur a chaque rendu.
 - **Regle** : tout traceur (mesure d'audience, pixel) demarre APRES accord, et on le verifie dans le navigateur : avant le choix, zero requete, zero cookie, zero cle stockee. Un module qui « fait tout » doit etre desactive et remplace par une initialisation que l'on controle.
 
+## 2026-11-02 : ajouter une plateforme = repasser sur chaque code qui suppose « Google »
+- **Erreur** : la suppression de compte (`accountData.ts`) envoyait le jeton de chaque plateforme connectee a la revocation de Google. En ajoutant TikTok, son jeton serait parti chez Google (fuite d'un secret vers un tiers) et n'aurait jamais ete revoque chez TikTok. Trouve en relisant les textes legaux (« l'autorisation est revoquee chez TikTok »), pas par un test.
+- **Regle** : quand on ajoute une plateforme, chercher tout ce qui boucle sur les connexions (`platform_connections`) et verifier que chaque etape (revocation, export, suppression) a sa version par plateforme ; ne jamais ecrire dans un texte legal une promesse qu'on n'a pas relue dans le code.
