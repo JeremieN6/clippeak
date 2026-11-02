@@ -1,7 +1,7 @@
 // Publication : types communs, texte envoye a la plateforme et creneaux proposes. Fichier pur (aucun import Node) : il sert aussi
 // a la page du studio pour proposer les creneaux.
 
-export const PUBLISH_PLATFORMS = ['youtube'] as const
+export const PUBLISH_PLATFORMS = ['youtube', 'tiktok'] as const
 export type PublishPlatform = typeof PUBLISH_PLATFORMS[number]
 
 export type PublicationStatus = 'scheduled' | 'publishing' | 'published' | 'failed' | 'cancelled'
@@ -11,6 +11,8 @@ export type PublishErrorKind = 'auth' | 'quota' | 'rejected' | 'transient'
 
 export class PublishError extends Error {
   kind: PublishErrorKind
+  // Jetons renouveles AVANT l'echec : TikTok peut changer le jeton de renouvellement, il faut le garder meme si l'envoi echoue.
+  renewed?: { value: string, expiresAt: Date, refreshToken?: string }
   constructor(kind: PublishErrorKind, message: string) {
     super(message)
     this.name = 'PublishError'
@@ -23,6 +25,8 @@ export interface PublishInput {
   caption: string
   hashtags: string
   videoPath: string
+  // Reglages choisis par le streamer pour cette plateforme (TikTok : voir TiktokPostOptions).
+  options: Record<string, unknown> | null
   refreshToken: string
   accessToken: string | null
   expiresAt: Date | null
@@ -32,7 +36,7 @@ export interface PublishResult {
   externalId: string
   url: string
   // Nouveau jeton d'acces obtenu pendant l'envoi : a conserver pour le prochain.
-  accessToken?: { value: string, expiresAt: Date }
+  accessToken?: { value: string, expiresAt: Date, refreshToken?: string }
 }
 
 export interface Publisher {
@@ -73,3 +77,18 @@ export function suggestSlots(now: Date, times: string[], count: number, taken: D
 
 export const DEFAULT_SLOT_TIMES = ['12:30', '18:30', '21:00']
 export const MAX_SCHEDULE_DAYS = 60
+
+// TikTok (Direct Post) : tout ce que le streamer choisit dans l'ecran de publication. Aucune valeur par defaut pour la visibilite :
+// c'est une regle de TikTok, le streamer la choisit a la main a chaque publication.
+export const TIKTOK_PRIVACY_LEVELS = ['PUBLIC_TO_EVERYONE', 'MUTUAL_FOLLOW_FRIENDS', 'FOLLOWER_OF_CREATOR', 'SELF_ONLY'] as const
+export type TiktokPrivacyLevel = typeof TIKTOK_PRIVACY_LEVELS[number]
+export interface TiktokPostOptions {
+  title: string
+  privacyLevel: TiktokPrivacyLevel
+  disableComment: boolean
+  disableDuet: boolean
+  disableStitch: boolean
+  // Divulgation de contenu commercial : « ma marque » (contenu promotionnel) et / ou « contenu de marque » (partenariat paye).
+  brandOrganic: boolean
+  brandContent: boolean
+}

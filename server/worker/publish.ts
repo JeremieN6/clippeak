@@ -5,6 +5,7 @@ import { decryptToken, encryptToken, parseKey } from '../utils/clipping/tokenVau
 import { createPrismaPublishStore } from '../utils/clipping/prismaPublishStore'
 import { runPublishOnce } from '../utils/clipping/publishQueue'
 import { createYoutubePublisher } from '../utils/clipping/youtubePublisher'
+import { createTiktokPublisher } from '../utils/clipping/tiktokPublisher'
 import type { Publisher, PublishPlatform } from '../utils/clipping/publishing'
 import type { PublishStore } from '../utils/clipping/publishQueue'
 
@@ -14,6 +15,8 @@ function setup() {
   if (ready !== undefined) return ready
   const clientId = readEnv('GOOGLE_CLIENT_ID')
   const clientSecret = readEnv('GOOGLE_CLIENT_SECRET')
+  const tiktokKey = readEnv('TIKTOK_CLIENT_KEY')
+  const tiktokSecret = readEnv('TIKTOK_CLIENT_SECRET')
   let key: Buffer
   try {
     key = parseKey(readEnv('CLIPPEAK_TOKEN_KEY'))
@@ -21,16 +24,18 @@ function setup() {
     console.info('[worker] publication desactivee (CLIPPEAK_TOKEN_KEY absente) : aucun compte de plateforme ne peut etre connecte')
     return (ready = null)
   }
-  if (!clientId || !clientSecret) {
-    console.info('[worker] publication YouTube desactivee (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET absents)')
-    return (ready = null)
-  }
+  const publishers: Partial<Record<PublishPlatform, Publisher>> = {}
+  if (clientId && clientSecret) publishers.youtube = createYoutubePublisher({ clientId, clientSecret })
+  else console.info('[worker] publication YouTube desactivee (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET absents)')
+  if (tiktokKey && tiktokSecret) publishers.tiktok = createTiktokPublisher({ clientKey: tiktokKey, clientSecret: tiktokSecret })
+  else console.info('[worker] publication TikTok desactivee (TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET absents)')
+  if (!Object.keys(publishers).length) return (ready = null)
   const inner = createPrismaPublishStore(prisma, { decrypt: stored => decryptToken(stored, key) })
   // Le jeton d'acces renouvele est chiffre avant d'etre range en base.
-  const store: PublishStore = { ...inner, saveAccessToken: (id, token) => inner.saveAccessToken(id, { ...token, value: encryptToken(token.value, key) }) }
+  const store: PublishStore = { ...inner, saveAccessToken: (id, token) => inner.saveAccessToken(id, { ...token, value: encryptToken(token.value, key), ...(token.refreshToken ? { refreshToken: encryptToken(token.refreshToken, key) } : {}) }) }
   ready = {
     store: retrying(store, { onRetry: (error, attempt) => console.warn(`[worker] base injoignable (tentative ${attempt}), nouvel essai`) }),
-    publishers: { youtube: createYoutubePublisher({ clientId, clientSecret }) }
+    publishers
   }
   return ready
 }

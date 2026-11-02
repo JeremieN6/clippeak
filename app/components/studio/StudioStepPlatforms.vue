@@ -32,8 +32,9 @@ function toggle(id: string) {
               <span class="st-badge st-badge-ok st-pop">Connecté</span>
               <button type="button" class="st-btn-quiet" :disabled="studio.busy.value" @click="studio.disconnectPlatform(p.id)">Déconnecter</button>
             </div>
-            <div v-else><a href="/api/auth/youtube" class="st-btn no-underline">Connecter {{ p.name }}</a></div>
-            <div class="text-sm leading-relaxed st-muted">Clippeak publie seulement un clip que tu as approuvé, quand tu le demandes. Tant que Google n’a pas validé Clippeak, YouTube garde ces vidéos en privé.</div>
+            <div v-else><a :href="`/api/auth/${p.id}`" class="st-btn no-underline">Connecter {{ p.name }}</a></div>
+            <div v-if="conn(p.id)?.connected && conn(p.id)?.accountName" class="text-sm st-muted">Compte : {{ conn(p.id)?.accountName }}</div>
+            <div class="text-sm leading-relaxed st-muted">Clippeak publie seulement un clip que tu as approuvé, quand tu le demandes.<template v-if="p.id === 'youtube'"> Tant que Google n’a pas validé Clippeak, YouTube garde ces vidéos en privé.</template><template v-else-if="p.id === 'tiktok'"> À chaque publication, tu choisis la visibilité et les options sur un écran dédié. Tant que TikTok n’a pas validé Clippeak, les vidéos publiées restent privées.</template></div>
           </template>
           <template v-else>
             <div><span class="st-badge st-badge-neutral">Connexion bientôt disponible</span></div>

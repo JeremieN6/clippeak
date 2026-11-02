@@ -1,12 +1,13 @@
 import { z } from 'zod'
 import { prisma } from '../../../../../utils/prisma'
 import { assertChannel, parseId, requireStudioActor } from '../../../../../utils/studioAuth'
-import { tokenKey } from '../../../../../utils/publishConfig'
+import { tiktokConfig, tokenKey } from '../../../../../utils/publishConfig'
 import { decryptToken } from '../../../../../utils/clipping/tokenVault'
 import { revokeGoogleToken } from '../../../../../utils/clipping/googleOAuth'
+import { revokeTiktokToken } from '../../../../../utils/clipping/tiktokApi'
 import { PUBLISH_PLATFORMS } from '../../../../../utils/clipping/publishing'
 
-// Deconnecte une plateforme : l'autorisation est retiree chez Google (au mieux), les jetons sont effaces chez nous et les
+// Deconnecte une plateforme : l'autorisation est retiree chez Google ou TikTok (au mieux), les jetons sont effaces chez nous et les
 // publications encore programmees sur cette plateforme sont annulees.
 export default defineEventHandler(async (event) => {
   const actor = await requireStudioActor(event)
@@ -19,8 +20,12 @@ export default defineEventHandler(async (event) => {
   if (!connection) throw createError({ statusCode: 404, statusMessage: 'Compte non connecté' })
 
   const key = tokenKey()
-  if (key && connection.refreshTokenEnc) {
+  if (key && platform.data === 'youtube' && connection.refreshTokenEnc) {
     try { await revokeGoogleToken(fetch, decryptToken(connection.refreshTokenEnc, key)) } catch { /* jeton illisible : on supprime quand meme */ }
+  }
+  if (key && platform.data === 'tiktok') {
+    const config = tiktokConfig(event)
+    try { await revokeTiktokToken(fetch, { clientKey: config.clientKey, clientSecret: config.clientSecret, token: decryptToken(connection.accessTokenEnc, key), apiBase: config.apiBase }) } catch { /* jeton illisible : on supprime quand meme */ }
   }
   await prisma.publication.updateMany({
     where: { platform: platform.data, status: 'scheduled', clipJob: { moment: { vod: { channelId: id } } } },

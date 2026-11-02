@@ -19,6 +19,7 @@ export const isPublished = (clip: { status: string, publications: Array<{ status
 export interface StudioPublication { id: string, platform: string, status: string, scheduledAt: string, publishedAt: string | null, url: string | null, error: string | null }
 export interface StudioBilling { available: boolean, testMode?: boolean, plan?: 'free' | 'creator', planName?: string, status?: string | null, renewsAt?: string | null, canManage?: boolean, freeClips?: number, paidClips?: number, paidName?: string, price?: { amount: number, currency: string, interval: string | null } }
 export interface VodAlert { id: string, title: string, state: 'blocked' | 'working' | 'restore', since: string | null }
+export interface TiktokCreator { nickname: string, username: string, avatarUrl: string | null, privacyOptions: string[], commentDisabled: boolean, duetDisabled: boolean, stitchDisabled: boolean, maxVideoDurationSec: number }
 export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null }
 
 // Message comprehensible pour le streamer a partir d'une erreur reseau ou serveur. Une reponse de Clippeak (message ecrit pour lui) est
@@ -425,12 +426,16 @@ export function createStudio() {
   }, 'Compte déconnecté. Les publications programmées sur cette plateforme sont annulées.')
 
   // `at` null : maintenant. Rien ne part sans cet appel : approuver ne publie pas.
-  const publishClip = (clip: StudioClip, platform: string, at: Date | null) => run(async () => {
+  // `options` : reglages propres a la plateforme (TikTok : visibilite, interactions, titre, accord).
+  const publishClip = (clip: StudioClip, platform: string, at: Date | null, options?: Record<string, unknown>) => run(async () => {
     const first = !clips.value.some(c => c.publications.some(p => p.status !== 'cancelled'))
-    await api(`/api/studio/clips/${clip.id}/publish`, { method: 'POST', body: { platform, at: at ? at.toISOString() : undefined } })
+    await api(`/api/studio/clips/${clip.id}/publish`, { method: 'POST', body: { platform, at: at ? at.toISOString() : undefined, options } })
     track('clip_published', { platform, when: at ? 'scheduled' : 'now', first })
     await loadClips()
   }, at ? 'Publication programmée.' : 'Publication lancée : elle part dans quelques instants.')
+
+  // Informations du compte TikTok (pseudo, visibilites permises...), lues a chaque ouverture de l'ecran de publication.
+  const loadTiktokCreator = () => api<TiktokCreator>(`/api/studio/channels/${channelId.value}/tiktok-creator`)
 
   // VOD reservee aux abonnes : « c'est fait, verifier maintenant » puis « je l'ai remise comme avant ».
   const recheckVod = (id: string) => run(async () => {
@@ -451,7 +456,7 @@ export function createStudio() {
 
   return {
     connected, error, notice, busy, channels, channelId, detail, bank, clips, quota, billing, loadBilling, startCheckout, openPortal, connections, vodAlerts, view, step, onboarding, mode,
-    disconnectPlatform, publishClip, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
+    disconnectPlatform, publishClip, loadTiktokCreator, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
     api, run, track, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, setCaptionTags, advance, finishOnboarding, goToStep, stepStatus,
     addAssets, saveAsset, removeAsset, addReferences, saveStat, removeReference, reviewClip, approveMany

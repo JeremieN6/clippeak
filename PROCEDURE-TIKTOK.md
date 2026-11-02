@@ -70,15 +70,16 @@ Après la revue, quand l'intégration fonctionne :
 2. Tant que l'audit n'est pas accordé : vidéos privées, 5 utilisateurs par 24 h, comptes privés.
 3. Après l'audit : le streamer peut publier en public (il met son compte en public, puis choisit « Tout le monde »).
 
-## Ce que je code une fois l'application créée
-- Connexion TikTok à l'identique de YouTube : `GET /api/auth/tiktok` et son retour, état anti-falsification, **jetons chiffrés** (jeton d'accès valable 24 h, jeton de renouvellement 365 jours, à renouveler en tâche de fond ; le jeton de renouvellement peut changer).
-- Plateforme `tiktok` dans `publications`, envoi en morceaux, suivi du statut, erreurs typées (plafond du jour, compte non audité, jeton invalide).
-- L'écran de publication de l'étape 5.
-- Sans les variables `TIKTOK_CLIENT_KEY` / `TIKTOK_CLIENT_SECRET`, TikTok reste « bientôt disponible ».
+## Ce qui est codé (2026-11-02)
+- Connexion TikTok comme YouTube : `/api/auth/tiktok` et son retour, état anti-falsification, **jetons chiffrés** (le jeton de renouvellement est conservé même si un envoi échoue, car TikTok peut le changer).
+- Plateforme `tiktok` dans les publications : envoi du fichier, suivi du statut, erreurs typées (plafond du jour, compte non audité, jeton invalide). Un envoi parti n'est jamais rejoué (risque de doublon).
+- L'écran de publication de l'étape 5, affiché pour chaque clip approuvé : pseudo du compte, titre, visibilité à choisir, interactions décochées, divulgation commerciale, phrase d'accord. Pas de programmation : la publication part tout de suite, sur clic.
+- Sans `TIKTOK_CLIENT_KEY` / `TIKTOK_CLIENT_SECRET`, TikTok reste « bientôt disponible ».
+- **Non testé contre le vrai TikTok** (seulement un faux TikTok dans les tests) : le premier vrai essai se fait dans le bac à sable.
 
 ## Ce que tu dois me donner
 1. Application créée et sandbox configurée, avec l'adresse de retour ci-dessus.
-2. Client key et Client secret, posés par saisie masquée (je te fournis la commande, comme pour Stripe).
+2. Client key et Client secret, posés par saisie masquée : `bash scripts/ops/run-on-vps.sh tiktok` (avec le `bash` de Git, comme pour Stripe).
 3. Le pseudo du compte TikTok de test.
 
 ## Liens officiels

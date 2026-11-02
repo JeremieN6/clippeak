@@ -106,7 +106,7 @@ function memoryStore(due: DuePublication | null) {
   return { store, log }
 }
 const duePub = (patch: Partial<DuePublication> = {}): DuePublication => ({
-  id: 'p1', platform: 'youtube', attempts: 0,
+  id: 'p1', platform: 'youtube', attempts: 0, options: null,
   clip: { id: 'c1', title: 'T', caption: 'C', hashtags: '#a', videoPath: '/x.mp4', status: 'approved' },
   connection: { id: 'k1', refreshToken: 'r', accessToken: null, expiresAt: null },
   ...patch
