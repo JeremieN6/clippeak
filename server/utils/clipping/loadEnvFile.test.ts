@@ -51,3 +51,16 @@ test('loadEnvFile loads only the worker allowlist, never overrides, ignores empt
 test('loadEnvFile is harmless when the file is missing or unreadable', () => {
   assert.deepEqual(loadEnvFile(join(tmpdir(), 'cw-absent', '.env.local'), {}), [])
 })
+
+test('loadEnvFile lets the worker read the Sassify Ops telemetry settings', () => {
+  const env: Record<string, string | undefined> = {}
+  const dir = mkdtempSync(join(tmpdir(), 'cw-env-ops-'))
+  try {
+    const file = join(dir, '.env.local')
+    writeFileSync(file, ['OPS_URL=https://ops.example', 'OPS_INGEST_KEY=test-key', 'OPS_OTHER=nope'].join(String.fromCharCode(10)))
+    assert.deepEqual(loadEnvFile(file, env).sort(), ['OPS_INGEST_KEY', 'OPS_URL'])
+    assert.equal(env.OPS_OTHER, undefined)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
