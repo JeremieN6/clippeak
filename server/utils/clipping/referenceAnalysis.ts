@@ -1,4 +1,5 @@
 import { tokenize } from './referenceSimilarity.ts'
+import { trackAnthropicResponse } from './opsCost.ts'
 
 export interface ReferenceAnalysis {
   summary: string
@@ -99,6 +100,7 @@ export async function analyzeReference(input: AnalysisInput, options: ClaudeAnal
     })
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const body = await response.json() as any
+    trackAnthropicResponse('clippeak', body, undefined, { feature: 'reference-analysis' })
     const text = (body?.content ?? []).map((block: any) => block?.text ?? '').join('')
     const start = text.indexOf('{')
     const end = text.lastIndexOf('}')

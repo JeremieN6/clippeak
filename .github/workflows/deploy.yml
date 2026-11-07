@@ -58,3 +58,15 @@ jobs:
             pm2 reload clippeak-worker
           fi
           EOF
+
+      - name: Notifier Sassify Ops
+        if: always()
+        run: |
+          STATUS=$([ "${{ job.status }}" = "success" ] && echo SUCCESS || echo FAILED)
+          curl -fsS -X POST "${{ secrets.OPS_URL }}/api/ingest/deploy" \
+            -H "x-ops-key: ${{ secrets.OPS_INGEST_KEY }}" -H "content-type: application/json" \
+            -d "$(jq -n --arg project "clippeak" --arg runId "${{ github.run_id }}" --arg status "$STATUS" \
+              --arg commit "${{ github.sha }}" --arg message "$(git log -1 --pretty=%s | cut -c1-250)" \
+              --arg branch "${{ github.ref_name }}" \
+              --arg runUrl "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+              '{project:$project,runId:$runId,environment:"production",status:$status,commit:$commit,message:$message,branch:$branch,runUrl:$runUrl}')" || true

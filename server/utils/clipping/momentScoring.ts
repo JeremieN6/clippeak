@@ -1,5 +1,6 @@
 import type { ChatPeak } from './chatPeaks.ts'
 import type { PeakTranscript } from './peakTranscript.ts'
+import { trackAnthropicResponse } from './opsCost.ts'
 
 export interface MomentCandidate {
   peak: ChatPeak
@@ -115,6 +116,7 @@ export function createClaudeScorer(options: ClaudeScorerOptions): MomentScorer {
         })
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const body = await response.json() as any
+        trackAnthropicResponse('clippeak', body, { model }, { feature: 'moment-scoring' })
         const text = (body?.content ?? []).map((block: any) => block?.text ?? '').join('')
         const data = extractJson(text)
         const kinds: MomentKind[] = ['story', 'opinion', 'punchline', 'other']
