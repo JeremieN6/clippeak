@@ -19,7 +19,7 @@ const props = defineProps<{
       <div class="mb-5 inline-flex rounded-full border border-clippeak-violet/40 bg-clippeak-violet/10 px-4 py-1 text-xs font-semibold uppercase tracking-wider text-white/90">
         Bêta sur invitation · Clipping automatique pour streameurs Twitch
       </div>
-        <h1 class="font-display text-4xl font-extrabold leading-tight sm:text-6xl">
+        <h1 class="font-display text-[1.6rem] font-extrabold leading-tight min-[400px]:text-4xl sm:text-6xl">
           Tes <span class="accent">meilleurs moments</span>. <br> En <span class="accent">clips</span>. Automatiquement.
         </h1>
 
