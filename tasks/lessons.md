@@ -210,3 +210,7 @@
 ## 2026-11-02 : ajouter une plateforme = repasser sur chaque code qui suppose « Google »
 - **Erreur** : la suppression de compte (`accountData.ts`) envoyait le jeton de chaque plateforme connectee a la revocation de Google. En ajoutant TikTok, son jeton serait parti chez Google (fuite d'un secret vers un tiers) et n'aurait jamais ete revoque chez TikTok. Trouve en relisant les textes legaux (« l'autorisation est revoquee chez TikTok »), pas par un test.
 - **Regle** : quand on ajoute une plateforme, chercher tout ce qui boucle sur les connexions (`platform_connections`) et verifier que chaque etape (revocation, export, suppression) a sa version par plateforme ; ne jamais ecrire dans un texte legal une promesse qu'on n'a pas relue dans le code.
+
+## 2026-11-11 : un menu « clic dehors » se ferme tout seul si l'icone du bouton change
+- **Erreur** : le menu mobile de la landing s'ouvrait puis se refermait aussitot au vrai clic. Le gestionnaire « clic dehors » testait `root.contains(e.target)`, mais l'icone du bouton (burger devenant croix) change pendant le clic : la cible n'est plus dans la page quand le gestionnaire du document s'execute. Un `.click()` lance par script ne le montrait pas (la cible etait le bouton).
+- **Regle** : pour un « clic dehors », utiliser `e.composedPath().includes(root)`, et tester avec un vrai clic (outil de clic du navigateur), pas seulement un `.click()` en JavaScript.
