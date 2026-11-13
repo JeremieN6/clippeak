@@ -89,7 +89,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 
     <section class="st-card flex flex-col gap-3 !p-5" aria-label="Connexion YouTube">
       <div class="flex flex-wrap items-center gap-3">
-        <span class="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-st-errorBg text-st-error" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 7l8 5-8 5z" /></svg></span>
+        <span class="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-st-raised2" aria-hidden="true"><StudioPlatformLogo id="youtube" /></span>
         <h2 class="st-title m-0 text-lg font-bold">YouTube</h2>
         <span v-if="youtube?.connected" class="st-badge st-badge-ok">Connecté</span>
         <span v-else class="st-badge st-badge-warn">Non connecté</span>
