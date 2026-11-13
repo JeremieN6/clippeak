@@ -214,3 +214,8 @@
 ## 2026-11-11 : un menu « clic dehors » se ferme tout seul si l'icone du bouton change
 - **Erreur** : le menu mobile de la landing s'ouvrait puis se refermait aussitot au vrai clic. Le gestionnaire « clic dehors » testait `root.contains(e.target)`, mais l'icone du bouton (burger devenant croix) change pendant le clic : la cible n'est plus dans la page quand le gestionnaire du document s'execute. Un `.click()` lance par script ne le montrait pas (la cible etait le bouton).
 - **Regle** : pour un « clic dehors », utiliser `e.composedPath().includes(root)`, et tester avec un vrai clic (outil de clic du navigateur), pas seulement un `.click()` en JavaScript.
+
+
+## 2026-11-13 : la revue TikTok compare l'icone du portail a celle du site
+- **Erreur** : l'app TikTok a ete soumise avec le logo sur le portail, alors que le site affichait un rond « CP » et un favicon generique (public/favicon.ico non remplace). Refus : l'icone de la fiche ne correspond pas a celle du site et de l'onglet.
+- **Regle** : avant de soumettre une app a une plateforme (TikTok, Google, Instagram), verifier que l'identite visible du site (favicon, logo des en-tetes, nom) est la meme que celle declaree sur le portail ; le logo vient d'un seul composant (`BrandMark.vue`) et des fichiers de `public/`.
