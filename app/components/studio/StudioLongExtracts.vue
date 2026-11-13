@@ -60,7 +60,7 @@ async function send() {
 
 <template>
   <div class="flex flex-col gap-6">
-    <section class="st-card flex flex-col gap-4 !p-5" aria-label="Réglage des vidéos longues">
+    <section class="st-card flex flex-col gap-4 !p-5" aria-label="Réglage des extraits longs">
       <div class="flex flex-wrap items-center gap-2">
         <h2 class="st-title m-0 text-lg font-bold">Réglage</h2>
         <span v-if="info" class="st-badge" :class="info.enabled ? 'st-badge-ok' : 'st-badge-neutral'">{{ info.enabled ? 'Activé' : 'Désactivé' }}</span>
@@ -69,18 +69,18 @@ async function send() {
       <template v-else-if="info">
         <div class="flex flex-wrap items-center gap-x-6 gap-y-3">
           <label class="flex items-center gap-3 text-sm font-semibold">
-            <StudioSwitch v-model="enabled" label="Activer les vidéos longues" />
-            Activer les vidéos longues
+            <StudioSwitch v-model="enabled" label="Activer les extraits longs" />
+            Activer les extraits longs
           </label>
           <label class="flex items-center gap-2 text-sm font-semibold">
             Durée maximale
-            <select v-model.number="maxSec" class="st-field !min-h-10 !w-auto" aria-label="Durée maximale d’une vidéo longue">
+            <select v-model.number="maxSec" class="st-field !min-h-10 !w-auto" aria-label="Durée maximale d’un extrait long">
               <option v-for="m in [180, 300, 600, LONG_ABSOLUTE_MAX_SEC]" :key="m" :value="m">{{ formatClock(m) }}</option>
             </select>
           </label>
           <button type="button" class="st-btn" :disabled="studio.busy.value || !dirty" @click="save">Enregistrer</button>
         </div>
-        <div class="st-hint">Une vidéo longue dure de {{ LONG_MIN_SEC }} secondes à {{ formatClock(maxSec) }}. Rien n’est créé tant que tu n’as pas activé et enregistré.</div>
+        <div class="st-hint">Un extrait long dure de {{ LONG_MIN_SEC }} secondes à {{ formatClock(maxSec) }}. Rien n’est créé tant que tu n’as pas activé et enregistré.</div>
       </template>
     </section>
 

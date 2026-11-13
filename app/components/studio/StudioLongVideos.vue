@@ -35,7 +35,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
         Retour
       </button>
-      <h1 class="st-title m-0 text-[34px] font-extrabold leading-10">Vidéos longues</h1>
+      <h1 class="st-title m-0 text-[34px] font-extrabold leading-10">Extraits longs</h1>
       <p class="m-0 text-base leading-[26px] st-muted">
         Publie sur YouTube un passage de ton live de plusieurs minutes, au format horizontal 16:9, en plus de tes clips verticaux.
         Tu choisis le début et la fin, Clippeak le coupe, tu le vérifies, puis tu le publies.
@@ -50,7 +50,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
         <a v-if="youtube?.available && !youtube?.connected" href="/api/auth/youtube" class="st-btn no-underline">Connecter YouTube</a>
       </div>
       <p class="m-0 text-sm leading-relaxed st-muted">
-        <template v-if="youtube?.connected">Les vidéos longues sont publiées sur la chaîne YouTube que tu as choisie à la connexion.<template v-if="youtube?.accountName"> Compte : {{ youtube.accountName }}.</template></template>
+        <template v-if="youtube?.connected">Les extraits longs sont publiées sur la chaîne YouTube que tu as choisie à la connexion.<template v-if="youtube?.accountName"> Compte : {{ youtube.accountName }}.</template></template>
         <template v-else>Il faut connecter YouTube pour publier. Pour une chaîne secondaire (compte de marque), choisis-la quand Google te demande sur quelle chaîne publier.</template>
         Tant que Google n’a pas validé Clippeak, YouTube garde les vidéos en privé : tu pourras les passer en public depuis YouTube Studio.
       </p>
@@ -70,7 +70,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
       </section>
     </template>
     <div v-else-if="enabled" class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-st-borderStrong px-6 py-10 text-center">
-      <h2 class="st-title m-0 text-lg font-bold">Pas encore de vidéo longue</h2>
+      <h2 class="st-title m-0 text-lg font-bold">Pas encore d’extrait long</h2>
       <p class="m-0 max-w-sm text-sm leading-relaxed st-muted">Prépare ton premier extrait avec le formulaire ci-dessus : il apparaîtra ici dès qu’il est prêt.</p>
     </div>
   </main>

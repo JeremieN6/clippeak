@@ -8,7 +8,7 @@ const openLots = reactive<Record<string, boolean>>({})
 
 // Un clip est dans UN seul groupe : « Publiés » (au moins une publication partie) passe avant « Approuvés » (pas encore publie).
 const groupOf = (c: StudioClip): Group => isPublished(c) ? 'published' : c.status === 'queued' || c.status === 'rendering' ? 'progress' : (c.status as Group)
-// Les extraits longs (16:9) ont leur propre page « Vidéos longues » : ils ne se melangent pas aux lots de clips verticaux.
+// Les extraits longs (16:9) ont leur propre page « Extraits longs » : ils ne se melangent pas aux lots de clips verticaux.
 const clips = computed(() => studio.clips.value.filter(c => c.format !== 'long'))
 const count = (g: Group) => clips.value.filter(c => groupOf(c) === g).length
 const weekAgo = () => Date.now() - 7 * 24 * 3600 * 1000
@@ -102,6 +102,10 @@ const settingsNav = computed(() => STEPS.filter(s => s.n < 8).map((s) => {
 const dot = { ok: 'bg-st-okBg text-st-ok', warn: 'bg-st-warnBg text-st-warn', skip: 'bg-st-raised2 text-st-soft', todo: 'bg-st-raised2 text-st-soft' } as const
 
 const navOpen = ref(false)
+// Badge « Nouveau » sur « Extraits longs » jusqu'a la premiere visite de la page (choix garde dans le navigateur, facultatif).
+const longSeen = ref(true)
+onMounted(() => { try { longSeen.value = localStorage.getItem('clippeak.longSeen') === '1' } catch {} })
+const openLong = () => { try { localStorage.setItem('clippeak.longSeen', '1') } catch {} longSeen.value = true; studio.view.value = 'long' }
 // Colonne de gauche repliable sur grand ecran ; le choix est garde dans le navigateur (facultatif).
 const collapsed = ref(false)
 onMounted(() => { try { collapsed.value = localStorage.getItem('clippeak.nav') === '0' } catch {} })
@@ -114,6 +118,11 @@ const selectClass = 'st-field !min-h-11 !w-full'
     <nav aria-label="Mes réglages" class="flex w-full flex-none flex-col gap-6 border-st-border p-4 lg:w-[280px] lg:border-r lg:py-6" :class="collapsed ? 'lg:!hidden' : ''">
       <div class="hidden flex-col gap-0.5 lg:flex">
         <button type="button" class="st-nav-item !min-h-12 text-[15px] font-bold" aria-current="page">Tableau de bord</button>
+        <button type="button" class="st-nav-item !min-h-12 text-[15px] font-semibold" @click="openLong">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="flex-none"><path d="M4 5h16v14H4zM8 5v14M16 5v14M4 9h4M16 9h4M4 15h4M16 15h4" /></svg>
+          <span class="min-w-0 flex-1">Extraits longs</span>
+          <span v-if="!longSeen" class="st-badge st-badge-violet">Nouveau</span>
+        </button>
       </div>
       <button type="button" class="st-btn-ghost w-full lg:hidden" :aria-expanded="navOpen" aria-controls="st-settings" @click="navOpen = !navOpen">{{ navOpen ? 'Masquer mes réglages' : 'Mes réglages' }}</button>
       <div id="st-settings" class="flex-col gap-0.5 lg:flex" :class="navOpen ? 'flex' : 'hidden'">
