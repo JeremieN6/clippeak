@@ -25,7 +25,7 @@ const store = retrying(createPipelineStore(prisma), { onRetry: (error, attempt) 
 async function renderLongClip(job: ClipJobToRender): Promise<{ outputPath: string }> {
   const row = await prisma.clipJob.findUniqueOrThrow({
     where: { id: job.id },
-    select: { startSec: true, endSec: true, moment: { select: { vod: { select: { twitchVodId: true, channel: { select: { settings: { select: { longExtractMaxSec: true } } } } } } } } }
+    select: { startSec: true, endSec: true, moment: { select: { vod: { select: { twitchVodId: true, channel: { select: { settings: { select: { longExtractMaxSec: true, longExtractVerified: true } } } } } } } } }
   })
   try {
     const result = await renderLongJob({
@@ -33,7 +33,7 @@ async function renderLongClip(job: ClipJobToRender): Promise<{ outputPath: strin
       vodTwitchId: row.moment.vod.twitchVodId,
       startSec: row.startSec,
       endSec: row.endSec,
-      maxSec: clampLongMax(row.moment.vod.channel.settings?.longExtractMaxSec ?? LONG_DEFAULT_MAX_SEC)
+      maxSec: clampLongMax(row.moment.vod.channel.settings?.longExtractMaxSec ?? LONG_DEFAULT_MAX_SEC, row.moment.vod.channel.settings?.longExtractVerified ?? false)
     }, {
       getVideoUrl: vodId => getVodVideoPlaylistUrl(vodId, 720),
       runFfmpeg,

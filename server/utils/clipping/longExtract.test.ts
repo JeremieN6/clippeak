@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { buildLongRenderArgs, clampLongMax, evaluateLongQc, formatClock, longYoutubeMetadata, parseClock, validateLongRange } from './longExtract.ts'
@@ -22,10 +22,13 @@ test('parseClock and formatClock read and write hours, minutes and seconds', () 
   assert.equal(formatClock(-5), '0:00')
 })
 
-test('clampLongMax keeps the maximum between 30 s and 15 min', () => {
+test('clampLongMax keeps the maximum between 3 min and 15 min, or 60 min for a verified channel', () => {
   assert.equal(clampLongMax(600), 600)
-  assert.equal(clampLongMax(5), 30)
+  assert.equal(clampLongMax(5), 180)
   assert.equal(clampLongMax(7200), 900)
+  assert.equal(clampLongMax(3000), 900)
+  assert.equal(clampLongMax(3000, true), 3000)
+  assert.equal(clampLongMax(7200, true), 3600)
   assert.equal(clampLongMax(Number.NaN), 600)
 })
 
@@ -33,7 +36,9 @@ test('validateLongRange explains what is wrong in plain French', () => {
   const ok = { startSec: 100, endSec: 400, maxSec: 600 }
   assert.equal(validateLongRange(ok), null)
   assert.match(validateLongRange({ ...ok, endSec: 100 })!, /après le début/)
-  assert.match(validateLongRange({ ...ok, endSec: 110 })!, /au moins 30/)
+  assert.match(validateLongRange({ ...ok, endSec: 250 })!, /au moins 3 minutes/)
+  assert.equal(validateLongRange({ ...ok, endSec: 280 }), null)
+  assert.equal(validateLongRange({ ...ok, endSec: 3000, maxSec: 3600 }), null)
   assert.match(validateLongRange({ ...ok, endSec: 1000 })!, /au plus 10:00/)
   assert.match(validateLongRange({ ...ok, startSec: -1 })!, /valides/)
   assert.match(validateLongRange({ ...ok, vodDurationSec: 200 })!, /dépasse la fin du live/)
@@ -130,4 +135,76 @@ test('the publish queue hands the format of the clip to the publisher', async ()
   }
   await runPublishOnce({ store, publishers: { youtube: { platform: 'youtube', publish: async (input) => { seen.push(input.format); return { externalId: 'e', url: 'u' } } } } })
   assert.deepEqual(seen, ['long'])
+})
+
+// --- envoi YouTube par morceaux ---------------------------------------------------------------------------------------------------
+
+function chunkedGoogle(script: { onChunk?: (n: number, range: string) => Response | null, onStatus?: () => Response | null } = {}) {
+  const puts: Array<{ range: string, length: number }> = []
+  let chunkNo = 0
+  const fetchFn = (async (url: any, init: any = {}) => {
+    const u = String(url)
+    const headers = Object.fromEntries(Object.entries(init.headers ?? {}).map(([k, v]) => [k.toLowerCase(), String(v)]))
+    if (u.includes('token')) return Response.json({ access_token: 'acc', expires_in: 3600 })
+    if (u.includes('uploadType=resumable')) return new Response('{}', { status: 200, headers: { location: 'https://upload.test/s' } })
+    const range = headers['content-range']
+    if (range.startsWith('bytes */')) return script.onStatus?.() ?? new Response(null, { status: 308 })
+    puts.push({ range, length: Number(headers['content-length']) })
+    chunkNo++
+    const [, from, to, total] = /bytes (\d+)-(\d+)\/(\d+)/.exec(range)!.map(Number) as unknown as number[]
+    const custom = script.onChunk?.(chunkNo, range)
+    if (custom) return custom
+    return Number(to) + 1 >= Number(total) ? Response.json({ id: 'BIG1' }) : new Response(null, { status: 308, headers: { range: `bytes=0-${to}` } })
+  }) as unknown as typeof fetch
+  return { fetchFn, puts }
+}
+const longInput = { title: 't', caption: '', hashtags: '', videoPath: 'v.mp4', options: null, format: 'long' as const, refreshToken: 'r', accessToken: null, expiresAt: null }
+const bigVideo = Buffer.alloc(25, 7)
+
+test('youtube publisher sends a big video in chunks, each with its byte range', async () => {
+  const { fetchFn, puts } = chunkedGoogle()
+  const result = await createYoutubePublisher({ clientId: 'i', clientSecret: 's', fetchFn, readVideo: async () => bigVideo, chunkBytes: 10, now: () => 0 }).publish(longInput)
+  assert.equal(result.externalId, 'BIG1')
+  assert.deepEqual(puts.map(p => p.range), ['bytes 0-9/25', 'bytes 10-19/25', 'bytes 20-24/25'])
+  assert.deepEqual(puts.map(p => p.length), [10, 10, 5])
+})
+
+test('youtube publisher resumes after a failed chunk by asking YouTube what it already has', async () => {
+  const { fetchFn, puts } = chunkedGoogle({
+    onChunk: n => n === 2 ? new Response('boom', { status: 503 }) : null,
+    onStatus: () => new Response(null, { status: 308, headers: { range: 'bytes=0-9' } })
+  })
+  const result = await createYoutubePublisher({ clientId: 'i', clientSecret: 's', fetchFn, readVideo: async () => bigVideo, chunkBytes: 10, now: () => 0 }).publish(longInput)
+  assert.equal(result.externalId, 'BIG1')
+  assert.deepEqual(puts.map(p => p.range), ['bytes 0-9/25', 'bytes 10-19/25', 'bytes 10-19/25', 'bytes 20-24/25'])
+})
+
+test('youtube publisher gives up as transient after three failures of the same chunk, and rejects a definite refusal at once', async () => {
+  const down = chunkedGoogle({ onChunk: () => new Response('boom', { status: 503 }) })
+  const failed = await createYoutubePublisher({ clientId: 'i', clientSecret: 's', fetchFn: down.fetchFn, readVideo: async () => bigVideo, chunkBytes: 10, now: () => 0 }).publish(longInput).catch(e => e)
+  assert.equal(failed.kind, 'transient')
+  assert.equal(down.puts.length, 3)
+  const refused = chunkedGoogle({ onChunk: () => Response.json({ error: { message: 'Vidéo trop longue' } }, { status: 400 }) })
+  const rejected = await createYoutubePublisher({ clientId: 'i', clientSecret: 's', fetchFn: refused.fetchFn, readVideo: async () => bigVideo, chunkBytes: 10, now: () => 0 }).publish(longInput).catch(e => e)
+  assert.equal(rejected.kind, 'rejected')
+  assert.match(rejected.message, /trop longue/)
+  assert.equal(refused.puts.length, 1)
+})
+
+test('youtube publisher reads the video from disk chunk by chunk when no reader is injected, and refuses an empty or missing file', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'yt-test-'))
+  try {
+    const file = join(dir, 'v.mp4')
+    await writeFile(file, bigVideo)
+    const { fetchFn, puts } = chunkedGoogle()
+    const publisher = createYoutubePublisher({ clientId: 'i', clientSecret: 's', fetchFn, chunkBytes: 10, now: () => 0 })
+    assert.equal((await publisher.publish({ ...longInput, videoPath: file })).externalId, 'BIG1')
+    assert.equal(puts.length, 3)
+    const empty = join(dir, 'empty.mp4')
+    await writeFile(empty, Buffer.alloc(0))
+    assert.equal((await publisher.publish({ ...longInput, videoPath: empty }).catch(e => e)).kind, 'rejected')
+    assert.equal((await publisher.publish({ ...longInput, videoPath: join(dir, 'absent.mp4') }).catch(e => e)).kind, 'rejected')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
 })

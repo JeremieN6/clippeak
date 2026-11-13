@@ -1,16 +1,19 @@
-// Extraits longs YouTube : un passage du live (30 s a 15 min) choisi par le streamer, rendu tel quel en 16:9 (sans sous-titres ni titre
+// Extraits longs YouTube : un passage du live (3 min a 15 min, jusqu'a 60 min pour une chaine YouTube verifiee) choisi par le streamer, rendu tel quel en 16:9 (sans sous-titres ni titre
 // grave) puis publie sur YouTube comme une video classique. Fichier pur (aucun import Node) : il sert aussi a la page du studio.
 
-export const LONG_MIN_SEC = 30
+export const LONG_MIN_SEC = 180
 export const LONG_DEFAULT_MAX_SEC = 600
 // 15 minutes : limite de YouTube pour une chaine dont le telephone n'est pas verifie.
-export const LONG_ABSOLUTE_MAX_SEC = 900
+export const LONG_UNVERIFIED_MAX_SEC = 900
+// 60 minutes : plafond de Clippeak pour une chaine verifiee (YouTube accepte beaucoup plus ; le poids du fichier et le temps de coupe restent raisonnables).
+export const LONG_ABSOLUTE_MAX_SEC = 3600
 export const LONG_WIDTH = 1280
 export const LONG_HEIGHT = 720
 
-export function clampLongMax(sec: number): number {
+// Duree maximale effective : jamais plus de 15 minutes tant que le streamer n'a pas confirme que sa chaine YouTube est verifiee.
+export function clampLongMax(sec: number, verified = false): number {
   if (!Number.isFinite(sec)) return LONG_DEFAULT_MAX_SEC
-  return Math.min(LONG_ABSOLUTE_MAX_SEC, Math.max(LONG_MIN_SEC, Math.round(sec)))
+  return Math.min(verified ? LONG_ABSOLUTE_MAX_SEC : LONG_UNVERIFIED_MAX_SEC, Math.max(LONG_MIN_SEC, Math.round(sec)))
 }
 
 export function formatClock(sec: number): string {
@@ -36,14 +39,14 @@ export function validateLongRange(input: { startSec: number, endSec: number, max
   if (!Number.isFinite(startSec) || !Number.isFinite(endSec) || startSec < 0) return 'Le début et la fin doivent être des durées valides.'
   if (endSec <= startSec) return 'La fin doit venir après le début.'
   const length = endSec - startSec
-  if (length < LONG_MIN_SEC) return `Un extrait dure au moins ${LONG_MIN_SEC} secondes (celui-ci : ${Math.round(length)} s).`
+  if (length < LONG_MIN_SEC) return `Un extrait dure au moins ${LONG_MIN_SEC / 60} minutes (celui-ci : ${formatClock(length)}).`
   if (length > maxSec) return `Un extrait dure au plus ${formatClock(maxSec)} (celui-ci : ${formatClock(length)}).`
   if (input.vodDurationSec && endSec > input.vodDurationSec + 60) return `Ce passage dépasse la fin du live (${formatClock(input.vodDurationSec)}).`
   return null
 }
 
 // Coupe d'un passage de la VOD : 16:9 1280x720 (la VOD est lue en 720p), image et son d'origine, poids maitrise (un envoi YouTube
-// se fait en une fois : environ 3,5 Mbit/s au plus, soit moins de 270 Mo pour 10 minutes).
+// se fait par morceaux depuis le disque : environ 3,5 Mbit/s au plus, soit moins de 270 Mo pour 10 minutes et 1,6 Go pour 60).
 export function buildLongRenderArgs(input: { input: string, startSec: number, durationSec: number, outPath: string, threads?: number }): string[] {
   return [
     '-y', '-hide_banner',
