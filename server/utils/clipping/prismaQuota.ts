@@ -5,9 +5,10 @@ import { PLAN_CLIPS, planFor } from './billing'
 // Acces base du plafond mensuel (regles pures : ./quota.ts). Partage par le worker et par les routes du site.
 type Db = Pick<PrismaClient, 'clipJob' | 'channel'>
 
-// Clips produits ce mois-ci par la chaine : tous sauf les echecs de rendu (le streamer ne les a jamais vus).
+// Clips produits ce mois-ci par la chaine : tous sauf les echecs de rendu (le streamer ne les a jamais vus) et les extraits longs
+// (choisis a la main par le streamer, ils ne passent pas par le pipeline d'analyse).
 export async function monthlyClipUsage(db: Db, channelId: string, now: Date = new Date()): Promise<number> {
-  return db.clipJob.count({ where: { createdAt: { gte: monthStart(now) }, status: { not: 'failed' }, moment: { vod: { channelId } } } })
+  return db.clipJob.count({ where: { createdAt: { gte: monthStart(now) }, status: { not: 'failed' }, format: 'short', moment: { vod: { channelId } } } })
 }
 
 async function quotaOf(db: Db, channelId: string): Promise<number | null> {

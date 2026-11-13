@@ -142,6 +142,8 @@ const selectClass = 'st-field !min-h-11 !w-full'
 
       <StudioVodAlerts />
 
+      <StudioLongExtracts />
+
       <p v-if="pubSummary" class="st-pop m-0 -mt-4 text-sm font-semibold text-st-ok">{{ pubSummary }}</p>
 
       <div v-if="studio.quota.value?.reached" class="st-alert st-alert-warn st-rise flex-wrap items-center" role="alert">

@@ -93,6 +93,9 @@ model StreamerSettings {
   highlightColor   String   @default("#FFD400") @map("highlight_color") @db.VarChar(9)
   // Plafond de clips produits par mois (defaut 40, null = illimite, reglable par l'admin). Chaines de demo et de test : jamais plafonnees.
   monthlyClipQuota Int?     @default(40) @map("monthly_clip_quota")
+  // Extraits longs YouTube (16:9, plusieurs minutes, choisis par le streamer) : desactives par defaut, duree maximale en secondes.
+  longExtracts      Boolean @default(false) @map("long_extracts")
+  longExtractMaxSec Int     @default(600) @map("long_extract_max_sec")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
@@ -174,6 +177,8 @@ model ClipJob {
   hashtags      String?
   qc            Json?
   illustrations Json?
+  // short : clip vertical 1080x1920 du pipeline ; long : extrait 16:9 de plusieurs minutes choisi par le streamer (YouTube).
+  format        String    @default("short") @db.VarChar(8)
   reviewNote    String?   @map("review_note")
   reviewedAt    DateTime? @map("reviewed_at")
   notifiedAt    DateTime? @map("notified_at")

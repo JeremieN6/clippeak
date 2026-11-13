@@ -3,7 +3,7 @@ import { prisma } from '../../../../utils/prisma'
 import { parseId, assertChannel, requireStudioActor } from '../../../../utils/studioAuth'
 
 const bodySchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('approve'), caption: z.string().trim().max(2200).optional(), note: z.string().trim().max(500).optional() }),
+  z.object({ action: z.literal('approve'), title: z.string().trim().min(1).max(100).optional(), caption: z.string().trim().max(2200).optional(), note: z.string().trim().max(500).optional() }),
   z.object({ action: z.literal('reject'), note: z.string().trim().max(500).optional() }),
   // Nouveau rendu : le titre est grave dans la video, le modifier impose donc de la rendre a nouveau.
   z.object({ action: z.literal('requeue'), title: z.string().trim().min(1).max(120).optional(), replan: z.boolean().optional(), note: z.string().trim().max(500).optional() })
@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
   if (!parsed.success) throw createError({ statusCode: 400, statusMessage: parsed.error.issues[0]?.message ?? 'Requete invalide' })
   const body = parsed.data
 
-  const job = await prisma.clipJob.findUnique({ where: { id }, select: { status: true, moment: { select: { vod: { select: { channelId: true } } } } } })
+  const job = await prisma.clipJob.findUnique({ where: { id }, select: { status: true, format: true, moment: { select: { vod: { select: { channelId: true } } } } } })
   if (!job) throw createError({ statusCode: 404, statusMessage: 'Clip introuvable' })
   assertChannel(actor, job.moment.vod.channelId)
 
@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
         error: null,
         reviewNote: body.note ?? null,
         ...(body.title ? { title: body.title } : {}),
-        ...(body.replan ? { startSec: null, endSec: null, keepRanges: null as any } : {})
+        ...(body.replan && job.format !== 'long' ? { startSec: null, endSec: null, keepRanges: null as any } : {})
       }
     })
     return { status: 'queued' }
@@ -47,7 +47,9 @@ export default defineEventHandler(async (event) => {
       status,
       reviewedAt: new Date(),
       reviewNote: body.note ?? null,
-      ...(body.action === 'approve' && body.caption ? { caption: body.caption } : {})
+      ...(body.action === 'approve' && body.caption ? { caption: body.caption } : {}),
+      // Extrait long : le titre n'est pas grave dans la video, il part avec la publication YouTube.
+      ...(body.action === 'approve' && body.title && job.format === 'long' ? { title: body.title } : {})
     }
   })
   return { status }

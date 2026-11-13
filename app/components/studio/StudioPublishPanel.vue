@@ -5,8 +5,10 @@ import { DEFAULT_SLOT_TIMES, suggestSlots } from '~~/server/utils/clipping/publi
 const props = defineProps<{ clip: StudioClip }>()
 const studio = useStudio()
 
-const platformName: Record<string, string> = { youtube: 'YouTube Shorts', tiktok: 'TikTok', instagram: 'Instagram Reels' }
-const connected = computed(() => studio.connections.value.filter(c => c.connected))
+const isLong = computed(() => props.clip.format === 'long')
+const platformName: Record<string, string> = { youtube: props.clip.format === 'long' ? 'YouTube' : 'YouTube Shorts', tiktok: 'TikTok', instagram: 'Instagram Reels' }
+// Un extrait long (16:9) ne se publie que sur YouTube.
+const connected = computed(() => studio.connections.value.filter(c => c.connected && (!isLong.value || c.platform === 'youtube')))
 const platform = ref(connected.value[0]?.platform ?? 'youtube')
 watch(connected, (list) => { if (!list.some(c => c.platform === platform.value)) platform.value = list[0]?.platform ?? 'youtube' })
 

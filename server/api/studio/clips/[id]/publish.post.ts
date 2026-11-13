@@ -29,12 +29,13 @@ export default defineEventHandler(async (event) => {
   if (!parsed.success) throw createError({ statusCode: 400, statusMessage: 'Plateforme ou heure invalide' })
   const { platform } = parsed.data
 
-  const job = await prisma.clipJob.findUnique({ where: { id }, select: { status: true, outputPath: true, moment: { select: { vod: { select: { channelId: true } } } } } })
+  const job = await prisma.clipJob.findUnique({ where: { id }, select: { status: true, format: true, outputPath: true, moment: { select: { vod: { select: { channelId: true } } } } } })
   if (!job) throw createError({ statusCode: 404, statusMessage: 'Clip introuvable' })
   const channelId = job.moment.vod.channelId
   assertChannel(actor, channelId)
   if (job.status !== 'approved') throw createError({ statusCode: 409, statusMessage: 'Approuve d’abord le clip pour pouvoir le publier' })
   if (!job.outputPath) throw createError({ statusCode: 409, statusMessage: 'Ce clip n’a pas de vidéo à publier' })
+  if (job.format === 'long' && platform !== 'youtube') throw createError({ statusCode: 400, statusMessage: 'Les extraits longs se publient seulement sur YouTube.' })
   const connection = await prisma.platformConnection.findUnique({ where: { channelId_platform: { channelId, platform } }, select: { id: true } })
   if (!connection) throw createError({ statusCode: 409, statusMessage: 'Connecte d’abord ton compte à cette plateforme' })
 

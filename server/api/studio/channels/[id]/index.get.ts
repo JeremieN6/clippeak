@@ -29,7 +29,9 @@ export default defineEventHandler(async (event) => {
       clipMaxSec: channel.settings.clipMaxSec,
       subtitles: channel.settings.subtitles,
       accentColor: channel.settings.accentColor,
-      highlightColor: channel.settings.highlightColor
+      highlightColor: channel.settings.highlightColor,
+      longExtracts: channel.settings.longExtracts,
+      longExtractMaxSec: channel.settings.longExtractMaxSec
     },
     style: parseStyle(channel.style?.config),
     // Bruitages proposes dans la DA : sons integres et situations ou ils peuvent etre joues.
