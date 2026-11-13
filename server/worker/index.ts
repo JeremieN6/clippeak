@@ -13,6 +13,7 @@ import { bellStep } from './bell'
 import { retentionStep } from './retention'
 import { referenceStep } from './reference'
 import { similarityScanStep } from './similarityScan'
+import { markersStep } from './markers'
 import { renderClip } from './render'
 
 // Process pm2 separe du serveur Nuxt : un rendu video ne doit jamais bloquer le site.
@@ -63,7 +64,7 @@ async function main() {
     store: retrying(createPrismaClipQueueStore(prisma), { onRetry: (error, attempt) => console.warn(`[worker] base injoignable (tentative ${attempt}), nouvel essai`) }),
     render: renderClip,
     // Quand la file de rendu est vide : publication echue, VOD terminee, puis tranche de live, puis notification de lot.
-    idleTask: async () => (await publishStep()) || (await vodAccessStep()) || (await referenceStep()) || (await analysisStep()) || (await liveAnalysisStep()) || (await bellStep()) || (await notifyStep()) || (await similarityScanStep()) || (await purgeSourcesStep()) || (await retentionStep()),
+    idleTask: async () => (await publishStep()) || (await vodAccessStep()) || (await referenceStep()) || (await analysisStep()) || (await liveAnalysisStep()) || (await bellStep()) || (await notifyStep()) || (await markersStep()) || (await similarityScanStep()) || (await purgeSourcesStep()) || (await retentionStep()),
     pollMs,
     shouldStop: () => stopping,
     log: (message, detail) => (detail === undefined ? console.info('[worker]', message) : console.error('[worker]', message, detail))

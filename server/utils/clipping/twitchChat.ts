@@ -68,7 +68,12 @@ export function parseCommentsResponse(payload: unknown): CommentsPage {
     const fragments = node.message?.fragments
     const text = Array.isArray(fragments) ? fragments.map((f: any) => f?.text ?? '').join('') : ''
     if (!text.trim()) continue
-    messages.push({ t: offset, text })
+    const message: ChatMessage = { t: offset, text }
+    const login = node.commenter?.login
+    if (typeof login === 'string' && login) message.author = login
+    const badges = node.message?.userBadges
+    if (Array.isArray(badges)) message.badges = badges.map((b: any) => b?.setID).filter((id: unknown): id is string => typeof id === 'string')
+    messages.push(message)
     ids.push(String(node.id ?? `${offset}:${text}`))
   }
 

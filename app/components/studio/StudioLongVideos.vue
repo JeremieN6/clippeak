@@ -113,8 +113,8 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
           <h2 class="st-title m-0 text-lg font-bold">Comment recevoir des propositions</h2>
           <div class="grid grid-cols-[repeat(auto-fit,minmax(min(300px,100%),1fr))] gap-3">
             <div class="st-card flex flex-col gap-2 !p-4">
-              <div class="flex flex-wrap items-center gap-2"><span class="font-bold">Pendant ton live</span><span class="st-badge st-badge-neutral">Bientôt</span></div>
-              <p class="m-0 text-sm leading-relaxed st-muted">Tape <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">!extrait</code> dans ton chat au début d’un bon passage et <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">!fin</code> à la fin : Clippeak te le proposera.</p>
+              <div class="flex flex-wrap items-center gap-2"><span class="font-bold">Pendant ton live</span><span class="st-badge st-badge-ok">Disponible</span></div>
+              <p class="m-0 text-sm leading-relaxed st-muted">Tape <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">{{ info.startCommand }}</code> dans ton chat au début d’un bon passage et <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">{{ info.endCommand }}</code> à la fin : Clippeak te le propose dans les minutes qui suivent. Sans <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">{{ info.endCommand }}</code>, il propose 5 minutes à partir de ton repère, une fois le live terminé. Tu peux changer ces mots dans « Réglage ».</p>
             </div>
             <div class="st-card flex flex-col gap-2 !p-4">
               <div class="flex flex-wrap items-center gap-2"><span class="font-bold">Après ton live</span><span class="st-badge st-badge-neutral">Bientôt</span></div>
@@ -161,7 +161,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
             <div class="flex items-center gap-3"><span class="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-st-accentBg text-st-accentLight" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4zM8 5v14M16 5v14" /></svg></span><div class="st-title text-lg font-bold">Rien de proposé pour l’instant</div></div>
             <div class="text-sm leading-[22px] text-st-soft">Pour recevoir des propositions, choisis une de ces façons :</div>
             <ul class="m-0 flex list-disc flex-col gap-2 pl-5 text-sm leading-[22px]">
-              <li>Pendant ton prochain live, tape <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">!extrait</code> au début du passage et <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">!fin</code> à la fin (bientôt).</li>
+              <li>Pendant ton prochain live, tape <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">{{ info.startCommand }}</code> au début du passage et <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">{{ info.endCommand }}</code> à la fin.</li>
               <li>Pour un live déjà terminé, « Analyser ce live » (bientôt).</li>
               <li>Ou ajoute un passage à la main avec « Ajouter à la main » ci-dessus.</li>
             </ul>

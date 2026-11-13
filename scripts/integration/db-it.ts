@@ -6,6 +6,8 @@ import { createPrismaReferenceStore, loadAnalyzedReferences, transcriptText } fr
 import { dataDir } from '../../server/utils/clipping/dataDir'
 import { REQUIRED_SCHEMA } from '../../server/utils/clipping/preflight'
 import { createPrismaPublishStore } from '../../server/utils/clipping/prismaPublishStore'
+import { createPrismaMarkerStore } from '../../server/utils/clipping/prismaMarkerStore'
+import { scanMarkers } from '../../server/utils/clipping/markerScan'
 
 // Meme requete que server/worker/index.ts (missingSchema).
 async function missingSchemaCheck(db: any): Promise<string[]> {
@@ -272,6 +274,37 @@ async function main() {
   assert.equal((await store.vodsToScan()).some(t => t.id === accVod.id), false)
   assert.equal((await store.listBlockedVods()).some(v => v.id === accVod.id), false)
   log('acces a la VOD : blocage (premiere date gardee), deblocage, moments a extraire, une VOD deja reservee aux abonnes n est plus balayee')
+
+  // 7b. Reperes d'extrait long : lives a lire (extraits longs actives seulement), propositions creees une fois, lecture terminee
+  const markerStore = createPrismaMarkerStore(prisma as any)
+  const mkChannel = await prisma.channel.create({ data: { twitchId: 'mk-1', login: 'MarqueurTV', displayName: 'MarqueurTV', settings: { create: { longExtracts: true, longModsAllowed: false } } } })
+  const mkEnded = await prisma.vod.create({ data: { channelId: mkChannel.id, twitchVodId: 'mk-ended', url: 'u', status: 'ended', title: 'Soirée', startedAt: new Date('2026-11-12T18:00:00Z'), endedAt: new Date('2026-11-12T22:00:00Z') } })
+  const mkLive = await prisma.vod.create({ data: { channelId: mkChannel.id, twitchVodId: 'mk-live', url: 'u', status: 'live', startedAt: new Date() } })
+  await prisma.vod.create({ data: { channelId: mkChannel.id, twitchVodId: 'mk-old', url: 'u', status: 'done', markersDoneAt: new Date() } })
+  await prisma.vod.create({ data: { channelId: mkChannel.id, twitchVodId: 'mk-blocked', url: 'u', status: 'blocked' } })
+  const off = await prisma.channel.create({ data: { twitchId: 'mk-2', login: 'sans', displayName: 'Sans', settings: { create: {} } } })
+  await prisma.vod.create({ data: { channelId: off.id, twitchVodId: 'mk-off', url: 'u', status: 'ended' } })
+  const targets = await markerStore.targets()
+  assert.deepEqual(targets.map(t => t.twitchVodId).sort(), ['mk-ended', 'mk-live'])
+  const mkTarget = targets.find(t => t.twitchVodId === 'mk-ended')!
+  assert.deepEqual([mkTarget.channelLogin, mkTarget.live, mkTarget.settings.startCommand, mkTarget.settings.endCommand, mkTarget.settings.allowModerators, mkTarget.settings.maxSec], ['MarqueurTV', false, '!extrait', '!fin', false, 600])
+  assert.equal(targets.find(t => t.twitchVodId === 'mk-live')!.live, true)
+  const chat = [{ t: 4990, text: '!extrait', author: 'marqueurtv' }, { t: 5452, text: '!fin', author: 'marqueurtv' }, { t: 5000, text: '!extrait', author: 'spectateur' }]
+  const scan = await scanMarkers(mkTarget, { store: markerStore, fetchChat: async () => chat })
+  assert.equal(scan.created, 1)
+  const made = await prisma.longProposal.findMany({ where: { vodId: mkEnded.id } })
+  assert.deepEqual(made.map(m => [m.origin, m.status, m.title, m.startSec, m.endSec, m.channelId === mkChannel.id]), [['streamer', 'proposed', 'Soirée (1:23:10)', 4990, 5452, true]])
+  assert.equal((await scanMarkers(mkTarget, { store: markerStore, fetchChat: async () => chat })).created, 0)
+  await prisma.longProposal.update({ where: { id: made[0].id }, data: { status: 'ignored' } })
+  assert.equal((await scanMarkers(mkTarget, { store: markerStore, fetchChat: async () => chat })).created, 0)
+  const doneRow = await prisma.vod.findUniqueOrThrow({ where: { id: mkEnded.id } })
+  assert.deepEqual([doneRow.markerScanSec, doneRow.markersDoneAt !== null], [5452, true])
+  assert.deepEqual((await markerStore.targets()).map(t => t.twitchVodId), ['mk-live'])
+  const liveRow = (await markerStore.targets())[0]
+  await scanMarkers(liveRow, { store: markerStore, fetchChat: async () => [{ t: 100, text: 'mdr', author: 'x' }] })
+  const liveAfter = await prisma.vod.findUniqueOrThrow({ where: { id: mkLive.id } })
+  assert.deepEqual([liveAfter.markerScanSec, liveAfter.markersDoneAt], [100, null])
+  log('reperes d extrait long : lives a lire (actives seulement, termines pas encore lus), proposition creee une fois (meme ignoree), lecture terminee, live gardé ouvert')
 
   // 8. Preflight : sur une base migree, plus rien ne manque
   assert.deepEqual(await missingSchemaCheck(prisma), [])

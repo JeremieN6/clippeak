@@ -22,7 +22,7 @@ export interface VodAlert { id: string, title: string, state: 'blocked' | 'worki
 export interface TiktokCreator { nickname: string, username: string, avatarUrl: string | null, privacyOptions: string[], commentDisabled: boolean, duetDisabled: boolean, stitchDisabled: boolean, maxVideoDurationSec: number }
 export interface LongExtractVod { id: string, title: string | null, startedAt: string, durationSec: number | null }
 export interface LongProposalView { id: string, origin: 'manual' | 'streamer' | 'analysis', state: 'proposed' | 'ignored' | 'preparing' | 'validate', title: string, theme: string | null, why: string | null, score: number | null, progress: number | null, startSec: number, endSec: number, durationSec: number, createdAt: string, vod: { id: string, twitchVodId: string, title: string | null, startedAt: string } }
-export interface LongExtractsInfo { enabled: boolean, maxSec: number, verified: boolean, vods: LongExtractVod[], proposals: LongProposalView[] }
+export interface LongExtractsInfo { enabled: boolean, maxSec: number, verified: boolean, startCommand: string, endCommand: string, modsAllowed: boolean, vods: LongExtractVod[], proposals: LongProposalView[] }
 export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null }
 
 // Message comprehensible pour le streamer a partir d'une erreur reseau ou serveur. Une reponse de Clippeak (message ecrit pour lui) est
@@ -443,10 +443,10 @@ export function createStudio() {
 
   const loadLongExtracts = () => api<LongExtractsInfo>(`/api/studio/channels/${channelId.value}/long-extracts`)
 
-  const saveLongExtractSettings = (enabled: boolean, maxSec: number, verified: boolean) => run(async () => {
-    await api(`/api/studio/channels/${channelId.value}/long-extracts`, { method: 'PUT', body: { enabled, maxSec, verified } })
-    track('long_extracts_setting', { enabled, maxSec, verified })
-  }, enabled ? 'Extraits longs activés.' : 'Extraits longs désactivés.')
+  const saveLongExtractSettings = (body: { enabled: boolean, maxSec: number, verified: boolean, startCommand: string, endCommand: string, modsAllowed: boolean }) => run(async () => {
+    await api(`/api/studio/channels/${channelId.value}/long-extracts`, { method: 'PUT', body })
+    track('long_extracts_setting', { enabled: body.enabled, maxSec: body.maxSec, verified: body.verified, modsAllowed: body.modsAllowed })
+  }, 'Réglage enregistré.')
 
   // Proposition ajoutee a la main, puis modifiee (titre, debut, fin, ignoree / remise) ou preparee (rendu en file).
   const addLongProposal = (body: { vodId: string, startSec: number, endSec: number, title?: string }) => run(async () => {

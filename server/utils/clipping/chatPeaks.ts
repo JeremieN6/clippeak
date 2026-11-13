@@ -1,6 +1,9 @@
 export interface ChatMessage {
   t: number
   text: string
+  // Auteur (pseudo Twitch) et ses badges (« broadcaster », « moderator »...) : renseignes quand Twitch les donne.
+  author?: string
+  badges?: string[]
 }
 
 export interface PeakOptions {
