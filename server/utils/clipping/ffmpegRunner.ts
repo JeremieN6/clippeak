@@ -19,6 +19,8 @@ export interface RunFfmpegOptions {
   timeoutMs?: number
   lowPriority?: boolean
   cwd?: string
+  // Avancement : secondes de VIDEO produites jusqu'ici (lues dans « -progress » de ffmpeg, rappelees environ toutes les 0,5 s).
+  onProgress?: (producedSec: number) => void
   spawnFn?: (command: string, args: string[], options: SpawnOptions) => ChildProcess
   setPriorityFn?: (pid: number, priority: number) => void
 }
@@ -34,7 +36,7 @@ export function runFfmpeg(args: string[], options: RunFfmpegOptions = {}): Promi
   const timeoutMs = options.timeoutMs ?? 15 * 60_000
 
   return new Promise((resolve, reject) => {
-    const child = spawnFn(options.binary ?? 'ffmpeg', ['-nostdin', '-hide_banner', '-y', ...args], {
+    const child = spawnFn(options.binary ?? 'ffmpeg', ['-nostdin', '-hide_banner', '-y', ...(options.onProgress ? ['-nostats', '-progress', 'pipe:2'] : []), ...args], {
       stdio: ['ignore', 'ignore', 'pipe'],
       cwd: options.cwd
     })
@@ -49,7 +51,14 @@ export function runFfmpeg(args: string[], options: RunFfmpegOptions = {}): Promi
 
     let tail = ''
     child.stderr?.on('data', (chunk: Buffer) => {
-      tail = (tail + chunk.toString()).slice(-STDERR_TAIL_BYTES)
+      let text = chunk.toString()
+      if (options.onProgress) {
+        const produced = [...text.matchAll(/out_time_(?:us|ms)=(\d+)/g)].pop()
+        if (produced) options.onProgress(Number(produced[1]) / 1_000_000)
+        // Les lignes de progression ne doivent pas chasser les vraies erreurs de la fin de stderr.
+        text = text.replace(/^(frame|fps|stream_\d+_\d+_q|bitrate|total_size|out_time_us|out_time_ms|out_time|dup_frames|drop_frames|speed|progress)=[^\n]*\n?/gm, '')
+      }
+      tail = (tail + text).slice(-STDERR_TAIL_BYTES)
     })
 
     let timedOut = false

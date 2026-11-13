@@ -24,7 +24,7 @@ export interface ProposalRow {
   endSec: number
   createdAt: Date
   vod: { id: string, twitchVodId: string, title: string | null, startedAt: Date | null, createdAt: Date }
-  clipJob: { status: string } | null
+  clipJob: { status: string, progress?: number | null } | null
 }
 
 // Etat montre au streamer : proposee, ignoree, en preparation (rendu en file ou en cours) ou « dans A valider » (rendu pret). Une proposition
@@ -51,6 +51,8 @@ export function proposalView(row: ProposalRow) {
     theme: row.theme,
     why: row.why,
     score: row.score,
+    // Avancement du rendu (0 a 100) pendant la preparation, sinon null.
+    progress: state === 'preparing' ? (row.clipJob?.progress ?? null) : null,
     startSec: row.startSec,
     endSec: row.endSec,
     durationSec: Math.round(row.endSec - row.startSec),

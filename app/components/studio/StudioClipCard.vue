@@ -58,7 +58,7 @@ const redo = () => studio.reviewClip(props.clip, 'requeue', draft)
         <video v-if="clip.videoUrl" :src="clip.videoUrl" controls playsinline preload="metadata" class="h-full w-full object-cover" />
         <div v-else-if="working" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-st-bg p-4 text-center text-st-info" role="status">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 109 9"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.9s" repeatCount="indefinite" /></path></svg>
-          <div class="text-sm font-bold">Rendu en cours…</div>
+          <div class="text-sm font-bold">Rendu en cours…<template v-if="clip.progress != null"> {{ clip.progress }} %</template></div>
           <div class="text-xs text-st-muted">Le clip sera prêt dans quelques minutes.</div>
         </div>
         <div v-else-if="clip.status === 'failed'" class="absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-st-errorBg p-4 text-center text-st-error" role="alert">

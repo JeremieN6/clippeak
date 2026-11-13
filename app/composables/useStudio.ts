@@ -5,7 +5,7 @@ import { buildEvent } from '~~/server/utils/clipping/analytics'
 export interface StudioChannel { id: string, login: string, displayName: string, autoClip: boolean, demo: boolean, test?: boolean }
 
 export interface StudioClip {
-  id: string, batch: number | null, status: string, format?: 'short' | 'long', startSec?: number | null, endSec?: number | null, source?: string | null, title: string | null, caption: string | null, hashtags: string | null
+  id: string, batch: number | null, status: string, format?: 'short' | 'long', startSec?: number | null, endSec?: number | null, source?: string | null, progress?: number | null, title: string | null, caption: string | null, hashtags: string | null
   error: string | null, qc: { passed: boolean, issues: Array<{ severity: string, message: string }> } | null
   illustrations: Array<{ path: string, source: string }> | null, reviewNote: string | null, score: number | null
   kind: string | null, category: string | null, hook: string | null, rationale: string | null, scorer: string | null
@@ -21,7 +21,7 @@ export interface StudioBilling { available: boolean, testMode?: boolean, plan?: 
 export interface VodAlert { id: string, title: string, state: 'blocked' | 'working' | 'restore', since: string | null }
 export interface TiktokCreator { nickname: string, username: string, avatarUrl: string | null, privacyOptions: string[], commentDisabled: boolean, duetDisabled: boolean, stitchDisabled: boolean, maxVideoDurationSec: number }
 export interface LongExtractVod { id: string, title: string | null, startedAt: string, durationSec: number | null }
-export interface LongProposalView { id: string, origin: 'manual' | 'streamer' | 'analysis', state: 'proposed' | 'ignored' | 'preparing' | 'validate', title: string, theme: string | null, why: string | null, score: number | null, startSec: number, endSec: number, durationSec: number, createdAt: string, vod: { id: string, twitchVodId: string, title: string | null, startedAt: string } }
+export interface LongProposalView { id: string, origin: 'manual' | 'streamer' | 'analysis', state: 'proposed' | 'ignored' | 'preparing' | 'validate', title: string, theme: string | null, why: string | null, score: number | null, progress: number | null, startSec: number, endSec: number, durationSec: number, createdAt: string, vod: { id: string, twitchVodId: string, title: string | null, startedAt: string } }
 export interface LongExtractsInfo { enabled: boolean, maxSec: number, verified: boolean, vods: LongExtractVod[], proposals: LongProposalView[] }
 export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null }
 

@@ -101,8 +101,8 @@ async function setIgnored(ignored: boolean) {
     </div>
 
     <div v-if="p.state === 'preparing'" class="mt-auto flex flex-col gap-2">
-      <div role="status" class="text-sm font-bold text-st-info">Préparation de l’extrait…</div>
-      <div class="h-2 overflow-hidden rounded bg-st-raised2" role="progressbar" aria-label="Préparation en cours"><div class="st-bar st-bar-live h-full" style="width: 60%" /></div>
+      <div role="status" class="text-sm font-bold text-st-info">Préparation de l’extrait…<template v-if="p.progress != null"> {{ p.progress }} %</template></div>
+      <div class="h-2 overflow-hidden rounded bg-st-raised2" role="progressbar" aria-label="Avancement de la préparation" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="p.progress ?? undefined"><div class="st-bar h-full" :class="p.progress == null ? 'st-bar-live' : ''" :style="{ width: `${p.progress ?? 60}%` }" /></div>
       <div class="text-[13px] leading-5 st-muted">Ça prend quelques minutes. Tu peux continuer à parcourir les propositions.</div>
     </div>
 

@@ -25,6 +25,9 @@ test('proposalView: gives the streamer what the card shows, and nothing for a pr
   const view = proposalView(row())!
   assert.equal(view.durationSec, 462)
   assert.deepEqual([view.state, view.origin, view.vod.twitchVodId, view.score], ['proposed', 'manual', '999', null])
+  assert.equal(view.progress, null)
+  assert.equal(proposalView(row({ status: 'prepared', clipJob: { status: 'rendering', progress: 42 } }))!.progress, 42)
+  assert.equal(proposalView(row({ status: 'prepared', clipJob: { status: 'review', progress: 100 } }))!.progress, null)
   assert.equal(proposalView(row({ status: 'prepared', clipJob: { status: 'approved' } })), null)
   // Live sans date de debut : la date de creation sert de repli.
   const noStart = proposalView(row({ vod: { id: 'v1', twitchVodId: '9', title: null, startedAt: null, createdAt: new Date('2026-11-12T18:01:00Z') } }))!

@@ -77,8 +77,8 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleString('fr-FR', { weekday
       </div>
 
       <div v-if="state === 'preparing'" class="flex flex-col gap-2">
-        <div role="status" class="text-sm font-bold text-st-info">Préparation de la vidéo…</div>
-        <div class="h-2 overflow-hidden rounded bg-st-raised2" role="progressbar" aria-label="Préparation en cours"><div class="st-bar st-bar-live h-full" style="width: 60%" /></div>
+        <div role="status" class="text-sm font-bold text-st-info">Préparation de la vidéo…<template v-if="clip.progress != null"> {{ clip.progress }} %</template></div>
+        <div class="h-2 overflow-hidden rounded bg-st-raised2" role="progressbar" aria-label="Avancement de la préparation" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="clip.progress ?? undefined"><div class="st-bar h-full" :class="clip.progress == null ? 'st-bar-live' : ''" :style="{ width: `${clip.progress ?? 60}%` }" /></div>
         <div class="text-[13px] leading-5 st-muted">Une vidéo longue demande quelques minutes. Tu peux quitter cette page.</div>
       </div>
 

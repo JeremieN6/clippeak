@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
     where: { channelId: id },
     orderBy: [{ score: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }],
     take: 200,
-    include: { vod: { select: { id: true, twitchVodId: true, title: true, startedAt: true, createdAt: true } }, clipJob: { select: { status: true } } }
+    include: { vod: { select: { id: true, twitchVodId: true, title: true, startedAt: true, createdAt: true } }, clipJob: { select: { status: true, progress: true } } }
   })
   return {
     ...settings,

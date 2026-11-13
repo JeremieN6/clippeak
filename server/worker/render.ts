@@ -4,6 +4,7 @@ import { QcFailedError, renderJob } from '../utils/clipping/clipJobPipeline'
 import { LongQcFailedError, renderLongJob } from '../utils/clipping/longRender'
 import { LONG_DEFAULT_MAX_SEC, clampLongMax } from '../utils/clipping/longExtract'
 import { probeClip } from '../utils/clipping/clipQc'
+import { createProgressWriter } from '../utils/clipping/progressWriter'
 import { dataDir } from '../utils/clipping/dataDir'
 import { collectClipMetrics } from '../utils/clipping/clipQc'
 import { runFfmpeg } from '../utils/clipping/ffmpegRunner'
@@ -27,6 +28,8 @@ async function renderLongClip(job: ClipJobToRender): Promise<{ outputPath: strin
     where: { id: job.id },
     select: { startSec: true, endSec: true, moment: { select: { vod: { select: { twitchVodId: true, channel: { select: { settings: { select: { longExtractMaxSec: true, longExtractVerified: true } } } } } } } } }
   })
+  const progress = createProgressWriter(async (percent) => { await prisma.clipJob.update({ where: { id: job.id }, data: { progress: percent } }) })
+  await prisma.clipJob.update({ where: { id: job.id }, data: { progress: 0 } }).catch(() => {})
   try {
     const result = await renderLongJob({
       jobId: job.id,
@@ -39,9 +42,11 @@ async function renderLongClip(job: ClipJobToRender): Promise<{ outputPath: strin
       runFfmpeg,
       probe: probeClip,
       outputDir: outputDirectory(),
-      threads: Number(process.env.RENDER_THREADS) > 0 ? Number(process.env.RENDER_THREADS) : 2
+      threads: Number(process.env.RENDER_THREADS) > 0 ? Number(process.env.RENDER_THREADS) : 2,
+      onProgress: progress.report
     })
     await prisma.clipJob.update({ where: { id: job.id }, data: { qc: result.qc as any, error: null } })
+    await progress.done()
     return { outputPath: relative(dataDir(), result.outputPath).replace(/\\/g, '/') }
   } catch (error) {
     if (error instanceof LongQcFailedError) await prisma.clipJob.update({ where: { id: job.id }, data: { qc: error.report as any } }).catch(() => {})
@@ -53,6 +58,8 @@ export async function renderClip(job: ClipJobToRender): Promise<{ outputPath: st
   const kind = await prisma.clipJob.findUnique({ where: { id: job.id }, select: { format: true } })
   if (kind?.format === 'long') return renderLongClip(job)
   const ctx = await store.loadJobContext(job.id)
+  const progress = createProgressWriter(async (percent) => { await prisma.clipJob.update({ where: { id: job.id }, data: { progress: percent } }) })
+  await prisma.clipJob.update({ where: { id: job.id }, data: { progress: 0 } }).catch(() => {})
   try {
     const result = await renderJob(ctx, {
       getVideoUrl: vodId => getVodVideoPlaylistUrl(vodId, 720),
@@ -82,9 +89,11 @@ export async function renderClip(job: ClipJobToRender): Promise<{ outputPath: st
       runFfmpeg,
       collectMetrics: collectClipMetrics,
       outputDir: outputDirectory(),
-      threads: Number(process.env.RENDER_THREADS) > 0 ? Number(process.env.RENDER_THREADS) : 2
+      threads: Number(process.env.RENDER_THREADS) > 0 ? Number(process.env.RENDER_THREADS) : 2,
+      onProgress: progress.report
     })
     await store.saveJobResult(job.id, result)
+    await progress.done()
     // Chemin relatif au dossier de donnees, comme dans saveJobResult.
     return { outputPath: relative(dataDir(), result.outputPath).replace(/\\/g, '/') }
   } catch (error) {

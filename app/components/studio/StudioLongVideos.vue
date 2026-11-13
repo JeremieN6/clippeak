@@ -69,7 +69,7 @@ const sections = computed(() => groups
 const working = () => proposals.value.some(p => p.state === 'preparing')
   || longClips.value.some(c => groupOf(c) === 'preparing' || c.publications.some(p => p.platform === 'youtube' && (p.status === 'scheduled' || p.status === 'publishing')))
 let timer: ReturnType<typeof setInterval> | null = null
-onMounted(() => { timer = setInterval(() => { if (!studio.busy.value && working()) refresh() }, 10_000) })
+onMounted(() => { timer = setInterval(() => { if (!studio.busy.value && working()) refresh() }, 5_000) })
 onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 </script>
 
