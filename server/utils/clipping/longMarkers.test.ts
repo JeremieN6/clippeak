@@ -7,7 +7,7 @@ import type { MarkerStore, MarkerTarget, NewProposal } from './markerScan.ts'
 import type { ChatMessage } from './chatPeaks.ts'
 import type { MarkerOptions } from './longMarkers.ts'
 
-const base: MarkerOptions = { startCommand: '!extrait', endCommand: '!fin', channelLogin: 'jeremfut7', allowModerators: false, maxSec: 600, final: true }
+const base: MarkerOptions = { startCommand: '!extrait', endCommand: '!fin', channelLogin: 'jeremfut7', channelTwitchId: '123', allowModerators: false, maxSec: 600, final: true }
 const streamer = (t: number, text: string): ChatMessage => ({ t, text, author: 'JeremFut7', badges: ['broadcaster'] })
 
 test('normalizeCommand and commandsProblem: a command is « ! » plus 2 to 20 letters or digits, and the two differ', () => {
@@ -44,6 +44,25 @@ test('detectMarkers: only the streamer (and moderators when allowed) are heard, 
   assert.equal(detectMarkers([{ t: 100, text: '!extrait' }, { t: 400, text: '!fin' }], base).length, 0)
 })
 
+test('detectMarkers: the Twitch id wins (a renamed streamer still works, another account with the old name does not), the badge only confirms', () => {
+  const pair = (patch: Partial<ChatMessage>): ChatMessage[] => [{ t: 100, text: '!extrait', ...patch }, { t: 400, text: '!fin', ...patch }]
+  // Pseudo change depuis la connexion : le bon identifiant suffit, meme sans badge.
+  assert.equal(detectMarkers(pair({ author: 'nouveau_pseudo', authorId: '123' }), base).length, 1)
+  // Un autre compte qui reprend l'ancien pseudo : identifiant different, refuse, meme avec le badge.
+  assert.equal(detectMarkers(pair({ author: 'jeremfut7', authorId: '999', badges: ['broadcaster'] }), base).length, 0)
+  // Le bon pseudo ET le badge : accepte. Le bon pseudo avec des badges connus mais sans « broadcaster » : refuse.
+  assert.equal(detectMarkers(pair({ author: 'jeremfut7', badges: ['broadcaster', 'subscriber'] }), base).length, 1)
+  assert.equal(detectMarkers(pair({ author: 'jeremfut7', badges: ['subscriber'] }), base).length, 0)
+  // Badges inconnus (liste vide ou absente) : le bon pseudo suffit.
+  assert.equal(detectMarkers(pair({ author: 'jeremfut7', badges: [] }), base).length, 1)
+  // Le badge sans le bon compte ne donne rien, avec ou sans identifiant.
+  assert.equal(detectMarkers(pair({ author: 'autre', authorId: '999', badges: ['broadcaster'] }), base).length, 0)
+  assert.equal(detectMarkers(pair({ author: 'autre', badges: ['broadcaster'] }), base).length, 0)
+  // Moderateur : seulement si le streamer l'a choisi.
+  assert.equal(detectMarkers(pair({ author: 'modo', authorId: '555', badges: ['moderator'] }), base).length, 0)
+  assert.equal(detectMarkers(pair({ author: 'modo', authorId: '555', badges: ['moderator'] }), { ...base, allowModerators: true }).length, 1)
+})
+
 test('detectMarkers: the command must be the first word, case does not matter, custom commands work', () => {
   assert.equal(detectMarkers([streamer(100, '!EXTRAIT le début'), streamer(400, '!fin merci')], base).length, 1)
   assert.equal(detectMarkers([streamer(100, 'je tape !extrait'), streamer(400, '!fin')], base).length, 0)
@@ -77,11 +96,11 @@ test('detectMarkers: too long is shortened to the maximum, an unfinished start w
 
 test('parseCommentsResponse keeps the author and the badges when Twitch gives them, and adds nothing otherwise', () => {
   const payload = [{ data: { video: { comments: { pageInfo: { hasNextPage: false }, edges: [
-    { node: { id: '1', contentOffsetSeconds: 10, commenter: { login: 'jeremfut7' }, message: { fragments: [{ text: '!extrait' }], userBadges: [{ setID: 'broadcaster' }, { setID: 'subscriber' }] } } },
+    { node: { id: '1', contentOffsetSeconds: 10, commenter: { id: '123', login: 'jeremfut7' }, message: { fragments: [{ text: '!extrait' }], userBadges: [{ setID: 'broadcaster' }, { setID: 'subscriber' }] } } },
     { node: { id: '2', contentOffsetSeconds: 11, message: { fragments: [{ text: 'mdr' }] } } }
   ] } } } }]
   const { messages } = parseCommentsResponse(payload)
-  assert.deepEqual(messages[0], { t: 10, text: '!extrait', author: 'jeremfut7', badges: ['broadcaster', 'subscriber'] })
+  assert.deepEqual(messages[0], { t: 10, text: '!extrait', author: 'jeremfut7', authorId: '123', badges: ['broadcaster', 'subscriber'] })
   assert.deepEqual(messages[1], { t: 11, text: 'mdr' })
 })
 
@@ -97,7 +116,7 @@ function memory(existing: number[] = []) {
   return { store, created, progress }
 }
 const target = (patch: Partial<MarkerTarget> = {}): MarkerTarget => ({
-  id: 'v1', channelId: 'c1', twitchVodId: '999', vodTitle: 'Live du soir', channelLogin: 'jeremfut7', live: false,
+  id: 'v1', channelId: 'c1', twitchVodId: '999', vodTitle: 'Live du soir', channelLogin: 'jeremfut7', channelTwitchId: '123', live: false,
   startedAt: new Date('2026-11-12T18:00:00Z'), endedAt: new Date('2026-11-12T22:00:00Z'), markerScanSec: null,
   settings: { startCommand: '!extrait', endCommand: '!fin', allowModerators: false, maxSec: 600 }, ...patch
 })

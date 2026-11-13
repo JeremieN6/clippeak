@@ -12,6 +12,7 @@ export interface MarkerTarget {
   twitchVodId: string
   vodTitle: string | null
   channelLogin: string
+  channelTwitchId: string
   live: boolean
   startedAt: Date | null
   endedAt: Date | null
@@ -42,7 +43,7 @@ export async function scanMarkers(target: MarkerTarget, deps: ScanDeps): Promise
   const messages = await deps.fetchChat(target.twitchVodId, startOffset)
   const vodDurationSec = !target.live && target.startedAt && target.endedAt ? (target.endedAt.getTime() - target.startedAt.getTime()) / 1000 : null
   const passages = detectMarkers(messages, {
-    startCommand: settings.startCommand, endCommand: settings.endCommand, channelLogin: target.channelLogin,
+    startCommand: settings.startCommand, endCommand: settings.endCommand, channelLogin: target.channelLogin, channelTwitchId: target.channelTwitchId,
     allowModerators: settings.allowModerators, maxSec: settings.maxSec, final: !target.live, vodDurationSec
   })
   const existing = passages.length ? await deps.store.existingStarts(target.id) : []

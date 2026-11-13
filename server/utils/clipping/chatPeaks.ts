@@ -3,6 +3,8 @@ export interface ChatMessage {
   text: string
   // Auteur (pseudo Twitch) et ses badges (« broadcaster », « moderator »...) : renseignes quand Twitch les donne.
   author?: string
+  // Identifiant Twitch (numerique, stable meme si le pseudo change) de l'auteur.
+  authorId?: string
   badges?: string[]
 }
 

@@ -27,8 +27,9 @@ export function commandsProblem(start: string, end: string): string | null {
 export interface MarkerOptions {
   startCommand: string
   endCommand: string
-  // Pseudo Twitch du streamer (celui de sa connexion a Clippeak) : seuls ses messages sont acceptes.
+  // Compte Twitch du streamer (celui de sa connexion a Clippeak) : seuls ses messages sont acceptes. L'identifiant resiste a un changement de pseudo.
   channelLogin: string
+  channelTwitchId: string
   // Les moderateurs (badge « moderator ») peuvent-ils aussi taper les commandes ?
   allowModerators: boolean
   maxSec: number
@@ -49,14 +50,21 @@ export interface MarkedPassage {
   inferredEnd: boolean
 }
 
-// Seul le compte Twitch avec lequel le streamer s'est connecte a Clippeak est ecoute (son pseudo exact), jamais un badge « broadcaster » :
-// avec le chat partage de Twitch, le proprietaire d'une AUTRE chaine pourrait en porter un dans ce chat. Les moderateurs ne sont ecoutes que si
-// le streamer l'a choisi.
+// Seul le compte Twitch avec lequel le streamer s'est connecte a Clippeak est ecoute. Le badge ne suffit JAMAIS : sans le bon compte, un badge
+// « broadcaster » ne donne rien (avec le chat partage de Twitch, le proprietaire d'une autre chaine en porte un dans ce chat).
+// - Identifiant Twitch connu : il doit etre celui du streamer. Il ne change pas quand le streamer change de pseudo, et un autre compte qui
+//   reprendrait l'ancien pseudo est refuse.
+// - Sinon le pseudo doit etre exactement celui de la connexion ; et si Twitch donne les badges de ce message, celui de « broadcaster » doit y
+//   etre (le pseudo ET le badge : encore plus sur). Une liste de badges vide veut dire « badges inconnus », pas « sans badge ».
+// Les moderateurs ne sont ecoutes que si le streamer l'a choisi.
 function allowed(message: ChatMessage, options: MarkerOptions): boolean {
+  const badges = message.badges ?? []
+  const moderator = options.allowModerators && badges.includes('moderator')
+  if (message.authorId) return message.authorId === options.channelTwitchId || moderator
   const author = message.author?.toLowerCase()
   if (!author) return false
-  if (author === options.channelLogin.toLowerCase()) return true
-  return options.allowModerators && (message.badges ?? []).includes('moderator')
+  if (author === options.channelLogin.toLowerCase()) return badges.length === 0 || badges.includes('broadcaster') || moderator
+  return moderator
 }
 
 const firstWord = (text: string) => text.trim().split(/\s+/)[0]?.toLowerCase() ?? ''

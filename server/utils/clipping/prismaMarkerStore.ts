@@ -19,13 +19,13 @@ export function createPrismaMarkerStore(db: Db): MarkerStore {
         },
         orderBy: { createdAt: 'desc' },
         take: 20,
-        include: { channel: { select: { login: true, settings: true } } }
+        include: { channel: { select: { login: true, twitchId: true, settings: true } } }
       })
       return rows.flatMap((v): MarkerTarget[] => {
         const s = v.channel.settings
         if (!s) return []
         return [{
-          id: v.id, channelId: v.channelId, twitchVodId: v.twitchVodId, vodTitle: v.title, channelLogin: v.channel.login,
+          id: v.id, channelId: v.channelId, twitchVodId: v.twitchVodId, vodTitle: v.title, channelLogin: v.channel.login, channelTwitchId: v.channel.twitchId,
           live: v.status === 'live', startedAt: v.startedAt, endedAt: v.endedAt, markerScanSec: v.markerScanSec,
           settings: { startCommand: s.longStartCommand, endCommand: s.longEndCommand, allowModerators: s.longModsAllowed, maxSec: clampLongMax(s.longExtractMaxSec, s.longExtractVerified) }
         }]

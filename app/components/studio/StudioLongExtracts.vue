@@ -59,7 +59,7 @@ async function save() {
       </div>
       <label class="flex items-start gap-3 text-sm font-semibold">
         <input v-model="modsAllowed" type="checkbox" class="m-0 mt-0.5 h-5 w-5 flex-none accent-st-accent">
-        <span>Mes modérateurs peuvent aussi les taper<span class="mt-0.5 block text-[13px] font-normal st-muted">Seuls toi et, si tu coches cette case, tes modérateurs sont écoutés. Les messages des spectateurs sont ignorés.</span></span>
+        <span>Mes modérateurs peuvent aussi les taper<span class="mt-0.5 block text-[13px] font-normal st-muted">Seul ton compte Twitch (celui avec lequel tu t’es connecté à Clippeak, même si tu changes de pseudo) est écouté, et tes modérateurs seulement si tu coches cette case. Les spectateurs sont ignorés, et un badge « streamer » ne suffit pas sans ton compte.</span></span>
       </label>
       <div v-if="commandsError" role="alert" class="text-[13px] font-semibold text-st-error">{{ commandsError }}</div>
     </div>
