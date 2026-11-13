@@ -1,5 +1,5 @@
 import { prisma } from './prisma'
-import { applySubscriptionEvent, planFor } from './clipping/billing'
+import { applySubscriptionEvent, clampPacks, normalizeInterval, planFor } from './clipping/billing'
 import { uuidSchema } from './studioAuth'
 
 // Ecritures de facturation declenchees par les evenements Stripe (webhook). Idempotent : rejouer un evenement donne le meme etat, et un
@@ -37,7 +37,9 @@ export async function applyStripeEvent(evt: StripeEventLike): Promise<'applied' 
       return 'stale'
     }
     const paid = object.payment_status === 'paid' || object.payment_status === 'no_payment_required'
-    const fields = { plan: paid ? 'creator' : 'free', status: paid ? 'active' : 'incomplete', lastEventAt: at }
+    // Packs et rythme viennent des metadonnees du paiement (l'evenement de fin de paiement ne porte pas la quantite) ; l'evenement
+    // d'abonnement qui suit, ou un changement dans le portail Stripe, les confirme ou les corrige.
+    const fields = { plan: paid ? 'creator' : 'free', status: paid ? 'active' : 'incomplete', lastEventAt: at, packs: clampPacks(object.metadata?.packs), billingInterval: normalizeInterval(object.metadata?.interval) }
     await prisma.channelBilling.upsert({
       where: { channelId },
       create: { channelId, stripeCustomerId: str(object.customer), stripeSubscriptionId: str(object.subscription), ...fields },
@@ -52,7 +54,7 @@ export async function applyStripeEvent(evt: StripeEventLike): Promise<'applied' 
   if (!channelId) return 'unknown_channel'
   const current = await prisma.channelBilling.findUnique({ where: { channelId } })
   if (current?.lastEventAt && current.lastEventAt > at) return 'stale'
-  const fields = { plan: planFor(state.status), status: state.status, currentPeriodEnd: state.periodEnd, lastEventAt: at }
+  const fields = { plan: planFor(state.status), status: state.status, currentPeriodEnd: state.periodEnd, lastEventAt: at, packs: state.packs, billingInterval: state.interval }
   await prisma.channelBilling.upsert({
     where: { channelId },
     create: { channelId, stripeCustomerId: str(object.customer), stripeSubscriptionId: str(object.id), ...fields },

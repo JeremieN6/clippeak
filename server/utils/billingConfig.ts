@@ -10,11 +10,13 @@ export function billingConfig(event?: H3Event) {
   // `STRIPE_SECRET_API_KEY` est accepte aussi (nom choisi par le porteur dans son .env.local local).
   const secretKey = readEnv('STRIPE_SECRET_KEY') || readEnv('STRIPE_SECRET_API_KEY')
   const priceId = readEnv('STRIPE_PRICE_CREATOR')
+  // Prix annuel (facture une fois par an) : facultatif ; sans lui, seul le mensuel est propose.
+  const yearlyPriceId = readEnv('STRIPE_PRICE_CREATOR_YEARLY')
   const webhookSecret = readEnv('STRIPE_WEBHOOK_SECRET')
   const footer = invoiceFooter(readEnv('STRIPE_INVOICE_FOOTER'))
   const publicUrl = readEnv('CLIPPEAK_PUBLIC_URL').replace(/\/+$/, '')
   const origin = publicUrl || (event ? `${getRequestProtocol(event, { xForwardedProto: true })}://${getRequestHost(event, { xForwardedHost: true })}` : '')
-  return { secretKey, priceId, webhookSecret, invoiceFooter: footer, origin, configured: Boolean(secretKey && priceId), webhookConfigured: Boolean(webhookSecret), testMode: secretKey.startsWith('sk_test_') || secretKey.startsWith('rk_test_') }
+  return { secretKey, priceId, yearlyPriceId, webhookSecret, invoiceFooter: footer, origin, configured: Boolean(secretKey && priceId), webhookConfigured: Boolean(webhookSecret), testMode: secretKey.startsWith('sk_test_') || secretKey.startsWith('rk_test_') }
 }
 
 export function stripeClient(): StripeClient | null {
