@@ -162,6 +162,8 @@ export function createStudio() {
     window.location.href = url
   })
 
+  // Heure de la derniere lecture des clips (affichee « Mis a jour il y a … » sur le tableau de bord).
+  const clipsLoadedAt = ref<number | null>(null)
   async function loadClips() {
     const [data, q] = await Promise.all([
       api<{ clips: StudioClip[] }>('/api/studio/clips', { query: { status: 'all', channel: channelId.value || undefined } }),
@@ -169,6 +171,7 @@ export function createStudio() {
     ])
     clips.value = data.clips
     quota.value = q
+    clipsLoadedAt.value = Date.now()
   }
 
   // Premiere etape non faite (ou la derniere) a l'ouverture du parcours.
@@ -491,7 +494,7 @@ export function createStudio() {
   }, 'Publication annulée.')
 
   return {
-    connected, error, notice, busy, channels, channelId, detail, bank, clips, quota, billing, loadBilling, startCheckout, openPortal, connections, vodAlerts, view, step, onboarding, mode,
+    connected, error, notice, busy, clipsLoadedAt, channels, channelId, detail, bank, clips, quota, billing, loadBilling, startCheckout, openPortal, connections, vodAlerts, view, step, onboarding, mode,
     disconnectPlatform, publishClip, loadTiktokCreator, loadLongExtracts, saveLongExtractSettings, startLongAnalysis, addLongProposal, updateLongProposal, prepareLongProposal, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
     api, run, track, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, setCaptionTags, advance, finishOnboarding, goToStep, stepStatus,
