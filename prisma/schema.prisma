@@ -99,6 +99,10 @@ model StreamerSettings {
   longExtractMaxSec   Int      @default(600) @map("long_extract_max_sec")
   // Le streamer confirme que sa chaine YouTube est verifiee (telephone) : extraits de plus de 15 minutes possibles.
   longExtractVerified Boolean  @default(false) @map("long_extract_verified")
+  // Commandes tapees dans le chat pendant le live pour marquer un extrait (debut et fin), et droit des moderateurs de les taper.
+  longStartCommand    String   @default("!extrait") @map("long_start_command") @db.VarChar(21)
+  longEndCommand      String   @default("!fin") @map("long_end_command") @db.VarChar(21)
+  longModsAllowed     Boolean  @default(false) @map("long_mods_allowed")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
@@ -123,6 +127,9 @@ model Vod {
   restrictedAt   DateTime? @map("restricted_at")
   sourcesSavedAt DateTime? @map("sources_saved_at")
   restoreAckAt   DateTime? @map("restore_ack_at")
+  // Lecture des commandes d'extrait long dans le chat : secondes de VOD deja lues, et fin de la lecture.
+  markerScanSec  Float?    @map("marker_scan_sec")
+  markersDoneAt  DateTime? @map("markers_done_at")
   error          String?
   createdAt      DateTime  @default(now()) @map("created_at")
 

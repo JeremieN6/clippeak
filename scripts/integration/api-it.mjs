@@ -576,6 +576,20 @@ try {
   assert.equal((await call(longUrl, { ...as(sessionCookie.split('=')[1]), method: 'PUT', body: { enabled: true, maxSec: 600 } })).status, 404)
   assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 600 } })).status, 200)
   assert.equal((await call(`/api/studio/channels/${channelId}`, pub)).json.settings.longExtracts, true)
+  // Commandes du chat (reperes du streamer) : valeurs par defaut, personnalisables, controlees
+  const cmdDefault = (await call(longUrl, pub)).json
+  assert.deepEqual([cmdDefault.startCommand, cmdDefault.endCommand, cmdDefault.modsAllowed], ['!extrait', '!fin', false])
+  const putCmd = body => call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 600, ...body } })
+  assert.equal((await putCmd({ startCommand: 'top', endCommand: '!stop' })).status, 400)
+  assert.equal((await putCmd({ startCommand: '!top', endCommand: 'stop' })).status, 400)
+  assert.equal((await putCmd({ startCommand: '!top', endCommand: '!TOP' })).status, 400)
+  assert.equal((await putCmd({ startCommand: '!a', endCommand: '!stop' })).status, 400)
+  assert.equal((await putCmd({ startCommand: ' !Top ', endCommand: '!Stop', modsAllowed: true })).status, 200)
+  const cmdCustom = (await call(longUrl, pub)).json
+  assert.deepEqual([cmdCustom.startCommand, cmdCustom.endCommand, cmdCustom.modsAllowed], ['!top', '!stop', true])
+  assert.equal((await putCmd({})).status, 200)
+  const cmdBack = (await call(longUrl, pub)).json
+  assert.deepEqual([cmdBack.startCommand, cmdBack.endCommand, cmdBack.modsAllowed], ['!extrait', '!fin', false])
   // Plus de 15 minutes : seulement si le streamer confirme que sa chaine YouTube est verifiee.
   assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 1800 } })).status, 400)
   assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 1800, verified: false } })).status, 400)
