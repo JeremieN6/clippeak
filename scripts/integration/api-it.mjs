@@ -676,7 +676,12 @@ try {
   assert.equal((await approveLong()).status, 200)
   await q(`UPDATE publications SET status = 'published' WHERE clip_job_id = $1`, [longMade.json.id])
   assert.equal((await reopenLong()).status, 409)
-  assert.equal((await call(`/api/studio/clips/${reviewId}/review`, { ...pub, method: 'POST', body: { action: 'reopen' } })).status, 400)
+  // Un clip vertical : « Remettre a valider » seulement s'il est approuve ou refuse (a valider = 409), et il redevient a valider.
+  assert.equal((await call(`/api/studio/clips/${failedId}/review`, { ...pub, method: 'POST', body: { action: 'reopen' } })).status, 409)
+  await q(`UPDATE clip_jobs SET status = 'rejected' WHERE id = $1`, [failedId])
+  assert.equal((await call(`/api/studio/clips/${failedId}/review`, { ...pub, method: 'POST', body: { action: 'reopen' } })).status, 200)
+  assert.equal((await q(`SELECT status FROM clip_jobs WHERE id = $1`, [failedId]))[0].status, 'review')
+  await q(`UPDATE clip_jobs SET status = 'failed' WHERE id = $1`, [failedId])
   // Le titre d'un clip vertical n'est pas change a l'approbation (il est grave dans la video).
   await q(`UPDATE clip_jobs SET status = 'review', title = 'Titre grave' WHERE id = $1`, [failedId])
   assert.equal((await call(`/api/studio/clips/${failedId}/review`, { ...pub, method: 'POST', body: { action: 'approve', title: 'Autre' } })).status, 200)
@@ -720,7 +725,7 @@ try {
   await q(`DELETE FROM platform_connections WHERE channel_id = $1`, [channelId])
   await q(`DELETE FROM long_proposals`)
   await q(`DELETE FROM moments WHERE kind = 'long'`)
-  ok('extraits longs : titre YouTube modifiable a l\'approbation (pas pour un clip vertical), publication sur YouTube seulement (TikTok refuse 400), remettre a valider (publication annulee, 409 une fois partie, 400 pour un clip vertical), reglage coupe = 409')
+  ok('extraits longs : titre YouTube modifiable a l\'approbation (pas pour un clip vertical), publication sur YouTube seulement (TikTok refuse 400), remettre a valider (publication annulee, 409 une fois partie ; aussi pour un clip vertical refuse), reglage coupe = 409')
 
   // --- connexion TikTok (faux TikTok) : depart, retour, informations du compte, controle des reglages, publication, deconnexion
   const ttGo = await fetch(B + '/api/auth/tiktok', { redirect: 'manual', headers: { cookie: 'clippeak_session=jeton-pub' } })

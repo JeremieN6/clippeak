@@ -2,7 +2,7 @@
 // Carte d'un clip (maquette « Carte clip ») : video 9:16 avec etats en surimpression, statut / origine / note, titre et legende
 // modifiables, « Pourquoi cette note », alertes de qualite avec icones, puis approuver / refuser / refaire.
 // Approuver ne publie rien : la publication est une action separee (panneau de publication, clip approuve).
-const props = defineProps<{ clip: StudioClip }>()
+const props = defineProps<{ clip: StudioClip, stacked?: boolean }>()
 const studio = useStudio()
 // Extrait long : 16:9, titre de la video YouTube (pas de titre grave dans la video : changer le titre ne relance pas le rendu).
 const isLong = computed(() => props.clip.format === 'long')
@@ -48,12 +48,13 @@ const titleNote = computed(() => {
 const approve = () => studio.reviewClip(props.clip, 'approve', draft)
 const reject = () => studio.reviewClip(props.clip, 'reject', draft)
 const redo = () => studio.reviewClip(props.clip, 'requeue', draft)
+const reopen = () => studio.reviewClip(props.clip, 'reopen')
 </script>
 
 <template>
-  <article class="st-card flex flex-col gap-5 !p-5 sm:flex-row" :aria-label="clip.title || clip.hook || 'Clip'">
+  <article class="st-card flex flex-col gap-5 !p-5" :class="stacked ? '' : 'sm:flex-row'" :aria-label="clip.title || clip.hook || 'Clip'">
     <!-- Video -->
-    <div class="mx-auto flex w-full flex-none flex-col gap-2.5 sm:mx-0 sm:max-w-none" :class="isLong ? 'max-w-[420px] sm:w-[300px]' : 'max-w-[260px] sm:w-[190px]'">
+    <div class="mx-auto flex w-full flex-none flex-col gap-2.5" :class="[isLong ? 'max-w-[420px]' : 'max-w-[260px]', stacked ? '' : (isLong ? 'sm:mx-0 sm:max-w-none sm:w-[300px]' : 'sm:mx-0 sm:max-w-none sm:w-[190px]')]">
       <div class="relative w-full overflow-hidden rounded-[14px] border border-st-border bg-black" :class="isLong ? 'aspect-video' : 'aspect-[9/16]'">
         <video v-if="clip.videoUrl" :src="clip.videoUrl" controls playsinline preload="metadata" class="h-full w-full object-cover" />
         <div v-else-if="working" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-st-bg p-4 text-center text-st-info" role="status">
@@ -138,10 +139,12 @@ const redo = () => studio.reviewClip(props.clip, 'requeue', draft)
       </div>
       <div v-else-if="clip.status === 'failed' || clip.status === 'rejected'" class="flex flex-wrap gap-2 pt-1">
         <button type="button" class="st-btn" :disabled="studio.busy.value" @click="redo">{{ clip.status === 'failed' ? 'Réessayer le rendu' : 'Refaire le rendu' }}</button>
+        <button v-if="clip.status === 'rejected'" type="button" class="st-btn-ghost" :disabled="studio.busy.value" @click="reopen">Remettre à valider</button>
       </div>
 
       <div v-if="clip.status === 'approved' && clip.videoUrl" class="flex flex-wrap gap-2">
         <a :href="clip.videoUrl" :download="`${(clip.title || 'clip').replace(/[^\w-]+/g, '_')}.mp4`" class="st-btn-ghost no-underline">Télécharger le clip</a>
+        <button v-if="!clip.publications.some(p => p.status === 'publishing' || p.status === 'published')" type="button" class="st-btn-quiet" :disabled="studio.busy.value" @click="reopen">Remettre à valider</button>
       </div>
       <StudioPublishPanel v-if="clip.status === 'approved' && clip.videoUrl" :clip="clip" />
       <p v-else-if="clip.status === 'approved'" class="m-0 text-[13px] st-muted">Approuver ne publie rien : tu choisiras où et quand publier ensuite.</p>
