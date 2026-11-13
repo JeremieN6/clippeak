@@ -5,7 +5,7 @@ import { parseId, assertChannel, requireStudioActor } from '../../../../utils/st
 const bodySchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('approve'), title: z.string().trim().min(1).max(100).optional(), caption: z.string().trim().max(2200).optional(), note: z.string().trim().max(500).optional() }),
   z.object({ action: z.literal('reject'), note: z.string().trim().max(500).optional() }),
-  // Extrait long approuve ou refuse : le remettre « A valider » (impossible s'il est en cours de publication ou deja publie).
+  // Clip approuve ou refuse : le remettre « A valider » (impossible s'il est en cours de publication ou deja publie).
   z.object({ action: z.literal('reopen') }),
   // Nouveau rendu : le titre est grave dans la video, le modifier impose donc de la rendre a nouveau.
   z.object({ action: z.literal('requeue'), title: z.string().trim().min(1).max(120).optional(), replan: z.boolean().optional(), note: z.string().trim().max(500).optional() })
@@ -25,10 +25,9 @@ export default defineEventHandler(async (event) => {
   assertChannel(actor, job.moment.vod.channelId)
 
   if (body.action === 'reopen') {
-    if (job.format !== 'long') throw createError({ statusCode: 400, statusMessage: 'Seuls les extraits longs peuvent être remis à valider.' })
-    if (job.status !== 'approved' && job.status !== 'rejected') throw createError({ statusCode: 409, statusMessage: 'Cet extrait n’est ni approuvé ni refusé.' })
+    if (job.status !== 'approved' && job.status !== 'rejected') throw createError({ statusCode: 409, statusMessage: 'Ce clip n’est ni approuvé ni refusé.' })
     const sent = await prisma.publication.count({ where: { clipJobId: id, status: { in: ['publishing', 'published'] } } })
-    if (sent) throw createError({ statusCode: 409, statusMessage: 'Cet extrait est en cours de publication ou déjà publié.' })
+    if (sent) throw createError({ statusCode: 409, statusMessage: 'Ce clip est en cours de publication ou déjà publié.' })
     // Une publication programmee est annulee : l'extrait redevient a valider.
     await prisma.publication.updateMany({ where: { clipJobId: id, status: 'scheduled' }, data: { status: 'cancelled' } })
     await prisma.clipJob.update({ where: { id }, data: { status: 'review', reviewedAt: null } })

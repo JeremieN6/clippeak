@@ -443,6 +443,23 @@ export function createStudio() {
     await loadClips()
   }, at ? 'Publication programmée.' : 'Publication lancée : elle part dans quelques instants.')
 
+  // Publication groupee (« Publier les approuves… ») : un appel par clip, puis un seul rechargement. `times` : un creneau par clip ; null =
+  // tout de suite. Rien ne part sans le clic de confirmation du streamer.
+  const publishMany = (list: StudioClip[], platform: string, times: Date[] | null) => run(async () => {
+    const first = !clips.value.some(c => c.publications.some(p => p.status !== 'cancelled'))
+    let done = 0
+    try {
+      for (const [i, clip] of list.entries()) {
+        const at = times ? times[i] : null
+        await api(`/api/studio/clips/${clip.id}/publish`, { method: 'POST', body: { platform, at: at ? at.toISOString() : undefined } })
+        done++
+      }
+    } finally {
+      track('clips_published_bulk', { platform, count: done, when: times ? 'scheduled' : 'now', first })
+      await loadClips()
+    }
+  }, 'Publications lancées : elles partent dans l’ordre choisi. Tu peux suivre l’état de chaque clip ici.')
+
   // --- Extraits longs YouTube ---------------------------------------------------------------------------------------
 
   const loadLongExtracts = () => api<LongExtractsInfo>(`/api/studio/channels/${channelId.value}/long-extracts`)
@@ -495,7 +512,7 @@ export function createStudio() {
 
   return {
     connected, error, notice, busy, clipsLoadedAt, channels, channelId, detail, bank, clips, quota, billing, loadBilling, startCheckout, openPortal, connections, vodAlerts, view, step, onboarding, mode,
-    disconnectPlatform, publishClip, loadTiktokCreator, loadLongExtracts, saveLongExtractSettings, startLongAnalysis, addLongProposal, updateLongProposal, prepareLongProposal, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
+    disconnectPlatform, publishClip, publishMany, loadTiktokCreator, loadLongExtracts, saveLongExtractSettings, startLongAnalysis, addLongProposal, updateLongProposal, prepareLongProposal, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
     api, run, track, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, setCaptionTags, advance, finishOnboarding, goToStep, stepStatus,
     addAssets, saveAsset, removeAsset, addReferences, saveStat, removeReference, reviewClip, approveMany

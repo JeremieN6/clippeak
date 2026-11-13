@@ -53,10 +53,20 @@ const lots = computed(() => lotOptions.value.map((n) => {
   // « Prêts » : à valider et sans point bloquant.
   const ready = all.filter(c => c.status === 'review' && !(c.qc?.issues ?? []).some(i => i.severity === 'error'))
   const open = openLots[String(n)] ?? (n === lotOptions.value[0])
-  return { n, all, list, ready, open: open || filters.status !== 'all' || filters.lot !== 'all' }
+  return { n, all, list, ready, approved: approvedToPublish(n), open: open || filters.status !== 'all' || filters.lot !== 'all' }
 }).filter(l => l.list.length))
 
 const toggleLot = (n: number, open: boolean) => { openLots[String(n)] = !open }
+
+// Panneau « Detail du clip » (un clip a la fois) et publication groupee d'un lot.
+const drawerId = ref<string | null>(null)
+const drawerClip = computed(() => clips.value.find(c => c.id === drawerId.value) ?? null)
+watch(drawerClip, (c) => { if (drawerId.value && !c) drawerId.value = null })
+const bulkLot = ref<number | null>(null)
+const bulkClips = computed(() => bulkLot.value === null ? [] : approvedToPublish(bulkLot.value))
+// Clips approuves d'un lot, pas encore publies ni en cours d'envoi : ceux que « Publier les approuves… » peut envoyer (hors TikTok, clip par clip).
+const approvedToPublish = (n: number) => clips.value.filter(c => (c.batch ?? 0) === n && c.status === 'approved' && !!c.videoUrl && !c.publications.some(p => ['published', 'publishing', 'scheduled'].includes(p.status)))
+watch(bulkClips, (list) => { if (bulkLot.value !== null && !list.length) bulkLot.value = null })
 
 // Les deux lots les plus recents sont montres ; « Voir les lots precedents » montre les autres. Un filtre actif montre tous les lots concernes.
 const showOlder = ref(false)
@@ -264,11 +274,12 @@ const selectClass = 'st-field !min-h-11 !w-full'
           <div class="flex flex-col gap-0.5"><h2 class="st-title m-0 text-[22px] font-bold leading-7">Lot {{ lot.n || '-' }}</h2><div class="text-[13px] st-muted">{{ lot.all.length }} clip(s)</div></div>
           <div class="flex flex-wrap items-center gap-2">
             <button v-if="lot.ready.length" type="button" class="st-btn-ghost text-sm" :disabled="studio.busy.value" @click="studio.approveMany(lot.ready)">Approuver les clips prêts ({{ lot.ready.length }})</button>
+            <button v-if="lot.approved.length" type="button" class="st-btn text-sm" :disabled="studio.busy.value" @click="bulkLot = lot.n">Publier les approuvés…</button>
             <button type="button" class="st-btn-quiet text-sm" :aria-expanded="lot.open" @click="toggleLot(lot.n, lot.open)">{{ lot.open ? 'Replier' : `Voir les ${lot.all.length} clips` }}</button>
           </div>
         </div>
-        <div v-if="lot.open" class="grid grid-cols-[repeat(auto-fit,minmax(min(560px,100%),1fr))] items-start gap-4">
-          <StudioClipCard v-for="c in lot.list" :key="c.id + c.status" :clip="c" />
+        <div v-if="lot.open" class="grid grid-cols-[repeat(auto-fill,minmax(min(480px,100%),1fr))] items-stretch gap-4">
+          <StudioClipRow v-for="c in lot.list" :key="c.id" :clip="c" @open="drawerId = c.id" />
         </div>
       </section>
 
@@ -288,5 +299,8 @@ const selectClass = 'st-field !min-h-11 !w-full'
         <button type="button" class="st-btn-ghost" @click="clearFilters">Effacer les filtres</button>
       </div>
     </main>
+
+    <StudioClipDrawer v-if="drawerClip" :clip="drawerClip" @close="drawerId = null" />
+    <StudioBulkPublish v-if="bulkLot !== null && bulkClips.length" :lot="bulkLot" :clips="bulkClips" @close="bulkLot = null" />
   </div>
 </template>
