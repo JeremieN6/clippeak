@@ -74,6 +74,12 @@ const icons: Record<string, string> = {
   instagram: 'M5 5h14v14H5zM12 9.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM16.5 7.5h.01',
   stats: 'M5 20V11M12 20V5M19 20v-7'
 }
+// Une fonction qui parle d'une plateforme (dans son titre ou son nom interne) montre le logo de cette plateforme, comme a l'etape
+// « Plateformes » de l'onboarding ; sinon une icone simple.
+const platformOf = (f: { slug: string, title: string }): string | null => {
+  const text = `${f.slug} ${f.title}`.toLowerCase()
+  return ['tiktok', 'instagram', 'youtube'].find(id => text.includes(id)) ?? null
+}
 const icon = (slug: string) => icons[slug] ?? 'M12 3l2.2 5.3L20 10l-4.3 3.8L17 20l-5-3-5 3 1.3-6.2L4 10l5.8-1.7z'
 const statusLabel: Record<string, { text: string, cls: string }> = {
   building: { text: 'En cours', cls: 'st-badge-info' },
@@ -170,7 +176,7 @@ const statusLabel: Record<string, { text: string, cls: string }> = {
             <h2 id="lt" class="st-title m-0 text-xl font-bold leading-[26px]">Dans la liste</h2>
             <div v-for="f in data.waiting" :key="f.id" class="flex min-h-[72px] items-center gap-3.5 rounded-xl border border-st-border bg-st-surface px-4 py-3">
               <span class="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] bg-st-raised2 text-st-soft" aria-hidden="true">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path :d="icon(f.slug)" /></svg>
+                <StudioPlatformLogo v-if="platformOf(f)" :id="platformOf(f)!" /><svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path :d="icon(f.slug)" /></svg>
               </span>
               <span class="flex min-w-0 flex-1 flex-col gap-0.5"><span class="text-base font-bold">{{ f.title }}</span><span class="text-[13px] leading-5 st-muted">{{ f.description }}</span></span>
               <span class="st-badge st-badge-neutral !hidden sm:!inline-flex">Pas encore en vote</span>
@@ -183,7 +189,7 @@ const statusLabel: Record<string, { text: string, cls: string }> = {
           <p class="m-0 text-sm leading-[22px] st-muted">Les fonctions que vous avez votées (ou que l’équipe a choisies) et sur lesquelles on travaille maintenant.</p>
           <div v-for="f in data?.inProgress ?? []" :key="f.id" class="flex min-h-[72px] flex-wrap items-center gap-x-3.5 gap-y-2 rounded-xl border border-st-border bg-st-surface px-4 py-3">
             <span class="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] bg-st-raised2 text-st-soft" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path :d="icon(f.slug)" /></svg>
+              <StudioPlatformLogo v-if="platformOf(f)" :id="platformOf(f)!" /><svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path :d="icon(f.slug)" /></svg>
             </span>
             <span class="flex min-w-[200px] flex-1 flex-col gap-0.5"><span class="text-base font-bold">{{ f.title }}</span><span class="text-[13px] leading-5 st-muted">{{ f.description }}</span><span v-if="votesText(f.wonWith)" class="text-[13px] text-st-accentLight">{{ votesText(f.wonWith) }}</span></span>
             <span class="st-badge" :class="statusLabel[f.status]?.cls ?? 'st-badge-neutral'">{{ statusLabel[f.status]?.text ?? f.status }}</span>
