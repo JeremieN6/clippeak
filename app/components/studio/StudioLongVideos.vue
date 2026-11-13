@@ -25,6 +25,11 @@ watch(() => studio.channelId.value, load)
 const back = () => { studio.view.value = studio.onboarding.value?.completed || studio.clips.value.length ? 'dashboard' : 'onboarding' }
 const youtube = computed(() => studio.connections.value.find(c => c.platform === 'youtube'))
 const showVideos = () => videosEl.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+// « Changer ces mots » : descend jusqu'aux commandes du chat (section « Réglage », en haut de la page) et met le curseur dans la premiere.
+function goToCommands() {
+  document.getElementById('long-commandes')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  setTimeout(() => document.getElementById('long-cmd-start')?.focus({ preventScroll: true }), 450)
+}
 
 // --- Propositions : filtres et regroupement par live
 const filters = reactive({ live: 'all', origin: 'all', note: 'all', length: 'all' })
@@ -114,7 +119,8 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
           <div class="grid grid-cols-[repeat(auto-fit,minmax(min(300px,100%),1fr))] gap-3">
             <div class="st-card flex flex-col gap-2 !p-4">
               <div class="flex flex-wrap items-center gap-2"><span class="font-bold">Pendant ton live</span><span class="st-badge st-badge-ok">Disponible</span></div>
-              <p class="m-0 text-sm leading-relaxed st-muted">Tape <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">{{ info.startCommand }}</code> dans ton chat au début d’un bon passage et <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">{{ info.endCommand }}</code> à la fin : Clippeak te le propose dans les minutes qui suivent. Sans <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">{{ info.endCommand }}</code>, il propose 5 minutes à partir de ton repère, une fois le live terminé. Tu peux changer ces mots dans « Réglage ».</p>
+              <p class="m-0 text-sm leading-relaxed st-muted">Tape <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">{{ info.startCommand }}</code> dans ton chat au début d’un bon passage et <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">{{ info.endCommand }}</code> à la fin : Clippeak te le propose dans les minutes qui suivent. Sans <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">{{ info.endCommand }}</code>, il propose 5 minutes à partir de ton repère, une fois le live terminé.</p>
+              <div><button type="button" class="st-btn-ghost" @click="goToCommands">Changer ces mots (section « Réglage »)</button></div>
             </div>
             <div class="st-card flex flex-col gap-2 !p-4">
               <div class="flex flex-wrap items-center gap-2"><span class="font-bold">Après ton live</span><span class="st-badge st-badge-neutral">Bientôt</span></div>

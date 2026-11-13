@@ -50,11 +50,11 @@ async function save() {
       <input v-model="verified" type="checkbox" class="m-0 mt-0.5 h-5 w-5 flex-none accent-st-accent">
       <span>Ma chaîne YouTube est vérifiée (plus de 15 minutes)<span class="mt-0.5 block text-[13px] font-normal st-muted">Pour publier plus de 15 minutes, YouTube demande de vérifier ton numéro de téléphone sur ta chaîne (gratuit, une seule fois). Les chaînes établies l’ont presque toujours fait. Si la tienne ne l’est pas, YouTube refusera la vidéo.</span></span>
     </label>
-    <div class="flex flex-col gap-3 rounded-xl border border-st-border bg-st-field p-4">
+    <div id="long-commandes" class="flex scroll-mt-24 flex-col gap-3 rounded-xl border border-st-border bg-st-field p-4">
       <div class="text-sm font-bold">Commandes du chat</div>
       <p class="m-0 text-[13px] leading-5 st-muted">Pendant ton live, tape la première au début d’un bon passage et la seconde à la fin : Clippeak te le propose ensuite. Tu peux choisir tes propres mots (ils commencent par « ! »).</p>
       <div class="flex flex-wrap gap-3">
-        <label class="flex min-w-[150px] flex-1 flex-col gap-1.5"><span class="st-label">Début</span><input v-model="startCommand" class="st-field" maxlength="21" autocomplete="off" spellcheck="false" placeholder="!extrait"></label>
+        <label class="flex min-w-[150px] flex-1 flex-col gap-1.5"><span class="st-label">Début</span><input id="long-cmd-start" v-model="startCommand" class="st-field" maxlength="21" autocomplete="off" spellcheck="false" placeholder="!extrait"></label>
         <label class="flex min-w-[150px] flex-1 flex-col gap-1.5"><span class="st-label">Fin</span><input v-model="endCommand" class="st-field" maxlength="21" autocomplete="off" spellcheck="false" placeholder="!fin"></label>
       </div>
       <label class="flex items-start gap-3 text-sm font-semibold">
