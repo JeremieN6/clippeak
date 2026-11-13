@@ -5,7 +5,7 @@ import { buildEvent } from '~~/server/utils/clipping/analytics'
 export interface StudioChannel { id: string, login: string, displayName: string, autoClip: boolean, demo: boolean, test?: boolean }
 
 export interface StudioClip {
-  id: string, batch: number | null, status: string, format?: 'short' | 'long', title: string | null, caption: string | null, hashtags: string | null
+  id: string, batch: number | null, status: string, format?: 'short' | 'long', startSec?: number | null, endSec?: number | null, source?: string | null, title: string | null, caption: string | null, hashtags: string | null
   error: string | null, qc: { passed: boolean, issues: Array<{ severity: string, message: string }> } | null
   illustrations: Array<{ path: string, source: string }> | null, reviewNote: string | null, score: number | null
   kind: string | null, category: string | null, hook: string | null, rationale: string | null, scorer: string | null
@@ -21,7 +21,8 @@ export interface StudioBilling { available: boolean, testMode?: boolean, plan?: 
 export interface VodAlert { id: string, title: string, state: 'blocked' | 'working' | 'restore', since: string | null }
 export interface TiktokCreator { nickname: string, username: string, avatarUrl: string | null, privacyOptions: string[], commentDisabled: boolean, duetDisabled: boolean, stitchDisabled: boolean, maxVideoDurationSec: number }
 export interface LongExtractVod { id: string, title: string | null, startedAt: string, durationSec: number | null }
-export interface LongExtractsInfo { enabled: boolean, maxSec: number, verified: boolean, vods: LongExtractVod[] }
+export interface LongProposalView { id: string, origin: 'manual' | 'streamer' | 'analysis', state: 'proposed' | 'ignored' | 'preparing' | 'validate', title: string, theme: string | null, why: string | null, score: number | null, startSec: number, endSec: number, durationSec: number, createdAt: string, vod: { id: string, twitchVodId: string, title: string | null, startedAt: string } }
+export interface LongExtractsInfo { enabled: boolean, maxSec: number, verified: boolean, vods: LongExtractVod[], proposals: LongProposalView[] }
 export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null }
 
 // Message comprehensible pour le streamer a partir d'une erreur reseau ou serveur. Une reponse de Clippeak (message ecrit pour lui) est
@@ -403,16 +404,17 @@ export function createStudio() {
 
   // --- Clips -------------------------------------------------------------------------------------------------------
 
-  const reviewClip = (clip: StudioClip, action: 'approve' | 'reject' | 'requeue', draft: { caption?: string, title?: string, note?: string } = {}) => run(async () => {
+  const reviewClip = (clip: StudioClip, action: 'approve' | 'reject' | 'requeue' | 'reopen', draft: { caption?: string, title?: string, note?: string } = {}) => run(async () => {
     // Extrait long : le titre part avec la publication YouTube (il n'est pas grave dans la video), il se change a l'approbation.
     const body = action === 'approve' ? { action, caption: draft.caption, note: draft.note || undefined, ...(clip.format === 'long' && draft.title?.trim() ? { title: draft.title.trim() } : {}) }
       : action === 'reject' ? { action, note: draft.note || undefined }
+        : action === 'reopen' ? { action }
         : { action, title: draft.title || undefined, replan: true, note: draft.note || undefined }
     const firstApproval = action === 'approve' && !clips.value.some(c => c.status === 'approved')
     await api(`/api/studio/clips/${clip.id}/review`, { method: 'POST', body })
     track('clip_reviewed', { action, first: firstApproval })
     await loadClips()
-  }, action === 'approve' ? 'Clip approuvé. Rien n’a été publié.' : action === 'reject' ? 'Clip refusé.' : 'Clip remis en file pour un nouveau rendu.')
+  }, action === 'approve' ? 'Clip approuvé. Rien n’a été publié.' : action === 'reject' ? 'Clip refusé.' : action === 'reopen' ? 'Remis à valider.' : 'Clip remis en file pour un nouveau rendu.')
 
   const approveMany = (list: StudioClip[]) => run(async () => {
     const firstApproval = !clips.value.some(c => c.status === 'approved')
@@ -446,11 +448,21 @@ export function createStudio() {
     track('long_extracts_setting', { enabled, maxSec, verified })
   }, enabled ? 'Extraits longs activés.' : 'Extraits longs désactivés.')
 
-  const requestLongExtract = (body: { vodId: string, startSec: number, endSec: number, title?: string }) => run(async () => {
-    await api(`/api/studio/channels/${channelId.value}/long-extracts`, { method: 'POST', body })
-    track('long_extract_requested', { durationSec: Math.round(body.endSec - body.startSec) })
+  // Proposition ajoutee a la main, puis modifiee (titre, debut, fin, ignoree / remise) ou preparee (rendu en file).
+  const addLongProposal = (body: { vodId: string, startSec: number, endSec: number, title?: string }) => run(async () => {
+    await api(`/api/studio/channels/${channelId.value}/long-proposals`, { method: 'POST', body })
+    track('long_proposal_added', { durationSec: Math.round(body.endSec - body.startSec) })
+  }, 'Proposition ajoutée.')
+
+  const updateLongProposal = (id: string, body: { title?: string, startSec?: number, endSec?: number, ignored?: boolean }, message = '') => run(async () => {
+    await api(`/api/studio/channels/${channelId.value}/long-proposals/${id}`, { method: 'PATCH', body })
+  }, message)
+
+  const prepareLongProposal = (id: string) => run(async () => {
+    await api(`/api/studio/channels/${channelId.value}/long-proposals/${id}/prepare`, { method: 'POST' })
+    track('long_extract_requested', {})
     await loadClips()
-  }, 'Extrait en préparation : il apparaîtra dans « À valider » dans quelques minutes.')
+  }, 'Extrait en préparation : il arrive dans « À valider » dans quelques minutes.')
 
   // Informations du compte TikTok (pseudo, visibilites permises...), lues a chaque ouverture de l'ecran de publication.
   const loadTiktokCreator = () => api<TiktokCreator>(`/api/studio/channels/${channelId.value}/tiktok-creator`)
@@ -474,7 +486,7 @@ export function createStudio() {
 
   return {
     connected, error, notice, busy, channels, channelId, detail, bank, clips, quota, billing, loadBilling, startCheckout, openPortal, connections, vodAlerts, view, step, onboarding, mode,
-    disconnectPlatform, publishClip, loadTiktokCreator, loadLongExtracts, saveLongExtractSettings, requestLongExtract, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
+    disconnectPlatform, publishClip, loadTiktokCreator, loadLongExtracts, saveLongExtractSettings, addLongProposal, updateLongProposal, prepareLongProposal, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
     api, run, track, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, setCaptionTags, advance, finishOnboarding, goToStep, stepStatus,
     addAssets, saveAsset, removeAsset, addReferences, saveStat, removeReference, reviewClip, approveMany

@@ -31,6 +31,10 @@ export default defineEventHandler(async (event) => {
       batch: job.batch,
       status: job.status,
       format: job.format === 'long' ? 'long' : 'short',
+      startSec: job.startSec,
+      endSec: job.endSec,
+      // Extraits longs : d'ou vient le passage (manual | streamer | analysis).
+      source: job.format === 'long' ? job.moment.scorer : null,
       title: job.title,
       caption: job.caption,
       hashtags: job.hashtags,

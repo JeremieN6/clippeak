@@ -77,28 +77,29 @@ model Channel {
   roadmapVotes   RoadmapVote[]
   roadmapIdeas   RoadmapIdea[]
   notifications  Notification[]
+  longProposals  LongProposal[]
   billing        ChannelBilling?
 
   @@map("channels")
 }
 
 model StreamerSettings {
-  id               String   @id @default(uuid()) @db.Uuid
-  channelId        String   @unique @map("channel_id") @db.Uuid
-  keywords         String[] @default(["mdr", "ptdr", "lol", "omg", "xd", "kekw"])
-  clipMinSec       Int      @default(30) @map("clip_min_sec")
-  clipMaxSec       Int      @default(60) @map("clip_max_sec")
-  subtitles        Boolean  @default(true)
-  accentColor      String   @default("#FFFFFF") @map("accent_color") @db.VarChar(9)
-  highlightColor   String   @default("#FFD400") @map("highlight_color") @db.VarChar(9)
+  id                  String   @id @default(uuid()) @db.Uuid
+  channelId           String   @unique @map("channel_id") @db.Uuid
+  keywords            String[] @default(["mdr", "ptdr", "lol", "omg", "xd", "kekw"])
+  clipMinSec          Int      @default(30) @map("clip_min_sec")
+  clipMaxSec          Int      @default(60) @map("clip_max_sec")
+  subtitles           Boolean  @default(true)
+  accentColor         String   @default("#FFFFFF") @map("accent_color") @db.VarChar(9)
+  highlightColor      String   @default("#FFD400") @map("highlight_color") @db.VarChar(9)
   // Plafond de clips produits par mois (defaut 40, null = illimite, reglable par l'admin). Chaines de demo et de test : jamais plafonnees.
-  monthlyClipQuota Int?     @default(40) @map("monthly_clip_quota")
+  monthlyClipQuota    Int?     @default(40) @map("monthly_clip_quota")
   // Extraits longs YouTube (16:9, plusieurs minutes, choisis par le streamer) : desactives par defaut, duree maximale en secondes.
-  longExtracts      Boolean @default(false) @map("long_extracts")
-  longExtractMaxSec Int     @default(600) @map("long_extract_max_sec")
+  longExtracts        Boolean  @default(false) @map("long_extracts")
+  longExtractMaxSec   Int      @default(600) @map("long_extract_max_sec")
   // Le streamer confirme que sa chaine YouTube est verifiee (telephone) : extraits de plus de 15 minutes possibles.
-  longExtractVerified Boolean @default(false) @map("long_extract_verified")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  longExtractVerified Boolean  @default(false) @map("long_extract_verified")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
@@ -125,8 +126,9 @@ model Vod {
   error          String?
   createdAt      DateTime  @default(now()) @map("created_at")
 
-  channel Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  moments Moment[]
+  channel       Channel        @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  moments       Moment[]
+  longProposals LongProposal[]
 
   @@index([channelId])
   @@map("vods")
@@ -187,6 +189,7 @@ model ClipJob {
 
   moment       Moment        @relation(fields: [momentId], references: [id], onDelete: Cascade)
   publications Publication[]
+  longProposal LongProposal?
 
   @@index([status])
   @@map("clip_jobs")
@@ -458,4 +461,30 @@ model Notification {
 
   @@index([channelId, createdAt])
   @@map("notifications")
+}
+
+// Proposition d'extrait long pour YouTube (passage continu d'un live) : ajoutee a la main, par les reperes du streamer pendant le live
+// ou par l'analyse du live. status : proposed | ignored | prepared (un rendu a ete demande : clipJobId).
+model LongProposal {
+  id        String   @id @default(uuid()) @db.Uuid
+  channelId String   @map("channel_id") @db.Uuid
+  vodId     String   @map("vod_id") @db.Uuid
+  origin    String   @default("manual") @db.VarChar(10)
+  status    String   @default("proposed") @db.VarChar(10)
+  title     String   @db.VarChar(100)
+  theme     String?  @db.VarChar(160)
+  why       String?
+  score     Float?
+  startSec  Float    @map("start_sec")
+  endSec    Float    @map("end_sec")
+  clipJobId String?  @unique @map("clip_job_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  channel Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  vod     Vod      @relation(fields: [vodId], references: [id], onDelete: Cascade)
+  clipJob ClipJob? @relation(fields: [clipJobId], references: [id], onDelete: SetNull)
+
+  @@index([channelId, status])
+  @@map("long_proposals")
 }

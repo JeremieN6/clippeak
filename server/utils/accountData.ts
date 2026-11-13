@@ -28,6 +28,7 @@ export async function exportChannelData(channelId: string) {
       roadmapVotes: { select: { createdAt: true, feature: { select: { title: true } } } },
       roadmapIdeas: { select: { text: true, status: true, createdAt: true } },
       notifications: { select: { title: true, body: true, createdAt: true, readAt: true } },
+      longProposals: { select: { origin: true, status: true, title: true, theme: true, why: true, score: true, startSec: true, endSec: true, createdAt: true } },
       billing: { select: { plan: true, status: true, currentPeriodEnd: true, createdAt: true } }
     }
   })
@@ -45,6 +46,7 @@ export async function exportChannelData(channelId: string) {
     votes: channel.roadmapVotes.map(v => ({ feature: v.feature.title, at: v.createdAt })),
     ideas: channel.roadmapIdeas,
     notifications: channel.notifications,
+    longExtractProposals: channel.longProposals,
     subscription: channel.billing
   }
 }
