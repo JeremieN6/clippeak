@@ -65,7 +65,7 @@ onMounted(async () => {
     <StudioAppBar />
 
     <!-- Message flottant : ne decale rien, se ferme tout seul (succes) ou a la demande (erreur). -->
-    <div class="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex justify-end sm:left-auto sm:right-6 sm:w-[420px]" aria-live="polite">
+    <div class="pointer-events-none fixed inset-x-4 bottom-24 z-50 flex justify-end sm:bottom-4 sm:left-auto sm:right-6 sm:w-[420px]" aria-live="polite">
       <Transition name="st-step">
         <div v-if="error || notice" :key="error || notice" class="st-alert pointer-events-auto w-full items-center border shadow-[0_8px_24px_rgba(0,0,0,.4)]" :class="error ? 'st-alert-error border-st-errorBorder' : 'st-alert-ok border-st-okBorder'" :role="error ? 'alert' : 'status'">
           <svg class="flex-none" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-if="error" d="M12 7v6M12 17h.01" /><path v-else d="M5 12.5l4.5 4.5L19 7.5" /></svg>

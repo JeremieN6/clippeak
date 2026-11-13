@@ -145,6 +145,13 @@ const settingsNav = computed(() => STEPS.filter(s => s.n < 8).map((s) => {
 const todoCount = computed(() => settingsNav.value.filter(s => s.status === 'warn' || s.status === 'todo').length)
 const dot = { ok: 'bg-st-okBg text-st-ok', warn: 'bg-st-warnBg text-st-warn', skip: 'bg-st-raised2 text-st-soft', todo: 'bg-st-raised2 text-st-soft' } as const
 
+// Telephone (moins de 640 px) : la vue de la maquette « Tableau de bord, telephone » (onglets en bas, un clip a la fois).
+const isPhone = ref(false)
+let phoneQuery: MediaQueryList | null = null
+const onPhone = (e: MediaQueryListEvent) => { isPhone.value = e.matches }
+onMounted(() => { phoneQuery = window.matchMedia('(max-width: 639px)'); isPhone.value = phoneQuery.matches; phoneQuery.addEventListener('change', onPhone) })
+onBeforeUnmount(() => { phoneQuery?.removeEventListener('change', onPhone) })
+
 const navOpen = ref(false)
 // Badge « Nouveau » sur « Extraits longs » jusqu'a la premiere visite de la page (choix garde dans le navigateur, facultatif).
 const longSeen = ref(true)
@@ -158,7 +165,8 @@ const selectClass = 'st-field !min-h-11 !w-full'
 </script>
 
 <template>
-  <div class="flex flex-wrap items-stretch">
+  <StudioDashboardMobile v-if="isPhone" />
+  <div v-else class="flex flex-wrap items-stretch">
     <nav aria-label="Mes réglages" class="flex w-full flex-none flex-col gap-6 border-st-border p-4 lg:w-[280px] lg:border-r lg:py-6" :class="collapsed ? 'lg:!w-[76px] lg:items-center' : ''">
       <div class="hidden flex-col gap-0.5 lg:flex" :class="collapsed ? 'lg:items-center' : ''">
         <button type="button" class="st-nav-item !min-h-12 text-[15px] font-bold" :class="collapsed ? '!w-12 !justify-center !px-0' : ''" aria-current="page" aria-label="Tableau de bord">
