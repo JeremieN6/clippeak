@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
   const actor = await requireStudioActor(event)
   const id = parseId(getRouterParam(event, 'id'))
   assertChannel(actor, id)
-  const settings = await prisma.streamerSettings.findUnique({ where: { channelId: id }, select: { longExtracts: true, longExtractMaxSec: true } })
+  const settings = await prisma.streamerSettings.findUnique({ where: { channelId: id }, select: { longExtracts: true, longExtractMaxSec: true, longExtractVerified: true } })
   const vods = await prisma.vod.findMany({
     where: { channelId: id, status: { in: ['ended', 'analyzing', 'done'] } },
     orderBy: { createdAt: 'desc' },
@@ -16,7 +16,8 @@ export default defineEventHandler(async (event) => {
   })
   return {
     enabled: settings?.longExtracts ?? false,
-    maxSec: clampLongMax(settings?.longExtractMaxSec ?? LONG_DEFAULT_MAX_SEC),
+    verified: settings?.longExtractVerified ?? false,
+    maxSec: clampLongMax(settings?.longExtractMaxSec ?? LONG_DEFAULT_MAX_SEC, settings?.longExtractVerified ?? false),
     vods: vods.map(v => ({
       id: v.id,
       title: v.title,

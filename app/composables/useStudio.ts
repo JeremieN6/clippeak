@@ -21,7 +21,7 @@ export interface StudioBilling { available: boolean, testMode?: boolean, plan?: 
 export interface VodAlert { id: string, title: string, state: 'blocked' | 'working' | 'restore', since: string | null }
 export interface TiktokCreator { nickname: string, username: string, avatarUrl: string | null, privacyOptions: string[], commentDisabled: boolean, duetDisabled: boolean, stitchDisabled: boolean, maxVideoDurationSec: number }
 export interface LongExtractVod { id: string, title: string | null, startedAt: string, durationSec: number | null }
-export interface LongExtractsInfo { enabled: boolean, maxSec: number, vods: LongExtractVod[] }
+export interface LongExtractsInfo { enabled: boolean, maxSec: number, verified: boolean, vods: LongExtractVod[] }
 export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null }
 
 // Message comprehensible pour le streamer a partir d'une erreur reseau ou serveur. Une reponse de Clippeak (message ecrit pour lui) est
@@ -441,9 +441,9 @@ export function createStudio() {
 
   const loadLongExtracts = () => api<LongExtractsInfo>(`/api/studio/channels/${channelId.value}/long-extracts`)
 
-  const saveLongExtractSettings = (enabled: boolean, maxSec: number) => run(async () => {
-    await api(`/api/studio/channels/${channelId.value}/long-extracts`, { method: 'PUT', body: { enabled, maxSec } })
-    track('long_extracts_setting', { enabled, maxSec })
+  const saveLongExtractSettings = (enabled: boolean, maxSec: number, verified: boolean) => run(async () => {
+    await api(`/api/studio/channels/${channelId.value}/long-extracts`, { method: 'PUT', body: { enabled, maxSec, verified } })
+    track('long_extracts_setting', { enabled, maxSec, verified })
   }, enabled ? 'Extraits longs activés.' : 'Extraits longs désactivés.')
 
   const requestLongExtract = (body: { vodId: string, startSec: number, endSec: number, title?: string }) => run(async () => {

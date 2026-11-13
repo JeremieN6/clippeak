@@ -96,6 +96,8 @@ model StreamerSettings {
   // Extraits longs YouTube (16:9, plusieurs minutes, choisis par le streamer) : desactives par defaut, duree maximale en secondes.
   longExtracts      Boolean @default(false) @map("long_extracts")
   longExtractMaxSec Int     @default(600) @map("long_extract_max_sec")
+  // Le streamer confirme que sa chaine YouTube est verifiee (telephone) : extraits de plus de 15 minutes possibles.
+  longExtractVerified Boolean @default(false) @map("long_extract_verified")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)

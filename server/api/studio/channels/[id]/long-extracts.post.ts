@@ -20,14 +20,14 @@ export default defineEventHandler(async (event) => {
   if (!parsed.success) throw createError({ statusCode: 400, statusMessage: 'Choisis un live, un début et une fin.' })
   const { vodId, startSec, endSec } = parsed.data
 
-  const settings = await prisma.streamerSettings.findUnique({ where: { channelId: id }, select: { longExtracts: true, longExtractMaxSec: true } })
+  const settings = await prisma.streamerSettings.findUnique({ where: { channelId: id }, select: { longExtracts: true, longExtractMaxSec: true, longExtractVerified: true } })
   if (!settings?.longExtracts) throw createError({ statusCode: 409, statusMessage: 'Active d’abord les extraits longs dans les réglages.' })
   const vod = await prisma.vod.findFirst({ where: { id: vodId, channelId: id }, select: { id: true, title: true, status: true, startedAt: true, endedAt: true } })
   if (!vod) throw createError({ statusCode: 404, statusMessage: 'Live introuvable' })
   if (!['ended', 'analyzing', 'done'].includes(vod.status)) throw createError({ statusCode: 409, statusMessage: 'Ce live n’est pas encore (ou plus) lisible par Clippeak.' })
 
   const duration = vod.startedAt && vod.endedAt ? (vod.endedAt.getTime() - vod.startedAt.getTime()) / 1000 : null
-  const problem = validateLongRange({ startSec, endSec, maxSec: clampLongMax(settings.longExtractMaxSec ?? LONG_DEFAULT_MAX_SEC), vodDurationSec: duration })
+  const problem = validateLongRange({ startSec, endSec, maxSec: clampLongMax(settings.longExtractMaxSec ?? LONG_DEFAULT_MAX_SEC, settings.longExtractVerified), vodDurationSec: duration })
   if (problem) throw createError({ statusCode: 400, statusMessage: problem })
 
   const title = parsed.data.title || (vod.title ? `${vod.title} (${formatClock(startSec)})` : `Extrait de live (${formatClock(startSec)})`)

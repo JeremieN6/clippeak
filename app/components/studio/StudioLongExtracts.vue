@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Reglage des extraits longs (activer, duree maximale) et demande manuelle d'un passage de live : le streamer choisit un live, un debut et
 // une fin ; Clippeak coupe en 16:9 et l'extrait arrive dans « A valider ». Affiche dans la page « Videos longues ».
-import { LONG_ABSOLUTE_MAX_SEC, LONG_MIN_SEC, formatClock, parseClock, validateLongRange } from '~~/server/utils/clipping/longExtract'
+import { LONG_MIN_SEC, LONG_UNVERIFIED_MAX_SEC, formatClock, parseClock, validateLongRange } from '~~/server/utils/clipping/longExtract'
 
 const emit = defineEmits<{ loaded: [enabled: boolean] }>()
 const studio = useStudio()
@@ -9,6 +9,10 @@ const info = ref<LongExtractsInfo | null>(null)
 const failed = ref(false)
 const enabled = ref(false)
 const maxSec = ref(600)
+const verified = ref(false)
+// Durees proposees : jusqu'a 15 minutes, puis jusqu'a 60 minutes si le streamer confirme que sa chaine YouTube est verifiee.
+const maxOptions = computed(() => verified.value ? [180, 300, 600, 900, 1800, 2700, 3600] : [180, 300, 600, 900])
+watch(verified, (v) => { if (!v && maxSec.value > LONG_UNVERIFIED_MAX_SEC) maxSec.value = LONG_UNVERIFIED_MAX_SEC })
 const vodId = ref('')
 const start = ref('')
 const end = ref('')
@@ -22,6 +26,7 @@ async function load() {
     failed.value = false
     enabled.value = info.value.enabled
     maxSec.value = info.value.maxSec
+    verified.value = info.value.verified
     if (!vodId.value || !info.value.vods.some(v => v.id === vodId.value)) vodId.value = info.value.vods[0]?.id ?? ''
     emit('loaded', info.value.enabled)
   } catch {
@@ -41,13 +46,13 @@ const problem = computed(() => {
 })
 const length = computed(() => startSec.value !== null && endSec.value !== null && endSec.value > startSec.value ? formatClock(endSec.value - startSec.value) : '')
 const canSend = computed(() => !!vod.value && startSec.value !== null && endSec.value !== null && !problem.value && !studio.busy.value)
-const dirty = computed(() => !!info.value && (enabled.value !== info.value.enabled || maxSec.value !== info.value.maxSec))
+const dirty = computed(() => !!info.value && (enabled.value !== info.value.enabled || maxSec.value !== info.value.maxSec || verified.value !== info.value.verified))
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
 const vodLabel = (v: LongExtractVod) => `${v.title || 'Live sans titre'} · ${fmtDate(v.startedAt)}${v.durationSec ? ` · ${formatClock(v.durationSec)}` : ''}`
 
 async function save() {
-  await studio.saveLongExtractSettings(enabled.value, maxSec.value)
+  await studio.saveLongExtractSettings(enabled.value, maxSec.value, verified.value)
   await load()
 }
 async function send() {
@@ -75,12 +80,16 @@ async function send() {
           <label class="flex items-center gap-2 text-sm font-semibold">
             Durée maximale
             <select v-model.number="maxSec" class="st-field !min-h-10 !w-auto" aria-label="Durée maximale d’un extrait long">
-              <option v-for="m in [180, 300, 600, LONG_ABSOLUTE_MAX_SEC]" :key="m" :value="m">{{ formatClock(m) }}</option>
+              <option v-for="m in maxOptions" :key="m" :value="m">{{ formatClock(m) }}</option>
             </select>
           </label>
           <button type="button" class="st-btn" :disabled="studio.busy.value || !dirty" @click="save">Enregistrer</button>
         </div>
-        <div class="st-hint">Un extrait long dure de {{ LONG_MIN_SEC }} secondes à {{ formatClock(maxSec) }}. Rien n’est créé tant que tu n’as pas activé et enregistré.</div>
+        <label class="flex items-start gap-3 text-sm font-semibold">
+          <input v-model="verified" type="checkbox" class="m-0 mt-0.5 h-5 w-5 flex-none accent-st-accent">
+          <span>Ma chaîne YouTube est vérifiée (plus de 15 minutes)<span class="mt-0.5 block text-[13px] font-normal st-muted">Pour publier plus de 15 minutes, YouTube demande de vérifier ton numéro de téléphone sur ta chaîne (gratuit, une seule fois). Les chaînes établies l’ont presque toujours fait. Si la tienne ne l’est pas, YouTube refusera la vidéo.</span></span>
+        </label>
+        <div class="st-hint">Un extrait long dure de {{ LONG_MIN_SEC / 60 }} minutes à {{ formatClock(maxSec) }}. Rien n’est créé tant que tu n’as pas activé et enregistré.</div>
       </template>
     </section>
 

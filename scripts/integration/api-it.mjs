@@ -575,8 +575,23 @@ try {
   assert.equal((await call(longUrl, { ...as(sessionCookie.split('=')[1]), method: 'PUT', body: { enabled: true, maxSec: 600 } })).status, 404)
   assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 600 } })).status, 200)
   assert.equal((await call(`/api/studio/channels/${channelId}`, pub)).json.settings.longExtracts, true)
+  // Plus de 15 minutes : seulement si le streamer confirme que sa chaine YouTube est verifiee.
+  assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 1800 } })).status, 400)
+  assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 1800, verified: false } })).status, 400)
+  assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 120, verified: true } })).status, 400)
+  assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 1800, verified: true } })).status, 200)
+  const longVerified = (await call(longUrl, pub)).json
+  assert.deepEqual([longVerified.verified, longVerified.maxSec], [true, 1800])
+  assert.equal((await longPost({ vodId, startSec: 100, endSec: 1700 })).status, 200)
+  await q(`DELETE FROM moments WHERE kind = 'long'`)
+  assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 600, verified: false } })).status, 200)
+  // Une duree de 1800 s gardee alors que la chaine n'est plus « verifiee » est ramenee a 15 minutes.
+  await q(`UPDATE streamer_settings SET long_extract_max_sec = 1800, long_extract_verified = false WHERE channel_id = $1`, [channelId])
+  assert.equal((await call(longUrl, pub)).json.maxSec, 900)
+  assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 600 } })).status, 200)
   const quotaBefore = (await call(`/api/studio/channels/${channelId}/quota`, pub)).json.used
   assert.equal((await longPost({ vodId, startSec: 100, endSec: 110 })).status, 400)
+  assert.equal((await longPost({ vodId, startSec: 100, endSec: 250 })).status, 400)
   assert.equal((await longPost({ vodId, startSec: 100, endSec: 1000 })).status, 400)
   assert.equal((await longPost({ vodId, startSec: 400, endSec: 100 })).status, 400)
     const [{ id: foreignVod }] = await q(`SELECT id FROM vods WHERE channel_id <> $1 LIMIT 1`, [channelId])
@@ -590,7 +605,7 @@ try {
   const longListed = (await call('/api/studio/clips?status=all', pub)).json.clips
   assert.equal(longListed.find(c => c.id === longMade.json.id).format, 'long')
   assert.equal(longListed.find(c => c.id === reviewId).format, 'short')
-  ok('extraits longs : reglage par chaine (duree 30 s a 15 min), passage valide (duree, ordre, live de la chaine seulement), rendu en file au format long, jamais compte dans le plafond mensuel, cloisonne par chaine')
+  ok('extraits longs : reglage par chaine (duree 3 a 15 min, jusqu'a 60 min si chaine verifiee), passage valide (duree, ordre, live de la chaine seulement), rendu en file au format long, jamais compte dans le plafond mensuel, cloisonne par chaine')
 
   // validation puis publication : le titre se change a l'approbation sans refaire le rendu ; YouTube seulement
   await q(`UPDATE clip_jobs SET status = 'review', output_path = $2 WHERE id = $1`, [longMade.json.id, rel])
