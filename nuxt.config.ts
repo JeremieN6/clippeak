@@ -18,7 +18,14 @@ export default defineNuxtConfig({
   // A ne jamais supprimer : Google la reverifie regulierement.
   app: {
     head: {
-      meta: [{ name: 'google-site-verification', content: 'dS4lDtb3GkUFSthFb5DQkzfwTUYCP_dKFWE5m1s7V8E' }]
+      meta: [{ name: 'google-site-verification', content: 'dS4lDtb3GkUFSthFb5DQkzfwTUYCP_dKFWE5m1s7V8E' }],
+      // Icone du site : la MEME image que l'icone de l'application sur le portail TikTok (la revue TikTok compare les deux).
+      link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32.png' },
+        { rel: 'icon', type: 'image/png', sizes: '192x192', href: '/icon-192.png' },
+        { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' }
+      ]
     }
   },
   compatibilityDate: '2025-07-15',

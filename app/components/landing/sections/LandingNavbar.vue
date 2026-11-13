@@ -42,7 +42,7 @@ watch(open, (on) => { document.body.style.overflow = on ? 'hidden' : '' })
     <div class="rounded-2xl border border-white/10 bg-black/60 px-3 backdrop-blur-lg sm:px-6">
       <div class="flex min-h-16 items-center justify-between gap-3">
         <NuxtLink to="/" class="flex min-h-11 items-center gap-2.5 no-underline" aria-label="Clippeak, accueil" @click="close()">
-          <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-clippeak-violet font-display text-xs font-bold" aria-hidden="true">CP</span>
+          <BrandMark class="h-9 w-9" />
           <span class="font-display text-lg font-bold">Clippeak</span>
         </NuxtLink>
 

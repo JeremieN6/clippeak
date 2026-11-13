@@ -47,7 +47,7 @@ function pick(q: QuickQuestion, value: string) {
     <div v-if="current" :key="current.id" class="st-bubble-in flex flex-col gap-3">
       <div class="text-xs font-bold st-muted">Question {{ position }} sur {{ questions.length }}</div>
       <div class="flex items-start gap-2.5">
-        <span class="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-st-accent text-xs font-extrabold text-white" aria-hidden="true">CP</span>
+        <BrandMark class="h-8 w-8" />
         <div class="max-w-[520px] rounded-[4px_16px_16px_16px] border border-st-border bg-st-surface px-4 py-3 text-[15px] leading-6">{{ current.text }}</div>
       </div>
       <div class="flex flex-wrap gap-2.5 pl-[42px]" role="radiogroup" :aria-label="current.text">
@@ -70,7 +70,7 @@ function pick(q: QuickQuestion, value: string) {
 
     <!-- Fin -->
     <div v-else class="st-bubble-in flex items-start gap-2.5">
-      <span class="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-st-accent text-xs font-extrabold text-white" aria-hidden="true">CP</span>
+      <BrandMark class="h-8 w-8" />
       <div class="max-w-[520px] rounded-[4px_16px_16px_16px] border border-st-border bg-st-surface px-4 py-3 text-[15px] leading-6">{{ doneText }}</div>
     </div>
 

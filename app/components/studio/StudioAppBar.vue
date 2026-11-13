@@ -44,7 +44,7 @@ async function logout() {
   <header class="z-30 flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-st-border bg-st-bg px-3 py-1.5 sm:sticky sm:top-0 sm:min-h-16 sm:px-6">
     <div class="flex min-w-0 items-center gap-4">
       <NuxtLink to="/" class="flex min-h-11 items-center gap-2.5 text-st-text no-underline" aria-label="Clippeak, accueil">
-        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-st-accent text-xs font-extrabold text-white" aria-hidden="true">CP</span>
+        <BrandMark class="h-8 w-8" />
         <span class="st-title text-[19px] font-bold leading-none">Clippeak</span>
       </NuxtLink>
       <template v-if="connected && view === 'onboarding'">
