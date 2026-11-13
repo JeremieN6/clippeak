@@ -515,8 +515,8 @@ try {
   const state = stateCookie.split('=')[1]
   assert.equal(goUrl.searchParams.get('state'), state)
   const cb = (code, st, cookie) => fetch(B + `/api/auth/youtube/callback?code=${code}&state=${st}`, { redirect: 'manual', headers: { cookie } })
-  assert.equal((await cb('g-code', 'autre', `clippeak_session=jeton-pub; ${stateCookie}`)).headers.get('location'), '/studio?connect=error')
-  assert.equal((await cb('g-noscope', state, `clippeak_session=jeton-pub; ${stateCookie}`)).headers.get('location'), '/studio?connect=error')
+  assert.equal((await cb('g-code', 'autre', `clippeak_session=jeton-pub; ${stateCookie}`)).headers.get('location'), '/studio?connect=error&platform=youtube')
+  assert.equal((await cb('g-noscope', state, `clippeak_session=jeton-pub; ${stateCookie}`)).headers.get('location'), '/studio?connect=error&platform=youtube')
   assert.equal((await cb('g-code', state, stateCookie)).headers.get('location'), '/connexion')
   assert.equal((await fetch(B + '/api/auth/youtube/callback?error=access_denied', { redirect: 'manual', headers: { cookie: 'clippeak_session=jeton-pub' } })).headers.get('location'), '/studio?connect=cancelled')
   assert.equal((await cb('g-code', state, `clippeak_session=jeton-pub; ${stateCookie}`)).headers.get('location'), '/studio?connect=youtube')
@@ -718,6 +718,21 @@ try {
   assert.equal((await analyze({ vodId: secondVod })).status, 200)
   await q(`DELETE FROM long_analyses`)
   await q(`DELETE FROM vods WHERE id IN ($1, $2, $3)`, [liveVod, blockedVod, secondVod])
+  // Bandeau d'analyse du tableau de bord : VOD en analyse, lecture de la parole (secondes lues, pourcentage), analyse d'un live entier
+  const progUrl = `/api/studio/channels/${channelId}/analysis-progress`
+  assert.deepEqual((await call(progUrl, pub)).json.items, [])
+  assert.equal((await call(progUrl, as(sessionCookie.split('=')[1]))).status, 404)
+  assert.equal((await call(progUrl, { auth: false })).status, 401)
+  const [{ id: anaVod }] = await q(`INSERT INTO vods (id, channel_id, twitch_vod_id, url, status, title) VALUES (gen_random_uuid(), $1, 'prog-1', 'u', 'analyzing', 'Match du soir') RETURNING id`, [channelId])
+  const [{ id: scanVod }] = await q(`INSERT INTO vods (id, channel_id, twitch_vod_id, url, status, title, started_at, ended_at, scan_sec) VALUES (gen_random_uuid(), $1, 'prog-2', 'u', 'done', 'Soiree', now() - interval '4 hours', now(), 4320) RETURNING id`, [channelId])
+  await q(`INSERT INTO vods (id, channel_id, twitch_vod_id, url, status, title, started_at, ended_at, scan_sec) VALUES (gen_random_uuid(), $1, 'prog-3', 'u', 'done', 'Termine', now() - interval '2 hours', now(), 7190)`, [channelId])
+  const progItems = (await call(progUrl, pub)).json.items
+  assert.deepEqual(progItems.map(i => [i.kind, i.title, i.analyzedSec, i.pct]).sort(), [['analyzing', 'Match du soir', null, null], ['scanning', 'Soiree', 4320, 30]].sort())
+  await q(`INSERT INTO long_analyses (id, channel_id, vod_id, status, transcribed_sec, duration_sec, updated_at) VALUES (gen_random_uuid(), $1, $2, 'running', 1800, 7200, now())`, [channelId, scanVod])
+  const withLong = (await call(progUrl, pub)).json.items.find(i => i.kind === 'long')
+  assert.deepEqual([withLong.title, withLong.pct], ['Soiree', 22])
+  await q(`DELETE FROM long_analyses`)
+  await q(`DELETE FROM vods WHERE twitch_vod_id IN ('prog-1', 'prog-2', 'prog-3')`)
   // Reglage coupe : on ne peut plus ajouter ni preparer.
   assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: false, maxSec: 600 } })).status, 200)
   assert.equal((await longPost({ vodId, startSec: 100, endSec: 400 })).status, 409)
@@ -739,8 +754,8 @@ try {
   assert.equal((await fetch(B + '/api/auth/tiktok', { redirect: 'manual', headers: { cookie: adminCookie } })).headers.get('location'), '/studio?connect=admin')
   assert.equal((await fetch(B + '/api/auth/tiktok', { redirect: 'manual' })).headers.get('location'), '/connexion')
   const ttCb = (code, st, cookie) => fetch(B + `/api/auth/tiktok/callback?code=${code}&state=${st}`, { redirect: 'manual', headers: { cookie } })
-  assert.equal((await ttCb('t-code', 'autre', `clippeak_session=jeton-pub; ${ttCookie}`)).headers.get('location'), '/studio?connect=error')
-  assert.equal((await ttCb('t-noscope', ttState, `clippeak_session=jeton-pub; ${ttCookie}`)).headers.get('location'), '/studio?connect=error')
+  assert.equal((await ttCb('t-code', 'autre', `clippeak_session=jeton-pub; ${ttCookie}`)).headers.get('location'), '/studio?connect=error&platform=tiktok')
+  assert.equal((await ttCb('t-noscope', ttState, `clippeak_session=jeton-pub; ${ttCookie}`)).headers.get('location'), '/studio?connect=error&platform=tiktok')
   assert.equal((await ttCb('t-code', ttState, ttCookie)).headers.get('location'), '/connexion')
   assert.equal((await fetch(B + '/api/auth/tiktok/callback?error=access_denied', { redirect: 'manual', headers: { cookie: 'clippeak_session=jeton-pub' } })).headers.get('location'), '/studio?connect=cancelled')
   assert.equal((await ttCb('t-code', ttState, `clippeak_session=jeton-pub; ${ttCookie}`)).headers.get('location'), '/studio?connect=tiktok')

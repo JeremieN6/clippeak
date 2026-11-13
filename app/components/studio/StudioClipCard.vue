@@ -8,8 +8,11 @@ const studio = useStudio()
 const isLong = computed(() => props.clip.format === 'long')
 
 import { fitTitleToBand } from '~~/server/utils/clipping/titleFit'
+import { joinCaption, splitCaption } from '~~/server/utils/clipping/captionParts'
 
-const draft = reactive({ caption: props.clip.caption ?? '', title: props.clip.title ?? '', note: '' })
+// « Légende » et « Hashtags » sont deux champs ; la légende envoyée les remet ensemble (texte, ligne vide, hashtags).
+const parts = splitCaption(props.clip.caption)
+const draft = reactive({ captionText: parts.text, hashtags: parts.hashtags, title: props.clip.title ?? '', note: '' })
 const whyOpen = ref(false)
 
 const statusLook: Record<string, { label: string, cls: string }> = {
@@ -45,7 +48,7 @@ const titleNote = computed(() => {
   return `${fit.lines} ligne${fit.lines > 1 ? 's' : ''} sur ${fit.maxLines}.`
 })
 
-const approve = () => studio.reviewClip(props.clip, 'approve', draft)
+const approve = () => studio.reviewClip(props.clip, 'approve', { ...draft, caption: joinCaption(draft.captionText, draft.hashtags) })
 const reject = () => studio.reviewClip(props.clip, 'reject', draft)
 const redo = () => studio.reviewClip(props.clip, 'requeue', draft)
 const reopen = () => studio.reviewClip(props.clip, 'reopen')
@@ -89,9 +92,13 @@ const reopen = () => studio.reviewClip(props.clip, 'reopen')
       </div>
 
       <div v-if="clip.status === 'review' || clip.status === 'approved'" class="flex flex-col gap-1.5">
-        <label :for="`cap-${clip.id}`" class="st-label">Légende et hashtags</label>
-        <textarea :id="`cap-${clip.id}`" v-model="draft.caption" rows="4" class="st-field" :disabled="clip.status !== 'review'" />
-        <div class="st-hint">Les hashtags sont à la fin de la légende : tu peux les modifier ici.</div>
+        <label :for="`cap-${clip.id}`" class="st-label">Légende</label>
+        <textarea :id="`cap-${clip.id}`" v-model="draft.captionText" rows="3" class="st-field" :disabled="clip.status !== 'review'" />
+      </div>
+      <div v-if="clip.status === 'review' || clip.status === 'approved'" class="flex flex-col gap-1.5">
+        <label :for="`tags-${clip.id}`" class="st-label">Hashtags</label>
+        <input :id="`tags-${clip.id}`" v-model="draft.hashtags" class="st-field" :disabled="clip.status !== 'review'" placeholder="#twitch #football" autocomplete="off" spellcheck="false">
+        <div class="st-hint">Sépare-les par des espaces : le # est ajouté tout seul. Ils partent à la fin de la légende.</div>
       </div>
 
       <div v-if="clip.rationale" class="flex flex-col gap-2">

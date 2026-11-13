@@ -8,7 +8,7 @@ import { encryptToken } from '../../../utils/clipping/tokenVault'
 import { exchangeGoogleCode } from '../../../utils/clipping/googleOAuth'
 
 const STATE_COOKIE = 'clippeak_oauth_yt'
-const back = (event: H3Event, result: string) => sendRedirect(event, `/studio?connect=${result}`, 302)
+const back = (event: H3Event, result: string) => sendRedirect(event, result === 'error' ? '/studio?connect=error&platform=youtube' : `/studio?connect=${result}`, 302)
 
 // Retour de Google : verifie l'etat et la session, echange le code, range les jetons CHIFFRES pour la chaine du streamer connecte.
 export default defineEventHandler(async (event) => {

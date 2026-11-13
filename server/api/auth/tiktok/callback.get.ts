@@ -7,7 +7,7 @@ import { encryptToken } from '../../../utils/clipping/tokenVault'
 import { exchangeTiktokCode, fetchTiktokDisplayName } from '../../../utils/clipping/tiktokApi'
 
 const STATE_COOKIE = 'clippeak_oauth_tt'
-const back = (event: H3Event, result: string) => sendRedirect(event, `/studio?connect=${result}`, 302)
+const back = (event: H3Event, result: string) => sendRedirect(event, result === 'error' ? '/studio?connect=error&platform=tiktok' : `/studio?connect=${result}`, 302)
 
 // Retour de TikTok : verifie l'etat et la session, echange le code, range les jetons CHIFFRES pour la chaine du streamer connecte.
 export default defineEventHandler(async (event) => {

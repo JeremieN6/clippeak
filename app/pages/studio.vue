@@ -37,6 +37,9 @@ onMounted(async () => {
   if (result) {
     if (result === 'youtube' || result === 'tiktok') studio.notice.value = connectMessages[result]
     else studio.error.value = connectMessages[result] ?? ''
+    // Connexion refusee : l'alerte du tableau de bord dit quelle plateforme et quoi faire en attendant.
+    const platform = String(route.query.platform ?? '')
+    if (result === 'error' && (platform === 'youtube' || platform === 'tiktok')) studio.connectFailure.value = platform
     studio.goToStep(7)
     await navigateTo({ query: {} }, { replace: true })
   }
