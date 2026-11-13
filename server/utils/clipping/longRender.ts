@@ -13,7 +13,9 @@ export interface LongJobInput {
 
 export interface LongRenderDeps {
   getVideoUrl: (vodTwitchId: string) => Promise<string>
-  runFfmpeg: (args: string[], options?: { timeoutMs?: number }) => Promise<string>
+  runFfmpeg: (args: string[], options?: { timeoutMs?: number, onProgress?: (producedSec: number) => void }) => Promise<string>
+  // Avancement de la coupe, de 0 a 1.
+  onProgress?: (fraction: number) => void
   probe: (path: string) => LongMetrics
   outputDir: string
   threads?: number
@@ -37,7 +39,7 @@ export async function renderLongJob(job: LongJobInput, deps: LongRenderDeps): Pr
   await mkdir(dirname(outPath), { recursive: true })
   const input = await deps.getVideoUrl(job.vodTwitchId)
   const duration = job.endSec - job.startSec
-  await deps.runFfmpeg(buildLongRenderArgs({ input, startSec: job.startSec, durationSec: duration, outPath, threads: deps.threads }), { timeoutMs: Math.max(45 * 60_000, duration * 2000) })
+  await deps.runFfmpeg(buildLongRenderArgs({ input, startSec: job.startSec, durationSec: duration, outPath, threads: deps.threads }), { timeoutMs: Math.max(45 * 60_000, duration * 2000), onProgress: sec => deps.onProgress?.(Math.min(1, sec / duration)) })
   const qc = evaluateLongQc(deps.probe(outPath), duration)
   if (!qc.passed) throw new LongQcFailedError(qc)
   return { outputPath: outPath, qc }

@@ -16,12 +16,13 @@ export function clampLongMax(sec: number, verified = false): number {
   return Math.min(verified ? LONG_ABSOLUTE_MAX_SEC : LONG_UNVERIFIED_MAX_SEC, Math.max(LONG_MIN_SEC, Math.round(sec)))
 }
 
-export function formatClock(sec: number): string {
+// hours : toujours h:mm:ss (reperes dans un live, comme dans Twitch), meme sous une heure.
+export function formatClock(sec: number, hours = false): string {
   const s = Math.max(0, Math.round(sec))
   const h = Math.floor(s / 3600)
   const m = Math.floor((s % 3600) / 60)
   const rest = String(s % 60).padStart(2, '0')
-  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${rest}` : `${m}:${rest}`
+  return h > 0 || hours ? `${h}:${String(m).padStart(2, '0')}:${rest}` : `${m}:${rest}`
 }
 
 // « 1:23:45 », « 23:45 » ou « 45 » (secondes) -> secondes ; null si illisible.

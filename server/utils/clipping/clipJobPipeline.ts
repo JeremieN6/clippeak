@@ -63,6 +63,8 @@ export interface PipelineDeps {
   // Ecran partage (camera incrustee, panneau camera) : renvoie null si le clip est en plein cadre.
   detectLayout?: (input: DetectLayoutInput) => Promise<ClipLayout | null>
   runFfmpeg: (args: string[], options?: RunFfmpegOptions) => Promise<string>
+  // Avancement du rendu, de 0 a 1 (rappele pendant que ffmpeg travaille).
+  onProgress?: (fraction: number) => void
   collectMetrics: (path: string, options?: RunFfmpegOptions) => Promise<ClipMetrics>
   outputDir: string
   fontsDir?: string
@@ -179,7 +181,7 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
       illustrations: illustrations.map(i => ({ path: i.path, start: i.start, end: i.end })),
       threads: deps.threads
     })
-    await deps.runFfmpeg(args, { cwd: workDir, timeoutMs: 15 * 60_000 })
+    await deps.runFfmpeg(args, { cwd: workDir, timeoutMs: 15 * 60_000, ...(deps.onProgress && timeline.totalSec > 0 ? { onProgress: (sec: number) => deps.onProgress!(Math.min(1, sec / timeline.totalSec)) } : {}) })
 
     const metrics = await deps.collectMetrics(outPath)
     const qc = evaluateQc(metrics, {

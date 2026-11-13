@@ -561,14 +561,15 @@ try {
   assert.equal((await call(`/api/studio/channels/${channelId}/connections/youtube`, { ...pub, method: 'DELETE' })).status, 404)
   ok('publie = ni reprogrammable ni annulable (409) ; deconnecter efface les jetons et annule les publications programmees')
 
-  // --- extraits longs YouTube : reglage par chaine, demande d'un passage (16:9), cloisonnement, jamais compte dans le plafond, publication YouTube seulement
+  // --- extraits longs YouTube : reglage par chaine, propositions (a la main), preparation (16:9), cloisonnement, jamais compte dans le plafond, publication YouTube seulement
   const longUrl = `/api/studio/channels/${channelId}/long-extracts`
+  const propUrl = `/api/studio/channels/${channelId}/long-proposals`
   const longOff = (await call(longUrl, pub)).json
-  assert.equal(longOff.enabled, false); assert.equal(longOff.maxSec, 600)
+  assert.equal(longOff.enabled, false); assert.equal(longOff.maxSec, 600); assert.deepEqual(longOff.proposals, [])
   assert.ok(longOff.vods.some(v => v.id === vodId))
   assert.equal((await call(longUrl, as(sessionCookie.split('=')[1]))).status, 404)
   assert.equal((await call(longUrl, { auth: false })).status, 401)
-  const longPost = body => call(longUrl, { ...pub, method: 'POST', body })
+  const longPost = body => call(propUrl, { ...pub, method: 'POST', body })
   assert.equal((await longPost({ vodId, startSec: 100, endSec: 400 })).status, 409)
   assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 5 } })).status, 400)
   assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 3600 } })).status, 400)
@@ -583,7 +584,7 @@ try {
   const longVerified = (await call(longUrl, pub)).json
   assert.deepEqual([longVerified.verified, longVerified.maxSec], [true, 1800])
   assert.equal((await longPost({ vodId, startSec: 100, endSec: 1700 })).status, 200)
-  await q(`DELETE FROM moments WHERE kind = 'long'`)
+  await q(`DELETE FROM long_proposals`)
   assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 600, verified: false } })).status, 200)
   // Une duree de 1800 s gardee alors que la chaine n'est plus « verifiee » est ramenee a 15 minutes.
   await q(`UPDATE streamer_settings SET long_extract_max_sec = 1800, long_extract_verified = false WHERE channel_id = $1`, [channelId])
@@ -594,41 +595,86 @@ try {
   assert.equal((await longPost({ vodId, startSec: 100, endSec: 250 })).status, 400)
   assert.equal((await longPost({ vodId, startSec: 100, endSec: 1000 })).status, 400)
   assert.equal((await longPost({ vodId, startSec: 400, endSec: 100 })).status, 400)
-    const [{ id: foreignVod }] = await q(`SELECT id FROM vods WHERE channel_id <> $1 LIMIT 1`, [channelId])
+  const [{ id: foreignVod }] = await q(`SELECT id FROM vods WHERE channel_id <> $1 LIMIT 1`, [channelId])
   assert.equal((await longPost({ vodId: foreignVod, startSec: 100, endSec: 400 })).status, 404)
-  const longMade = await longPost({ vodId, startSec: 100, endSec: 400, title: 'Le passage drole' })
+  assert.equal((await q(`SELECT count(*)::int AS n FROM long_proposals`))[0].n, 0)
+  const proposed = await longPost({ vodId, startSec: 100, endSec: 400, title: 'Le passage drole' })
+  assert.equal(proposed.status, 200)
+  const listedProps = (await call(longUrl, pub)).json.proposals
+  assert.equal(listedProps.length, 1)
+  assert.deepEqual([listedProps[0].origin, listedProps[0].state, listedProps[0].title, listedProps[0].durationSec, listedProps[0].vod.twitchVodId], ['manual', 'proposed', 'Le passage drole', 300, '999001'])
+  assert.equal((await q(`SELECT count(*)::int AS n FROM clip_jobs WHERE format = 'long'`))[0].n, 0)
+  // Ajuster, ignorer / annuler, cloisonnement
+  const pUrl = `${propUrl}/${proposed.json.id}`
+  const patchProp = (body, who = pub) => call(pUrl, { ...who, method: 'PATCH', body })
+  assert.equal((await patchProp({ startSec: 100, endSec: 150 })).status, 400)
+  assert.equal((await patchProp({ startSec: 500, endSec: 400 })).status, 400)
+  assert.equal((await patchProp({ startSec: 90, endSec: 450, title: 'Titre ajuste' })).status, 200)
+  assert.equal((await patchProp({ ignored: true })).status, 200)
+  assert.equal((await call(longUrl, pub)).json.proposals[0].state, 'ignored')
+  assert.equal((await patchProp({ ignored: false })).status, 200)
+  const adjusted = (await call(longUrl, pub)).json.proposals[0]
+  assert.deepEqual([adjusted.state, adjusted.title, adjusted.startSec, adjusted.endSec], ['proposed', 'Titre ajuste', 90, 450])
+  assert.equal((await patchProp({ ignored: true }, as(sessionCookie.split('=')[1]))).status, 404)
+  assert.equal((await call(`${propUrl}/${proposed.json.id}/prepare`, { ...as(sessionCookie.split('=')[1]), method: 'POST' })).status, 404)
+  assert.equal((await call(pUrl, { ...pub, method: 'PATCH', body: { startSec: 'x' } })).status, 400)
+  // Preparer : le rendu est mis en file au format long, la proposition passe « en preparation » puis « dans A valider »
+  const longMade = await call(`${propUrl}/${proposed.json.id}/prepare`, { ...pub, method: 'POST' })
   assert.equal(longMade.status, 200)
-  const [longJob] = await q(`SELECT j.format, j.status, j.title, j.start_sec, j.end_sec, j.keep_ranges, m.kind FROM clip_jobs j JOIN moments m ON m.id = j.moment_id WHERE j.id = $1`, [longMade.json.id])
-  assert.deepEqual([longJob.format, longJob.status, longJob.title, longJob.start_sec, longJob.end_sec, longJob.kind], ['long', 'queued', 'Le passage drole', 100, 400, 'long'])
-  assert.deepEqual(longJob.keep_ranges, [{ start: 100, end: 400 }])
+  const [longJob] = await q(`SELECT j.format, j.status, j.title, j.start_sec, j.end_sec, j.keep_ranges, m.kind, m.scorer FROM clip_jobs j JOIN moments m ON m.id = j.moment_id WHERE j.id = $1`, [longMade.json.id])
+  assert.deepEqual([longJob.format, longJob.status, longJob.title, longJob.start_sec, longJob.end_sec, longJob.kind, longJob.scorer], ['long', 'queued', 'Titre ajuste', 90, 450, 'long', 'manual'])
+  assert.deepEqual(longJob.keep_ranges, [{ start: 90, end: 450 }])
+  assert.equal((await call(`${propUrl}/${proposed.json.id}/prepare`, { ...pub, method: 'POST' })).status, 409)
+  assert.equal((await patchProp({ ignored: true })).status, 409)
+  assert.equal((await call(longUrl, pub)).json.proposals[0].state, 'preparing')
+  assert.equal((await call(longUrl, pub)).json.proposals[0].progress, null)
+  await q(`UPDATE clip_jobs SET status = 'rendering', progress = 42 WHERE id = $1`, [longMade.json.id])
+  assert.equal((await call(longUrl, pub)).json.proposals[0].progress, 42)
+  assert.equal((await call('/api/studio/clips?status=all', pub)).json.clips.find(c => c.id === longMade.json.id).progress, 42)
+  await q(`UPDATE clip_jobs SET status = 'review', output_path = $2, progress = 100 WHERE id = $1`, [longMade.json.id, rel])
+  assert.equal((await call(longUrl, pub)).json.proposals[0].state, 'validate')
+  assert.equal((await call(longUrl, pub)).json.proposals[0].progress, null)
+  assert.equal((await call('/api/studio/clips?status=all', pub)).json.clips.find(c => c.id === longMade.json.id).progress, null)
   assert.equal((await call(`/api/studio/channels/${channelId}/quota`, pub)).json.used, quotaBefore)
   const longListed = (await call('/api/studio/clips?status=all', pub)).json.clips
-  assert.equal(longListed.find(c => c.id === longMade.json.id).format, 'long')
+  const longClip = longListed.find(c => c.id === longMade.json.id)
+  assert.deepEqual([longClip.format, longClip.startSec, longClip.endSec, longClip.source], ['long', 90, 450, 'manual'])
   assert.equal(longListed.find(c => c.id === reviewId).format, 'short')
-  ok('extraits longs : reglage par chaine (duree 3 a 15 min, jusqu'a 60 min si chaine verifiee), passage valide (duree, ordre, live de la chaine seulement), rendu en file au format long, jamais compte dans le plafond mensuel, cloisonne par chaine')
+  ok('extraits longs : reglage par chaine (3 a 15 min, jusqu\'a 60 min si chaine verifiee), propositions ajoutees a la main (passage valide, live de la chaine), ajuster / ignorer / annuler, preparer = rendu 16:9 en file, etats propose / en preparation / dans A valider, jamais compte dans le plafond mensuel, cloisonne par chaine')
 
-  // validation puis publication : le titre se change a l'approbation sans refaire le rendu ; YouTube seulement
-  await q(`UPDATE clip_jobs SET status = 'review', output_path = $2 WHERE id = $1`, [longMade.json.id, rel])
-  const approvedLong = await call(`/api/studio/clips/${longMade.json.id}/review`, { ...pub, method: 'POST', body: { action: 'approve', title: 'Titre YouTube final', caption: 'Un beau passage' } })
-  assert.equal(approvedLong.status, 200)
+  // validation puis publication : le titre se change a l'approbation sans refaire le rendu ; YouTube seulement ; remettre a valider
+  const approveLong = () => call(`/api/studio/clips/${longMade.json.id}/review`, { ...pub, method: 'POST', body: { action: 'approve', title: 'Titre YouTube final', caption: 'Un beau passage' } })
+  const reopenLong = () => call(`/api/studio/clips/${longMade.json.id}/review`, { ...pub, method: 'POST', body: { action: 'reopen' } })
+  assert.equal((await reopenLong()).status, 409)
+  assert.equal((await approveLong()).status, 200)
   const [afterApprove] = await q(`SELECT status, title, caption FROM clip_jobs WHERE id = $1`, [longMade.json.id])
   assert.deepEqual([afterApprove.status, afterApprove.title, afterApprove.caption], ['approved', 'Titre YouTube final', 'Un beau passage'])
+  assert.equal((await call(longUrl, pub)).json.proposals.length, 0)
   await q(`INSERT INTO platform_connections (id, channel_id, platform, access_token_enc, refresh_token_enc, updated_at) VALUES (gen_random_uuid(), $1, 'youtube', 'a', 'r', now())`, [channelId])
   assert.equal((await publish(longMade.json.id, { platform: 'tiktok' })).status, 400)
   const longPub = await publish(longMade.json.id, { platform: 'youtube' })
   assert.equal(longPub.status, 200)
+  // Remettre a valider : annule la publication programmee ; impossible une fois partie ; seulement pour un extrait long
+  assert.equal((await reopenLong()).status, 200)
+  assert.equal((await q(`SELECT status FROM clip_jobs WHERE id = $1`, [longMade.json.id]))[0].status, 'review')
+  assert.equal((await q(`SELECT status FROM publications WHERE clip_job_id = $1`, [longMade.json.id]))[0].status, 'cancelled')
+  assert.equal((await approveLong()).status, 200)
+  await q(`UPDATE publications SET status = 'published' WHERE clip_job_id = $1`, [longMade.json.id])
+  assert.equal((await reopenLong()).status, 409)
+  assert.equal((await call(`/api/studio/clips/${reviewId}/review`, { ...pub, method: 'POST', body: { action: 'reopen' } })).status, 400)
   // Le titre d'un clip vertical n'est pas change a l'approbation (il est grave dans la video).
   await q(`UPDATE clip_jobs SET status = 'review', title = 'Titre grave' WHERE id = $1`, [failedId])
   assert.equal((await call(`/api/studio/clips/${failedId}/review`, { ...pub, method: 'POST', body: { action: 'approve', title: 'Autre' } })).status, 200)
   assert.equal((await q(`SELECT title FROM clip_jobs WHERE id = $1`, [failedId]))[0].title, 'Titre grave')
   await q(`UPDATE clip_jobs SET status = 'failed', title = NULL WHERE id = $1`, [failedId])
-  // Reglage coupe : on ne peut plus demander d'extrait.
+  // Reglage coupe : on ne peut plus ajouter ni preparer.
   assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: false, maxSec: 600 } })).status, 200)
   assert.equal((await longPost({ vodId, startSec: 100, endSec: 400 })).status, 409)
   await q(`DELETE FROM publications WHERE clip_job_id = $1`, [longMade.json.id])
   await q(`DELETE FROM platform_connections WHERE channel_id = $1`, [channelId])
+  await q(`DELETE FROM long_proposals`)
   await q(`DELETE FROM moments WHERE kind = 'long'`)
-  ok('extraits longs : titre YouTube modifiable a l\'approbation (pas pour un clip vertical), publication sur YouTube seulement (TikTok refuse 400), reglage coupe = 409')
+  ok('extraits longs : titre YouTube modifiable a l\'approbation (pas pour un clip vertical), publication sur YouTube seulement (TikTok refuse 400), remettre a valider (publication annulee, 409 une fois partie, 400 pour un clip vertical), reglage coupe = 409')
 
   // --- connexion TikTok (faux TikTok) : depart, retour, informations du compte, controle des reglages, publication, deconnexion
   const ttGo = await fetch(B + '/api/auth/tiktok', { redirect: 'manual', headers: { cookie: 'clippeak_session=jeton-pub' } })
