@@ -4,8 +4,7 @@
             <div class="grid gap-10 md:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1fr_auto]">
                 <div class="space-y-4">
                     <div class="inline-flex items-center gap-3">
-                        <div class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-clippeak-violet font-display font-bold"
-                            bis_skin_checked="1">CP</div>
+                        <BrandMark class="h-10 w-10" />
                         <span class="font-display text-base tracking-[0.2em] text-white">CLIPPEAK</span>
                     </div>
                     <p class="max-w-xs text-sm leading-6 text-slate-400">

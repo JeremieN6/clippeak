@@ -78,7 +78,7 @@ const parts = (text: string) => text.split(/(\*\*[^*]+\*\*)/).filter(Boolean).ma
 
     <!-- Bulles de Clippeak -->
     <div v-for="(line, i) in lines.slice(0, shown)" :key="`${step}-${i}`" class="st-bubble-in flex items-start gap-2.5">
-      <span v-if="i === 0" class="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-st-accent text-xs font-extrabold text-white" aria-hidden="true">CP</span>
+      <BrandMark v-if="i === 0" class="h-8 w-8" />
       <span v-else class="w-8 flex-none" />
       <div class="max-w-[520px] border border-st-border bg-st-surface px-4 py-3 text-[15px] leading-6" :class="i === 0 ? 'rounded-[4px_16px_16px_16px]' : 'rounded-2xl'">
         <template v-for="(p, k) in parts(line)" :key="k"><strong v-if="p.b" class="font-extrabold">{{ p.t }}</strong><template v-else>{{ p.t }}</template></template>
@@ -87,7 +87,7 @@ const parts = (text: string) => text.split(/(\*\*[^*]+\*\*)/).filter(Boolean).ma
 
     <!-- Clippeak ecrit… -->
     <div v-if="typing" class="flex items-start gap-2.5" role="status" aria-label="Clippeak écrit">
-      <span v-if="shown === 0" class="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-st-accent text-xs font-extrabold text-white" aria-hidden="true">CP</span>
+      <BrandMark v-if="shown === 0" class="h-8 w-8" />
       <span v-else class="w-8 flex-none" />
       <div class="inline-flex h-11 items-center gap-1.5 rounded-2xl border border-st-border bg-st-surface px-4" aria-hidden="true">
         <span class="st-typing-dot h-2 w-2 rounded-full bg-st-dim" /><span class="st-typing-dot h-2 w-2 rounded-full bg-st-dim" /><span class="st-typing-dot h-2 w-2 rounded-full bg-st-dim" />
