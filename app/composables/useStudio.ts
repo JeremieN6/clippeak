@@ -22,7 +22,8 @@ export interface VodAlert { id: string, title: string, state: 'blocked' | 'worki
 export interface TiktokCreator { nickname: string, username: string, avatarUrl: string | null, privacyOptions: string[], commentDisabled: boolean, duetDisabled: boolean, stitchDisabled: boolean, maxVideoDurationSec: number }
 export interface LongExtractVod { id: string, title: string | null, startedAt: string, durationSec: number | null }
 export interface LongProposalView { id: string, origin: 'manual' | 'streamer' | 'analysis', state: 'proposed' | 'ignored' | 'preparing' | 'validate', title: string, theme: string | null, why: string | null, score: number | null, progress: number | null, startSec: number, endSec: number, durationSec: number, createdAt: string, vod: { id: string, twitchVodId: string, title: string | null, startedAt: string } }
-export interface LongExtractsInfo { enabled: boolean, maxSec: number, verified: boolean, startCommand: string, endCommand: string, modsAllowed: boolean, vods: LongExtractVod[], proposals: LongProposalView[] }
+export interface LongAnalysisView { vodId: string, status: 'queued' | 'running' | 'done' | 'failed' | 'impossible', progress: number, proposals: number, error: string | null, finishedAt: string | null }
+export interface LongExtractsInfo { analyses: LongAnalysisView[], enabled: boolean, maxSec: number, verified: boolean, startCommand: string, endCommand: string, modsAllowed: boolean, vods: LongExtractVod[], proposals: LongProposalView[] }
 export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null }
 
 // Message comprehensible pour le streamer a partir d'une erreur reseau ou serveur. Une reponse de Clippeak (message ecrit pour lui) est
@@ -448,6 +449,11 @@ export function createStudio() {
     track('long_extracts_setting', { enabled: body.enabled, maxSec: body.maxSec, verified: body.verified, modsAllowed: body.modsAllowed })
   }, 'Réglage enregistré.')
 
+  const startLongAnalysis = (vodId: string) => run(async () => {
+    await api(`/api/studio/channels/${channelId.value}/long-analyses`, { method: 'POST', body: { vodId } })
+    track('long_analysis_started', {})
+  }, 'Analyse lancée : tu seras prévenu dans la cloche quand elle est terminée.')
+
   // Proposition ajoutee a la main, puis modifiee (titre, debut, fin, ignoree / remise) ou preparee (rendu en file).
   const addLongProposal = (body: { vodId: string, startSec: number, endSec: number, title?: string }) => run(async () => {
     await api(`/api/studio/channels/${channelId.value}/long-proposals`, { method: 'POST', body })
@@ -486,7 +492,7 @@ export function createStudio() {
 
   return {
     connected, error, notice, busy, channels, channelId, detail, bank, clips, quota, billing, loadBilling, startCheckout, openPortal, connections, vodAlerts, view, step, onboarding, mode,
-    disconnectPlatform, publishClip, loadTiktokCreator, loadLongExtracts, saveLongExtractSettings, addLongProposal, updateLongProposal, prepareLongProposal, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
+    disconnectPlatform, publishClip, loadTiktokCreator, loadLongExtracts, saveLongExtractSettings, startLongAnalysis, addLongProposal, updateLongProposal, prepareLongProposal, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
     api, run, track, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, setCaptionTags, advance, finishOnboarding, goToStep, stepStatus,
     addAssets, saveAsset, removeAsset, addReferences, saveStat, removeReference, reviewClip, approveMany

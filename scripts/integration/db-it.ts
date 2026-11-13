@@ -8,6 +8,7 @@ import { REQUIRED_SCHEMA } from '../../server/utils/clipping/preflight'
 import { createPrismaPublishStore } from '../../server/utils/clipping/prismaPublishStore'
 import { createPrismaMarkerStore } from '../../server/utils/clipping/prismaMarkerStore'
 import { scanMarkers } from '../../server/utils/clipping/markerScan'
+import { createPrismaLongAnalysisStore } from '../../server/utils/clipping/prismaLongAnalysisStore'
 
 // Meme requete que server/worker/index.ts (missingSchema).
 async function missingSchemaCheck(db: any): Promise<string[]> {
@@ -305,6 +306,46 @@ async function main() {
   const liveAfter = await prisma.vod.findUniqueOrThrow({ where: { id: mkLive.id } })
   assert.deepEqual([liveAfter.markerScanSec, liveAfter.markersDoneAt], [100, null])
   log('reperes d extrait long : lives a lire (actives seulement, termines pas encore lus), proposition creee une fois (meme ignoree), lecture terminee, live gardé ouvert')
+
+  // 7c. Analyse d'un live entier : file, transcription gardee, propositions remplacees a la relance (celles ignorees ou a la main restent), cloche
+  const laStore = createPrismaLongAnalysisStore(prisma as any)
+  const laChannel = await prisma.channel.create({ data: { twitchId: 'la-1', login: 'analyse', displayName: 'Analyse', settings: { create: { longExtracts: true } } } })
+  const laVod = await prisma.vod.create({ data: { channelId: laChannel.id, twitchVodId: 'la-vod', url: 'u', status: 'ended', title: 'Soirée', startedAt: new Date('2026-11-12T18:00:00Z'), endedAt: new Date('2026-11-12T20:00:00Z') } })
+  const analysis = await prisma.longAnalysis.create({ data: { channelId: laChannel.id, vodId: laVod.id } })
+  await prisma.longProposal.create({ data: { channelId: laChannel.id, vodId: laVod.id, origin: 'manual', title: 'Ajout', startSec: 100, endSec: 400 } })
+  const job1 = (await laStore.next())!
+  assert.deepEqual([job1.id, job1.status, job1.durationSec, job1.transcribedSec, job1.transcript.length, job1.maxSec, job1.vodTitle], [analysis.id, 'queued', 7200, 0, 0, 600, 'Soirée'])
+  assert.deepEqual(job1.taken, [{ startSec: 100, endSec: 400 }])
+  await laStore.markRunning(analysis.id, 7200)
+  await laStore.appendTranscript(analysis.id, [{ s: 0, e: 4, t: 'un' }], 300)
+  await laStore.appendTranscript(analysis.id, [{ s: 300, e: 304, t: 'deux' }], 600)
+  const job2 = (await laStore.next())!
+  assert.deepEqual([job2.status, job2.transcribedSec, job2.transcript.map(t => t.t)], ['running', 600, ['un', 'deux']])
+  await laStore.finish(job2, [{ title: 'A', theme: 'ta', why: 'wa', score: 8, startSec: 1000, endSec: 1400 }, { title: 'B', theme: '', why: '', score: 6.5, startSec: 3000, endSec: 3400 }])
+  assert.equal(await laStore.next(), null)
+  const made1 = await prisma.longProposal.findMany({ where: { vodId: laVod.id, origin: 'analysis' }, orderBy: { startSec: 'asc' } })
+  assert.deepEqual(made1.map(p => [p.title, p.score, p.theme, p.status]), [['A', 8, 'ta', 'proposed'], ['B', 6.5, null, 'proposed']])
+  assert.equal((await prisma.longAnalysis.findUniqueOrThrow({ where: { id: analysis.id } })).proposalsCount, 2)
+  // Relance : A ignoree (reste), B intacte (remplacee) ; la proposition a la main reste
+  await prisma.longProposal.update({ where: { id: made1[0].id }, data: { status: 'ignored' } })
+  await prisma.longAnalysis.update({ where: { id: analysis.id }, data: { status: 'queued' } })
+  const job3 = (await laStore.next())!
+  assert.deepEqual(job3.taken.map(t => t.startSec).sort((a, b) => a - b), [100, 1000])
+  await laStore.finish(job3, [{ title: 'C', theme: 'tc', why: 'wc', score: 9, startSec: 5000, endSec: 5400 }])
+  const made2 = await prisma.longProposal.findMany({ where: { vodId: laVod.id }, orderBy: { startSec: 'asc' } })
+  assert.deepEqual(made2.map(p => [p.origin, p.title, p.status]), [['manual', 'Ajout', 'proposed'], ['analysis', 'A', 'ignored'], ['analysis', 'C', 'proposed']])
+  await laStore.notify(job3, 1)
+  await laStore.notify(job3, 0)
+  const bell = await prisma.notification.findMany({ where: { channelId: laChannel.id, kind: 'long_analysis' }, orderBy: { createdAt: 'asc' } })
+  assert.equal(bell.length, 2)
+  assert.match(bell[0].body, /1 proposition d’extraits longs attend ton choix pour « Soirée »/)
+  assert.match(bell[1].body, /Aucun passage assez solide/)
+  await prisma.longAnalysis.update({ where: { id: analysis.id }, data: { status: 'queued' } })
+  await laStore.fail(analysis.id, 'impossible', 'VOD privée')
+  const laFailed = await prisma.longAnalysis.findUniqueOrThrow({ where: { id: analysis.id } })
+  assert.deepEqual([laFailed.status, laFailed.error], ['impossible', 'VOD privée'])
+  assert.equal(await laStore.next(), null)
+  log('analyse d un live : file, duree du live, transcription gardee par tranches, propositions remplacees a la relance (ignorees et a la main gardees), cloche, echec')
 
   // 8. Preflight : sur une base migree, plus rien ne manque
   assert.deepEqual(await missingSchemaCheck(prisma), [])

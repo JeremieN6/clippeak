@@ -24,6 +24,8 @@ watch(() => studio.channelId.value, load)
 
 const back = () => { studio.view.value = studio.onboarding.value?.completed || studio.clips.value.length ? 'dashboard' : 'onboarding' }
 const youtube = computed(() => studio.connections.value.find(c => c.platform === 'youtube'))
+const proposalsEl = ref<HTMLElement | null>(null)
+const showProposals = () => proposalsEl.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 const showVideos = () => videosEl.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 // « Changer ces mots » : descend jusqu'aux commandes du chat (section « Réglage », en haut de la page) et met le curseur dans la premiere.
 function goToCommands() {
@@ -71,7 +73,7 @@ const sections = computed(() => groups
   .filter(g => g.list.length))
 
 // Tant qu'un extrait se prepare ou s'envoie, la page se rafraichit toute seule.
-const working = () => proposals.value.some(p => p.state === 'preparing')
+const working = () => proposals.value.some(p => p.state === 'preparing') || (info.value?.analyses ?? []).some(a => a.status === 'queued' || a.status === 'running')
   || longClips.value.some(c => groupOf(c) === 'preparing' || c.publications.some(p => p.platform === 'youtube' && (p.status === 'scheduled' || p.status === 'publishing')))
 let timer: ReturnType<typeof setInterval> | null = null
 onMounted(() => { timer = setInterval(() => { if (!studio.busy.value && working()) refresh() }, 5_000) })
@@ -123,20 +125,16 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
               <div><button type="button" class="st-btn-ghost" @click="goToCommands">Changer ces mots (section « Réglage »)</button></div>
             </div>
             <div class="st-card flex flex-col gap-2 !p-4">
-              <div class="flex flex-wrap items-center gap-2"><span class="font-bold">Après ton live</span><span class="st-badge st-badge-neutral">Bientôt</span></div>
-              <p class="m-0 text-sm leading-relaxed st-muted">« Analyser ce live » : Clippeak lit tout ton live, le découpe par sujet et te propose des extraits. Pour l’analyse automatique après chaque live, ce sera ensuite.</p>
-              <div><button type="button" class="st-btn" disabled>Analyser ce live</button></div>
-            </div>
-            <div class="st-card flex flex-col gap-2 !p-4">
               <div class="flex flex-wrap items-center gap-2"><span class="font-bold">À la main</span><span class="st-badge st-badge-ok">Disponible</span></div>
               <p class="m-0 text-sm leading-relaxed st-muted">Tu connais déjà le passage : ajoute-le avec son début et sa fin.</p>
               <div><button type="button" class="st-btn-ghost" :aria-expanded="addOpen" @click="addOpen = !addOpen">{{ addOpen ? 'Fermer' : 'Ajouter à la main' }}</button></div>
             </div>
           </div>
           <div v-if="addOpen" class="st-card !p-5"><StudioLongManualAdd :info="info" @changed="load" /></div>
+          <StudioLongAnalyze :info="info" @changed="refresh" @show-proposals="showProposals" />
         </section>
 
-        <section class="flex flex-col gap-4" aria-label="Propositions d’extraits">
+        <section ref="proposalsEl" class="flex scroll-mt-24 flex-col gap-4" aria-label="Propositions d’extraits">
           <div class="flex flex-col gap-0.5">
             <h2 class="st-title m-0 text-[22px] font-bold leading-7">Propositions d’extraits <span v-if="proposals.length" class="text-base font-semibold st-muted">({{ proposals.length }})</span></h2>
             <div class="text-[13px] st-muted">Choisis ceux que tu veux préparer : un extrait préparé passe dans « À valider ».</div>
@@ -168,7 +166,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
             <div class="text-sm leading-[22px] text-st-soft">Pour recevoir des propositions, choisis une de ces façons :</div>
             <ul class="m-0 flex list-disc flex-col gap-2 pl-5 text-sm leading-[22px]">
               <li>Pendant ton prochain live, tape <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">{{ info.startCommand }}</code> au début du passage et <code class="rounded bg-st-raised2 px-1.5 py-0.5 text-[0.92em] text-st-accentText">{{ info.endCommand }}</code> à la fin.</li>
-              <li>Pour un live déjà terminé, « Analyser ce live » (bientôt).</li>
+              <li>Pour un live déjà terminé, clique sur « Analyser ce live » ci-dessus.</li>
               <li>Ou ajoute un passage à la main avec « Ajouter à la main » ci-dessus.</li>
             </ul>
           </div>
