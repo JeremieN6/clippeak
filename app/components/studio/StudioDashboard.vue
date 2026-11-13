@@ -35,6 +35,9 @@ const passes = (c: StudioClip) => {
   return true
 }
 
+// Filtres du panneau « Filtres » (note, date, categorie, origine) : leur nombre s'affiche sur le bouton.
+const filtersOpen = ref(false)
+const panelFilterCount = computed(() => (['note', 'date', 'cat', 'origin'] as const).filter(k => filters[k] !== 'all').length)
 const filtered = computed(() => (['status', 'lot', 'note', 'date', 'cat', 'origin'] as const).some(k => filters[k] !== 'all'))
 function clearFilters() {
   Object.assign(filters, { status: 'all', lot: 'all', note: 'all', date: 'all', cat: 'all', origin: 'all' })
@@ -43,9 +46,10 @@ function clearFilters() {
 const lots = computed(() => lotOptions.value.map((n) => {
   const all = clips.value.filter(c => (c.batch ?? 0) === n)
   let list = all.filter(passes)
+  // « Ordre du lot » : l'ordre dans lequel les clips ont ete prepares.
   list = filters.sort === 'score'
     ? [...list].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-    : [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    : [...list].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
   // « Prêts » : à valider et sans point bloquant.
   const ready = all.filter(c => c.status === 'review' && !(c.qc?.issues ?? []).some(i => i.severity === 'error'))
   const open = openLots[String(n)] ?? (n === lotOptions.value[0])
@@ -53,6 +57,26 @@ const lots = computed(() => lotOptions.value.map((n) => {
 }).filter(l => l.list.length))
 
 const toggleLot = (n: number, open: boolean) => { openLots[String(n)] = !open }
+
+// Les deux lots les plus recents sont montres ; « Voir les lots precedents » montre les autres. Un filtre actif montre tous les lots concernes.
+const showOlder = ref(false)
+const visibleLots = computed(() => showOlder.value || filtered.value ? lots.value : lots.value.slice(0, 2))
+const hiddenLots = computed(() => lots.value.length - visibleLots.value.length)
+
+// « Mis a jour il y a … » : se rafraichit toutes les 30 secondes.
+const now = ref(Date.now())
+let clock: ReturnType<typeof setInterval> | null = null
+onMounted(() => { clock = setInterval(() => { now.value = Date.now() }, 30_000) })
+onBeforeUnmount(() => { if (clock) clearInterval(clock) })
+const updatedText = computed(() => {
+  const at = studio.clipsLoadedAt.value
+  if (!at) return ''
+  const minutes = Math.floor((now.value - at) / 60_000)
+  if (minutes < 1) return 'Mis à jour à l’instant'
+  if (minutes < 60) return `Mis à jour il y a ${minutes} minute${minutes > 1 ? 's' : ''}`
+  const hours = Math.floor(minutes / 60)
+  return `Mis à jour il y a ${hours} heure${hours > 1 ? 's' : ''}`
+})
 
 const pubSummary = computed(() => {
   const all = clips.value.flatMap(c => c.publications)
@@ -99,6 +123,8 @@ const settingsNav = computed(() => STEPS.filter(s => s.n < 8).map((s) => {
   const st = studio.stepStatus(s.n)
   return { ...s, ...st }
 }))
+// Reglages a revoir ou a faire : affiches a cote de « Mes reglages » (et en pastille quand le menu est replie).
+const todoCount = computed(() => settingsNav.value.filter(s => s.status === 'warn' || s.status === 'todo').length)
 const dot = { ok: 'bg-st-okBg text-st-ok', warn: 'bg-st-warnBg text-st-warn', skip: 'bg-st-raised2 text-st-soft', todo: 'bg-st-raised2 text-st-soft' } as const
 
 const navOpen = ref(false)
@@ -115,18 +141,26 @@ const selectClass = 'st-field !min-h-11 !w-full'
 
 <template>
   <div class="flex flex-wrap items-stretch">
-    <nav aria-label="Mes réglages" class="flex w-full flex-none flex-col gap-6 border-st-border p-4 lg:w-[280px] lg:border-r lg:py-6" :class="collapsed ? 'lg:!hidden' : ''">
-      <div class="hidden flex-col gap-0.5 lg:flex">
-        <button type="button" class="st-nav-item !min-h-12 text-[15px] font-bold" aria-current="page">Tableau de bord</button>
-        <button type="button" class="st-nav-item !min-h-12 text-[15px] font-semibold" @click="openLong">
+    <nav aria-label="Mes réglages" class="flex w-full flex-none flex-col gap-6 border-st-border p-4 lg:w-[280px] lg:border-r lg:py-6" :class="collapsed ? 'lg:!w-[76px] lg:items-center' : ''">
+      <div class="hidden flex-col gap-0.5 lg:flex" :class="collapsed ? 'lg:items-center' : ''">
+        <button type="button" class="st-nav-item !min-h-12 text-[15px] font-bold" :class="collapsed ? '!w-12 !justify-center !px-0' : ''" aria-current="page" aria-label="Tableau de bord">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="flex-none"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" /></svg>
+          <span v-if="!collapsed">Tableau de bord</span>
+        </button>
+        <button type="button" class="st-nav-item relative !min-h-12 text-[15px] font-semibold" :class="collapsed ? '!w-12 !justify-center !px-0' : ''" :aria-label="longSeen ? 'Extraits longs' : 'Extraits longs, nouveau'" @click="openLong">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="flex-none"><path d="M4 5h16v14H4zM8 5v14M16 5v14M4 9h4M16 9h4M4 15h4M16 15h4" /></svg>
-          <span class="min-w-0 flex-1">Extraits longs</span>
-          <span v-if="!longSeen" class="st-badge st-badge-violet">Nouveau</span>
+          <span v-if="!collapsed" class="min-w-0 flex-1">Extraits longs</span>
+          <span v-if="!longSeen && !collapsed" class="st-badge st-badge-violet">Nouveau</span>
+          <span v-if="!longSeen && collapsed" class="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-st-accentLight" aria-hidden="true" />
         </button>
       </div>
       <button type="button" class="st-btn-ghost w-full lg:hidden" :aria-expanded="navOpen" aria-controls="st-settings" @click="navOpen = !navOpen">{{ navOpen ? 'Masquer mes réglages' : 'Mes réglages' }}</button>
-      <div id="st-settings" class="flex-col gap-0.5 lg:flex" :class="navOpen ? 'flex' : 'hidden'">
-        <div class="px-3 pb-2 text-xs font-extrabold uppercase tracking-widest text-st-dim">Mes réglages</div>
+      <button v-if="collapsed" type="button" class="st-nav-item relative hidden !min-h-12 !w-12 !justify-center !px-0 lg:flex" :aria-label="todoCount ? `Mes réglages, ${todoCount} à revoir` : 'Mes réglages, tout est réglé'" @click="collapsed = false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 5v4M8 15v4" /></svg>
+        <span v-if="todoCount" class="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-st-warn" aria-hidden="true" />
+      </button>
+      <div id="st-settings" class="flex-col gap-0.5 lg:flex" :class="[navOpen ? 'flex' : 'hidden', collapsed ? 'lg:!hidden' : '']">
+        <div class="flex items-center justify-between gap-2 px-3 pb-2"><span class="text-xs font-extrabold uppercase tracking-widest text-st-dim">Mes réglages</span><span class="text-xs font-bold" :class="todoCount ? 'text-st-warn' : 'text-st-ok'">{{ todoCount ? `${todoCount} à revoir` : 'Tout est réglé' }}</span></div>
         <button v-for="s in settingsNav" :key="s.n" type="button" class="st-nav-item !min-h-11 text-sm font-semibold text-st-soft" @click="studio.goToStep(s.n)">
           <span class="flex h-5 w-5 flex-none items-center justify-center rounded-full" :class="dot[s.status]" aria-hidden="true">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path v-if="s.status === 'ok'" d="M5 12.5l4.5 4.5L19 7.5" /><path v-else-if="s.status === 'warn'" d="M12 6v8M12 18h.01" /><path v-else d="M6 12h12" /></svg>
@@ -136,16 +170,19 @@ const selectClass = 'st-field !min-h-11 !w-full'
           <span v-if="s.status === 'warn' || s.status === 'skip'" class="text-xs font-bold" :class="s.status === 'warn' ? 'text-st-warn' : 'text-st-soft'">{{ s.status === 'warn' ? 'À revoir' : 'Passée' }}</span>
         </button>
       </div>
-      <div class="mt-auto hidden items-center gap-2 lg:flex px-2 text-[13px] leading-[18px] st-muted"><span class="h-2 w-2 flex-none rounded-full bg-st-ok" />Clippeak surveille ton prochain live</div>
+      <div class="mt-auto hidden items-center gap-2 lg:flex px-2 text-[13px] leading-[18px] st-muted" :class="collapsed ? 'lg:!hidden' : ''"><span class="h-2 w-2 flex-none rounded-full bg-st-ok" />Clippeak surveille ton prochain live</div>
     </nav>
 
     <main class="flex min-w-0 flex-[999_1_620px] flex-col gap-7 px-5 py-8 sm:px-10">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2">
-          <button type="button" class="hidden h-11 w-11 items-center justify-center rounded-[10px] border border-st-border bg-st-surface text-st-soft hover:bg-st-raised lg:flex" :aria-label="collapsed ? 'Afficher mes réglages' : 'Masquer mes réglages'" :aria-pressed="collapsed" @click="collapsed = !collapsed">
+          <button type="button" class="hidden h-11 w-11 items-center justify-center rounded-[10px] border border-st-border bg-st-surface text-st-soft hover:bg-st-raised lg:flex" :aria-label="collapsed ? 'Déplier le menu' : 'Replier le menu'" :aria-pressed="collapsed" @click="collapsed = !collapsed">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M9 4v16" /></svg>
           </button>
-          <h1 class="st-title m-0 text-[28px] font-bold leading-tight sm:text-[32px]">Tableau de bord</h1>
+          <div>
+            <h1 class="st-title m-0 text-[28px] font-bold leading-tight sm:text-[32px]">Tableau de bord</h1>
+            <div v-if="updatedText" class="mt-0.5 text-[13px] text-st-dim" aria-live="off">{{ updatedText }}</div>
+          </div>
         </div>
         <button type="button" class="st-btn-ghost" :disabled="studio.busy.value" @click="studio.run(studio.loadClips)">Actualiser</button>
       </div>
@@ -175,11 +212,11 @@ const selectClass = 'st-field !min-h-11 !w-full'
 
       <div v-for="p in disconnected" :key="p.id" class="st-alert st-alert-warn st-rise flex-wrap items-center" role="alert">
         <div class="min-w-[220px] flex-1">
-          <div class="font-bold">{{ p.name }} est déconnecté</div>
-          <div class="text-[13px] opacity-90">Une publication n’est pas partie : l’accès à ton compte a expiré. Tes clips sont gardés, rien n’est perdu.</div>
+          <div class="font-bold">{{ p.name }} n’est plus connecté</div>
+          <div class="text-[13px] opacity-90">Une publication n’est pas partie : l’accès à ton compte a expiré. Tes clips approuvés ne peuvent plus y être publiés, mais ils sont gardés : tu peux les télécharger en attendant.</div>
         </div>
         <div class="flex flex-wrap gap-2">
-          <a :href="`/api/auth/${p.id}`" class="st-btn no-underline">Reconnecter</a>
+          <a :href="`/api/auth/${p.id}`" class="st-btn no-underline">Reconnecter {{ p.name }}</a>
           <button type="button" class="st-btn-ghost" @click="filters.status = 'approved'">Télécharger les clips</button>
         </div>
       </div>
@@ -200,25 +237,29 @@ const selectClass = 'st-field !min-h-11 !w-full'
         </button>
       </div>
 
-      <section aria-label="Filtres et tri" class="flex flex-col gap-3.5">
-        <div class="grid grid-cols-2 items-end gap-3 sm:grid-cols-3 xl:grid-cols-6">
-          <div class="flex flex-col gap-1.5"><label for="f-lot" class="text-xs font-bold text-st-dim">Lot</label>
-            <select id="f-lot" v-model="filters.lot" :class="selectClass"><option value="all">Tous les lots</option><option v-for="n in lotOptions" :key="n" :value="String(n)">Lot {{ n || '-' }}</option></select></div>
-          <div class="flex flex-col gap-1.5"><label for="f-note" class="text-xs font-bold text-st-dim">Note</label>
-            <select id="f-note" v-model="filters.note" :class="selectClass"><option value="all">Toutes les notes</option><option value="8">8 et plus</option><option value="7">7 et plus</option><option value="6">6 et plus</option></select></div>
-          <div class="flex flex-col gap-1.5"><label for="f-date" class="text-xs font-bold text-st-dim">Date</label>
-            <select id="f-date" v-model="filters.date" :class="selectClass"><option value="all">Toutes les dates</option><option value="week">Cette semaine</option></select></div>
-          <div class="flex flex-col gap-1.5"><label for="f-cat" class="text-xs font-bold text-st-dim">Catégorie</label>
-            <select id="f-cat" v-model="filters.cat" :class="selectClass"><option value="all">Toutes</option><option v-for="c in categories" :key="c" :value="c">{{ c }}</option></select></div>
-          <div class="flex flex-col gap-1.5"><label for="f-origin" class="text-xs font-bold text-st-dim">Origine du moment</label>
-            <select id="f-origin" v-model="filters.origin" :class="selectClass"><option value="all">Toutes</option><option value="chat">Détecté par le chat</option><option value="ref">Ressemble à un de tes clips</option></select></div>
-          <div class="col-span-2 flex flex-col gap-1.5 sm:col-span-1"><label for="f-sort" class="text-xs font-bold text-st-dim">Trier par</label>
-            <select id="f-sort" v-model="filters.sort" :class="selectClass"><option value="score">Meilleure note d’abord</option><option value="recent">Plus récent d’abord</option></select></div>
+      <section aria-label="Filtres et tri" class="flex flex-col gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <select id="f-lot" v-model="filters.lot" aria-label="Lot" class="st-field !min-h-11 !w-auto"><option value="all">Tous les lots</option><option v-for="n in lotOptions" :key="n" :value="String(n)">Lot {{ n || '-' }}</option></select>
+          <select id="f-sort" v-model="filters.sort" aria-label="Trier par" class="st-field !min-h-11 !w-auto"><option value="score">Meilleure note d’abord</option><option value="lot">Ordre du lot</option></select>
+          <button type="button" class="st-btn-ghost" :aria-expanded="filtersOpen" aria-controls="st-filters-panel" :class="filtersOpen || panelFilterCount ? '!border-st-accentLight !bg-st-accentBg' : ''" @click="filtersOpen = !filtersOpen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 5v4M8 15v4" /></svg>
+            Filtres<span v-if="panelFilterCount" class="st-badge st-badge-violet !min-h-5 !px-2">{{ panelFilterCount }}</span>
+          </button>
+          <button v-if="filtered" type="button" class="st-btn-quiet text-sm" @click="clearFilters">Effacer les filtres</button>
         </div>
-        <div v-if="filtered"><button type="button" class="st-btn-quiet text-sm" @click="clearFilters">Effacer les filtres</button></div>
+        <div v-if="filtersOpen" id="st-filters-panel" class="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3 rounded-[14px] border border-st-border bg-st-surface p-4">
+          <div class="flex flex-col gap-1.5"><label for="f-note" class="text-[13px] font-bold text-st-dim">Note</label>
+            <select id="f-note" v-model="filters.note" :class="selectClass"><option value="all">Toutes les notes</option><option value="8">8 et plus</option><option value="7">7 et plus</option><option value="6">6 et plus</option></select></div>
+          <div class="flex flex-col gap-1.5"><label for="f-date" class="text-[13px] font-bold text-st-dim">Date</label>
+            <select id="f-date" v-model="filters.date" :class="selectClass"><option value="all">Toutes les dates</option><option value="week">Cette semaine</option></select></div>
+          <div class="flex flex-col gap-1.5"><label for="f-cat" class="text-[13px] font-bold text-st-dim">Catégorie</label>
+            <select id="f-cat" v-model="filters.cat" :class="selectClass"><option value="all">Toutes</option><option v-for="c in categories" :key="c" :value="c">{{ c }}</option></select></div>
+          <div class="flex flex-col gap-1.5"><label for="f-origin" class="text-[13px] font-bold text-st-dim">Origine du moment</label>
+            <select id="f-origin" v-model="filters.origin" :class="selectClass"><option value="all">Toutes</option><option value="chat">Détecté par le chat</option><option value="ref">Ressemble à un de tes clips</option></select></div>
+        </div>
       </section>
 
-      <section v-for="lot in lots" :key="lot.n" class="flex flex-col gap-4">
+      <section v-for="lot in visibleLots" :key="lot.n" class="flex flex-col gap-4">
         <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5">
           <div class="flex flex-col gap-0.5"><h2 class="st-title m-0 text-[22px] font-bold leading-7">Lot {{ lot.n || '-' }}</h2><div class="text-[13px] st-muted">{{ lot.all.length }} clip(s)</div></div>
           <div class="flex flex-wrap items-center gap-2">
@@ -230,6 +271,8 @@ const selectClass = 'st-field !min-h-11 !w-full'
           <StudioClipCard v-for="c in lot.list" :key="c.id + c.status" :clip="c" />
         </div>
       </section>
+
+      <div v-if="hiddenLots > 0" class="flex justify-center"><button type="button" class="st-btn-ghost" @click="showOlder = true">Voir les lots précédents ({{ hiddenLots }})</button></div>
 
       <div v-if="!clips.length" class="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-st-borderStrong px-6 py-12 text-center">
         <span class="flex h-14 w-14 items-center justify-center rounded-full bg-st-accentBg text-st-accentLight" aria-hidden="true">

@@ -58,8 +58,8 @@ const redo = () => studio.reviewClip(props.clip, 'requeue', draft)
         <video v-if="clip.videoUrl" :src="clip.videoUrl" controls playsinline preload="metadata" class="h-full w-full object-cover" />
         <div v-else-if="working" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-st-bg p-4 text-center text-st-info" role="status">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 109 9"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.9s" repeatCount="indefinite" /></path></svg>
-          <div class="text-sm font-bold">Rendu en cours…<template v-if="clip.progress != null"> {{ clip.progress }} %</template></div>
-          <div class="text-xs text-st-muted">Le clip sera prêt dans quelques minutes.</div>
+          <div class="text-sm font-bold">Préparation du clip…<template v-if="clip.progress != null"> {{ clip.progress }} %</template></div>
+          <div class="text-xs text-st-muted">Le clip est en cours de fabrication. Tu pourras le valider dès qu’il est prêt.</div>
         </div>
         <div v-else-if="clip.status === 'failed'" class="absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-st-errorBg p-4 text-center text-st-error" role="alert">
           <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l9 16H3zM12 10v4M12 17h.01" /></svg>
@@ -137,14 +137,14 @@ const redo = () => studio.reviewClip(props.clip, 'requeue', draft)
         <button type="button" class="st-btn-ghost !border-st-errorBorder !bg-transparent !text-st-error" :disabled="studio.busy.value" @click="reject">Refuser</button>
       </div>
       <div v-else-if="clip.status === 'failed' || clip.status === 'rejected'" class="flex flex-wrap gap-2 pt-1">
-        <button type="button" class="st-btn" :disabled="studio.busy.value" @click="redo">Refaire le rendu</button>
+        <button type="button" class="st-btn" :disabled="studio.busy.value" @click="redo">{{ clip.status === 'failed' ? 'Réessayer le rendu' : 'Refaire le rendu' }}</button>
       </div>
 
       <div v-if="clip.status === 'approved' && clip.videoUrl" class="flex flex-wrap gap-2">
         <a :href="clip.videoUrl" :download="`${(clip.title || 'clip').replace(/[^\w-]+/g, '_')}.mp4`" class="st-btn-ghost no-underline">Télécharger le clip</a>
       </div>
       <StudioPublishPanel v-if="clip.status === 'approved' && clip.videoUrl" :clip="clip" />
-      <p v-else-if="clip.status === 'approved'" class="m-0 text-[13px] st-muted">Approuvé : rien n’est publié.</p>
+      <p v-else-if="clip.status === 'approved'" class="m-0 text-[13px] st-muted">Approuver ne publie rien : tu choisiras où et quand publier ensuite.</p>
     </div>
   </article>
 </template>
