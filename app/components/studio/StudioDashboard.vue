@@ -326,8 +326,9 @@ const selectClass = 'st-field !min-h-11 !w-full'
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M10 9.5v5l4.5-2.5z" /></svg>
         </span>
         <h2 class="st-title m-0 text-xl font-bold">Tes premiers clips arriveront après ton prochain live</h2>
-        <p class="m-0 max-w-sm text-sm leading-relaxed st-muted">Clippeak surveille ton live et prépare les clips par lots de 4. Ils apparaîtront ici dès qu’ils sont prêts.</p>
-        <button type="button" class="st-btn-ghost" @click="studio.goToStep(1)">Revoir mes clips de référence</button>
+        <p class="m-0 max-w-sm text-sm leading-relaxed st-muted">Clippeak surveille ton live et prépare les clips par lots de 4. Tu peux aussi analyser une ancienne vidéo (VOD) dès maintenant.</p>
+        <StudioAnalyzeVod />
+        <button type="button" class="st-btn-quiet" @click="studio.goToStep(1)">Revoir mes clips de référence</button>
       </div>
       <div v-else-if="!lots.length" class="st-card flex flex-col items-center gap-2.5 !py-8 text-center">
         <h2 class="st-title m-0 text-lg font-bold">Aucun clip ne correspond</h2>

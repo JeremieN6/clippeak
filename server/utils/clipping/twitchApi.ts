@@ -25,6 +25,8 @@ export interface TwitchVideo {
 export interface TwitchVideoDetails extends TwitchVideo {
   userLogin: string
   userName: string
+  // Identifiant Twitch du proprietaire (null si Twitch ne le donne pas).
+  userId: string | null
   type: string
   viewable: string
 }
@@ -140,13 +142,13 @@ export function createTwitchApi(
     if (response.status === 404) return null
     if (!response.ok) throw new TwitchApiError(`Lecture de la VOD impossible (HTTP ${response.status})`, response.status)
     const body = await response.json() as {
-      data?: Array<{ id: string, stream_id: string | null, user_login: string, user_name: string, url: string, title: string, created_at: string, duration?: string, type?: string, viewable?: string }>
+      data?: Array<{ id: string, stream_id: string | null, user_id?: string, user_login: string, user_name: string, url: string, title: string, created_at: string, duration?: string, type?: string, viewable?: string }>
     }
     const v = body.data?.[0]
     if (!v) return null
     return {
       id: v.id, streamId: v.stream_id ?? null, url: v.url, title: v.title, createdAt: new Date(v.created_at), durationSec: parseTwitchDuration(v.duration),
-      userLogin: v.user_login, userName: v.user_name, type: v.type ?? 'unknown', viewable: v.viewable ?? 'public'
+      userLogin: v.user_login, userName: v.user_name, userId: v.user_id ?? null, type: v.type ?? 'unknown', viewable: v.viewable ?? 'public'
     }
   }
 

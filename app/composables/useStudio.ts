@@ -487,6 +487,13 @@ export function createStudio() {
     track('long_analysis_started', {})
   }, 'Analyse lancée : tu seras prévenu dans la cloche quand elle est terminée.')
 
+  // « Analyser une VOD » : une ancienne rediffusion de la chaine du streamer, analysee comme un live termine.
+  const addVod = (url: string) => run(async () => {
+    const r = await api<{ blocked: boolean }>(`/api/studio/channels/${channelId.value}/vods`, { method: 'POST', body: { url } })
+    track('vod_added', { blocked: r.blocked })
+    await Promise.all([loadVodAlerts(), loadAnalysis()])
+  }, 'VOD ajoutée : Clippeak l’analyse. Les clips arriveront ici.')
+
   // Proposition ajoutee a la main, puis modifiee (titre, debut, fin, ignoree / remise) ou preparee (rendu en file).
   const addLongProposal = (body: { vodId: string, startSec: number, endSec: number, title?: string }) => run(async () => {
     await api(`/api/studio/channels/${channelId.value}/long-proposals`, { method: 'POST', body })
@@ -525,7 +532,7 @@ export function createStudio() {
 
   return {
     connected, error, notice, busy, clipsLoadedAt, analysis, connectFailure, loadAnalysis, channels, channelId, detail, bank, clips, quota, billing, loadBilling, startCheckout, openPortal, connections, vodAlerts, view, step, onboarding, mode,
-    disconnectPlatform, publishClip, publishMany, loadTiktokCreator, loadLongExtracts, saveLongExtractSettings, startLongAnalysis, addLongProposal, updateLongProposal, prepareLongProposal, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
+    disconnectPlatform, publishClip, publishMany, loadTiktokCreator, loadLongExtracts, saveLongExtractSettings, startLongAnalysis, addVod, addLongProposal, updateLongProposal, prepareLongProposal, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
     api, run, track, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, setCaptionTags, advance, finishOnboarding, goToStep, stepStatus,
     addAssets, saveAsset, removeAsset, addReferences, saveStat, removeReference, reviewClip, approveMany
