@@ -30,6 +30,7 @@ export default defineEventHandler(async (event) => {
       id: job.id,
       batch: job.batch,
       status: job.status,
+      format: job.format === 'long' ? 'long' : 'short',
       title: job.title,
       caption: job.caption,
       hashtags: job.hashtags,

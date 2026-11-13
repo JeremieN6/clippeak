@@ -41,7 +41,7 @@ export function createPrismaPublishStore(db: PrismaClient, vault: TokenVault): P
 
       const job = await db.clipJob.findUnique({
         where: { id: row.clip_job_id },
-        select: { id: true, status: true, title: true, caption: true, hashtags: true, outputPath: true, moment: { select: { vod: { select: { channelId: true } } } } }
+        select: { id: true, status: true, format: true, title: true, caption: true, hashtags: true, outputPath: true, moment: { select: { vod: { select: { channelId: true } } } } }
       })
       const connection = job
         ? await db.platformConnection.findUnique({ where: { channelId_platform: { channelId: job.moment.vod.channelId, platform: row.platform } } })
@@ -57,7 +57,8 @@ export function createPrismaPublishStore(db: PrismaClient, vault: TokenVault): P
           caption: job?.caption ?? '',
           hashtags: job?.hashtags ?? '',
           videoPath: job?.outputPath ? safeResolve(dataDir(), job.outputPath) : null,
-          status: job?.status ?? 'missing'
+          status: job?.status ?? 'missing',
+          format: job?.format === 'long' ? 'long' as const : 'short' as const
         },
         connection: connection
           ? { id: connection.id, refreshToken: safeDecrypt(connection.refreshTokenEnc), accessToken: safeDecrypt(connection.accessTokenEnc), expiresAt: connection.expiresAt }

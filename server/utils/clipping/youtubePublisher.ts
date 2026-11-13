@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { PublishError, youtubeMetadata } from './publishing.ts'
+import { longYoutubeMetadata } from './longExtract.ts'
 import type { PublishInput, PublishResult, Publisher } from './publishing.ts'
 
 type FetchFn = typeof fetch
@@ -70,7 +71,8 @@ export function createYoutubePublisher(deps: YoutubeDeps): Publisher {
     async publish(input: PublishInput): Promise<PublishResult> {
       const access = await freshAccessToken(input)
       const video = await readVideo(input.videoPath).catch(() => { throw new PublishError('rejected', 'Le fichier du clip est introuvable') })
-      const { title, description } = youtubeMetadata(input.title, input.caption, input.hashtags)
+      const long = input.format === 'long'
+      const { title, description } = long ? longYoutubeMetadata(input.title, input.caption, input.hashtags) : youtubeMetadata(input.title, input.caption, input.hashtags)
 
       let start: Response
       try {
@@ -102,7 +104,7 @@ export function createYoutubePublisher(deps: YoutubeDeps): Publisher {
       if (!body.id) throw new PublishError('transient', 'YouTube n’a pas renvoyé d’identifiant de vidéo')
       return {
         externalId: body.id,
-        url: `https://www.youtube.com/shorts/${body.id}`,
+        url: long ? `https://www.youtube.com/watch?v=${body.id}` : `https://www.youtube.com/shorts/${body.id}`,
         ...(access.renewed ? { accessToken: { value: access.value, expiresAt: access.expiresAt } } : {})
       }
     }

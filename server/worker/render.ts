@@ -1,6 +1,9 @@
 import { createPipelineStore, outputDirectory } from '../utils/clipping/prismaPipelineStore'
 import { relative } from 'node:path'
 import { QcFailedError, renderJob } from '../utils/clipping/clipJobPipeline'
+import { LongQcFailedError, renderLongJob } from '../utils/clipping/longRender'
+import { LONG_DEFAULT_MAX_SEC, clampLongMax } from '../utils/clipping/longExtract'
+import { probeClip } from '../utils/clipping/clipQc'
 import { dataDir } from '../utils/clipping/dataDir'
 import { collectClipMetrics } from '../utils/clipping/clipQc'
 import { runFfmpeg } from '../utils/clipping/ffmpegRunner'
@@ -18,7 +21,37 @@ const store = retrying(createPipelineStore(prisma), { onRetry: (error, attempt) 
 
 // Rend un clip : charge le contexte (moment, DA, fichiers du streamer), lance le pipeline et enregistre le resultat.
 // Le worker marque le job "review" (via markReview) ou "failed" ; ici on enrichit la ligne avant de rendre la main.
+// Extrait long (16:9, choisi par le streamer) : simple coupe de la VOD, sans pipeline d'analyse ni habillage.
+async function renderLongClip(job: ClipJobToRender): Promise<{ outputPath: string }> {
+  const row = await prisma.clipJob.findUniqueOrThrow({
+    where: { id: job.id },
+    select: { startSec: true, endSec: true, moment: { select: { vod: { select: { twitchVodId: true, channel: { select: { settings: { select: { longExtractMaxSec: true } } } } } } } } }
+  })
+  try {
+    const result = await renderLongJob({
+      jobId: job.id,
+      vodTwitchId: row.moment.vod.twitchVodId,
+      startSec: row.startSec,
+      endSec: row.endSec,
+      maxSec: clampLongMax(row.moment.vod.channel.settings?.longExtractMaxSec ?? LONG_DEFAULT_MAX_SEC)
+    }, {
+      getVideoUrl: vodId => getVodVideoPlaylistUrl(vodId, 720),
+      runFfmpeg,
+      probe: probeClip,
+      outputDir: outputDirectory(),
+      threads: Number(process.env.RENDER_THREADS) > 0 ? Number(process.env.RENDER_THREADS) : 2
+    })
+    await prisma.clipJob.update({ where: { id: job.id }, data: { qc: result.qc as any, error: null } })
+    return { outputPath: relative(dataDir(), result.outputPath).replace(/\\/g, '/') }
+  } catch (error) {
+    if (error instanceof LongQcFailedError) await prisma.clipJob.update({ where: { id: job.id }, data: { qc: error.report as any } }).catch(() => {})
+    throw error
+  }
+}
+
 export async function renderClip(job: ClipJobToRender): Promise<{ outputPath: string }> {
+  const kind = await prisma.clipJob.findUnique({ where: { id: job.id }, select: { format: true } })
+  if (kind?.format === 'long') return renderLongClip(job)
   const ctx = await store.loadJobContext(job.id)
   try {
     const result = await renderJob(ctx, {

@@ -27,6 +27,8 @@ export interface PublishInput {
   videoPath: string
   // Reglages choisis par le streamer pour cette plateforme (TikTok : voir TiktokPostOptions).
   options: Record<string, unknown> | null
+  // long : extrait 16:9 de plusieurs minutes (YouTube : video classique, pas un Short). Absent ou short : clip vertical.
+  format?: 'short' | 'long'
   refreshToken: string
   accessToken: string | null
   expiresAt: Date | null

@@ -7,7 +7,7 @@ export interface DuePublication {
   id: string
   platform: string
   attempts: number
-  clip: { id: string, title: string, caption: string, hashtags: string, videoPath: string | null, status: string }
+  clip: { id: string, title: string, caption: string, hashtags: string, videoPath: string | null, status: string, format?: 'short' | 'long' }
   connection: { id: string, refreshToken: string | null, accessToken: string | null, expiresAt: Date | null } | null
   options: Record<string, unknown> | null
 }
@@ -55,6 +55,7 @@ export async function runPublishOnce(deps: PublishStepDeps): Promise<boolean> {
         hashtags: due.clip.hashtags,
         videoPath: due.clip.videoPath,
         options: due.options,
+        format: due.clip.format,
         refreshToken: due.connection.refreshToken,
         accessToken: due.connection.accessToken,
         expiresAt: due.connection.expiresAt

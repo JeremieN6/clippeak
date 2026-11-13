@@ -4,6 +4,8 @@
 // Approuver ne publie rien : la publication est une action separee (panneau de publication, clip approuve).
 const props = defineProps<{ clip: StudioClip }>()
 const studio = useStudio()
+// Extrait long : 16:9, titre de la video YouTube (pas de titre grave dans la video : changer le titre ne relance pas le rendu).
+const isLong = computed(() => props.clip.format === 'long')
 
 import { fitTitleToBand } from '~~/server/utils/clipping/titleFit'
 
@@ -21,14 +23,15 @@ const statusLook: Record<string, { label: string, cls: string }> = {
 const look = computed(() => isPublished(props.clip) ? { label: 'Publié', cls: 'st-badge-ok' } : statusLook[props.clip.status] ?? statusLook.review)
 const issues = computed(() => props.clip.qc?.issues ?? [])
 const minutes = computed(() => props.clip.durationSec == null ? '' : `${Math.floor(props.clip.durationSec / 60)}:${String(props.clip.durationSec % 60).padStart(2, '0')}`)
-const originLabel = computed(() => props.clip.origin === 'ref' ? 'Ressemble à un de tes clips' : 'Détecté par le chat')
+const originLabel = computed(() => isLong.value ? 'Extrait choisi par toi' : props.clip.origin === 'ref' ? 'Ressemble à un de tes clips' : 'Détecté par le chat')
 const working = computed(() => props.clip.status === 'queued' || props.clip.status === 'rendering')
 // Le titre peut etre change tant que le clip n'est pas approuve ni en cours de rendu : un changement relance le rendu.
 const titleEditable = computed(() => ['review', 'failed', 'rejected'].includes(props.clip.status))
-const titleEdited = computed(() => titleEditable.value && draft.title.trim() !== '' && draft.title.trim() !== (props.clip.title ?? '').trim())
+const titleEdited = computed(() => !isLong.value && titleEditable.value && draft.title.trim() !== '' && draft.title.trim() !== (props.clip.title ?? '').trim())
 
 // Meme calcul que le rendu : le titre ne fait jamais echouer le clip, il est reduit puis coupe si besoin.
 const titleFit = computed(() => {
+  if (isLong.value) return null
   const text = draft.title.trim()
   const style = studio.detail.value?.style.title
   if (!text || !style) return null
@@ -50,8 +53,8 @@ const redo = () => studio.reviewClip(props.clip, 'requeue', draft)
 <template>
   <article class="st-card flex flex-col gap-5 !p-5 sm:flex-row" :aria-label="clip.title || clip.hook || 'Clip'">
     <!-- Video -->
-    <div class="mx-auto flex w-full max-w-[260px] flex-none flex-col gap-2.5 sm:mx-0 sm:w-[190px] sm:max-w-none">
-      <div class="relative aspect-[9/16] w-full overflow-hidden rounded-[14px] border border-st-border bg-black">
+    <div class="mx-auto flex w-full flex-none flex-col gap-2.5 sm:mx-0 sm:max-w-none" :class="isLong ? 'max-w-[420px] sm:w-[300px]' : 'max-w-[260px] sm:w-[190px]'">
+      <div class="relative w-full overflow-hidden rounded-[14px] border border-st-border bg-black" :class="isLong ? 'aspect-video' : 'aspect-[9/16]'">
         <video v-if="clip.videoUrl" :src="clip.videoUrl" controls playsinline preload="metadata" class="h-full w-full object-cover" />
         <div v-else-if="working" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-st-bg p-4 text-center text-st-info" role="status">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 109 9"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.9s" repeatCount="indefinite" /></path></svg>
@@ -78,7 +81,7 @@ const redo = () => studio.reviewClip(props.clip, 'requeue', draft)
       </div>
 
       <div class="flex flex-col gap-1.5">
-        <label :for="`title-${clip.id}`" class="st-label">Titre en haut du clip</label>
+        <label :for="`title-${clip.id}`" class="st-label">{{ isLong ? 'Titre de la vidéo YouTube' : 'Titre en haut du clip' }}</label>
         <input :id="`title-${clip.id}`" v-model="draft.title" class="st-field" :disabled="!titleEditable" placeholder="Laisse vide pour garder le titre">
         <div v-if="titleEdited" class="text-[13px] font-semibold leading-5 text-st-warn" aria-live="polite">Le rendu du clip sera relancé avec ce nouveau titre. Appuie sur « Refaire ».</div>
         <div v-if="titleEditable && titleNote" class="st-hint" :class="titleFit?.truncated ? 'text-st-error' : ''" aria-live="polite">{{ titleNote }}</div>

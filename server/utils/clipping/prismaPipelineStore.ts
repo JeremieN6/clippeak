@@ -218,7 +218,8 @@ export function createPipelineStore(db: Db) {
     },
 
     async existingPeaks(vodId: string): Promise<number[]> {
-      const rows = await db.moment.findMany({ where: { vodId }, select: { peakSec: true } })
+      // Les extraits longs choisis a la main ne comptent pas comme des pics deja traites.
+      const rows = await db.moment.findMany({ where: { vodId, OR: [{ kind: null }, { kind: { not: 'long' } }] }, select: { peakSec: true } })
       return rows.map(r => r.peakSec)
     },
 
@@ -264,7 +265,7 @@ export function createPipelineStore(db: Db) {
 
     // Moments de la VOD qui ont (ou ont eu) un clip : ce sont eux qui ont besoin d'un extrait source.
     async momentsNeedingSources(vodId: string): Promise<Array<{ id: string, peakSec: number }>> {
-      const rows = await db.moment.findMany({ where: { vodId, jobs: { some: {} } }, select: { id: true, peakSec: true }, orderBy: { peakSec: 'asc' } })
+      const rows = await db.moment.findMany({ where: { vodId, jobs: { some: { format: 'short' } } }, select: { id: true, peakSec: true }, orderBy: { peakSec: 'asc' } })
       return rows
     },
 
