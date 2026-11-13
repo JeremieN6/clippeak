@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { clampPacks, CLIPS_PER_PACK, CREATOR_PRICE, FREE_CLIPS, MAX_PACKS, normalizeInterval, packsClips, yearlySaving, type BillingInterval } from './pricing.ts'
 
 // Offres et facturation (Stripe) : regles pures, testables. Une seule offre payante pour commencer (decision du porteur, 2026-10-31).
 // Les prix et les noms vivent dans Stripe ; ici seulement ce que Clippeak en deduit : quel plan, combien de clips.
@@ -16,8 +17,12 @@ export function invoiceFooter(raw: string | null | undefined): string | null {
 export type Plan = 'free' | 'creator'
 
 // Clips par mois selon l'offre. Gratuit : 40 (decision du porteur). Creator : 120, valeur de depart a ajuster (le porteur n'avait pas de chiffre).
-export const PLAN_CLIPS: Record<Plan, number> = { free: 40, creator: 120 }
+export const PLAN_CLIPS: Record<Plan, number> = { free: FREE_CLIPS, creator: CLIPS_PER_PACK }
 export const PLAN_NAMES: Record<Plan, string> = { free: 'Starter', creator: 'Creator' }
+
+// Packs et prix : voir ./pricing.ts (sans dependance, partage avec la landing).
+export { clampPacks, packsClips, MAX_PACKS, normalizeInterval, CREATOR_PRICE, yearlySaving }
+export type { BillingInterval }
 
 // Etats d'abonnement Stripe qui donnent droit a l'offre payante (« past_due » : quelques jours de grace pendant que Stripe relance le paiement).
 const PAYING = new Set(['active', 'trialing', 'past_due'])
@@ -53,12 +58,22 @@ export function signStripePayload(rawBody: string, secret: string, nowMs: number
   return `t=${t},v1=${createHmac('sha256', secret).update(`${t}.${rawBody}`).digest('hex')}`
 }
 
-export interface BillingState { plan: Plan, status: string | null, periodEnd: Date | null }
+export interface BillingState { plan: Plan, status: string | null, periodEnd: Date | null, packs: number, interval: BillingInterval | null }
+
+interface SubscriptionItemLike { current_period_end?: unknown, quantity?: unknown, price?: { recurring?: { interval?: unknown } }, plan?: { interval?: unknown } }
+interface SubscriptionLike { status?: string, current_period_end?: unknown, items?: { data?: SubscriptionItemLike[] } }
+
+// Packs et rythme de facturation lus sur le premier element de l'abonnement (la quantite et le prix choisis au paiement, ou changes ensuite
+// dans le portail Stripe).
+export function subscriptionShape(sub: SubscriptionLike): { packs: number, interval: BillingInterval | null } {
+  const item = sub.items?.data?.[0]
+  return { packs: clampPacks(item?.quantity), interval: normalizeInterval(item?.price?.recurring?.interval ?? item?.plan?.interval) }
+}
 
 // Ce que le webhook doit enregistrer pour un evenement d'abonnement (null = evenement sans effet).
-export function applySubscriptionEvent(type: string, sub: { status?: string, current_period_end?: unknown, items?: { data?: Array<{ current_period_end?: unknown }> } }): BillingState | null {
-  if (type === 'customer.subscription.deleted') return { plan: 'free', status: 'canceled', periodEnd: periodEnd(sub) }
+export function applySubscriptionEvent(type: string, sub: SubscriptionLike): BillingState | null {
+  if (type === 'customer.subscription.deleted') return { plan: 'free', status: 'canceled', periodEnd: periodEnd(sub), ...subscriptionShape(sub) }
   if (type !== 'customer.subscription.created' && type !== 'customer.subscription.updated') return null
   const status = typeof sub.status === 'string' ? sub.status : null
-  return { plan: planFor(status), status, periodEnd: periodEnd(sub) }
+  return { plan: planFor(status), status, periodEnd: periodEnd(sub), ...subscriptionShape(sub) }
 }

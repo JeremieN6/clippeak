@@ -14,6 +14,7 @@ useHead({ title: 'Conditions d’utilisation – Clippeak' })
 
     <h2>Offres et limites</h2>
     <p>Le nombre de clips que Clippeak prépare chaque mois est limité selon ton offre. Une offre payante peut être proposée : le paiement et la gestion de l’abonnement (carte, factures, annulation) se font chez Stripe. Quand ta limite du mois est atteinte, tes lives sont mis en attente et reprennent le mois suivant ; tes clips déjà préparés restent disponibles. Les prix sont indiqués en euros, sans TVA : TVA non applicable, art. 293 B du CGI. Les offres, limites et prix peuvent évoluer, et tu en es informé avant tout changement qui te concerne.</p>
+    <p>L’offre payante s’achète par packs de 120 clips par mois (de 1 à 5 packs), au même prix par pack. Tu choisis un paiement mensuel, facturé chaque mois, ou annuel, facturé en une seule fois pour douze mois à un prix inférieur à douze mensualités. L’abonnement se renouvelle automatiquement à la fin de chaque période. Tu peux le résilier à tout moment depuis « Gérer mon abonnement » : il reste actif jusqu’à la fin de la période déjà payée, puis ton compte repasse à l’offre gratuite. Tu peux aussi changer le nombre de packs ou le rythme de paiement depuis ce même portail.</p>
 
     <h2>Ton contenu</h2>
     <ul>

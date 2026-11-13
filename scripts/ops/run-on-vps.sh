@@ -36,6 +36,14 @@ case "${1:-}" in
     printf '%s\n%s\n%s\n' "$SK" "$WH" "$PRICE" | "${SSH[@]}" "bash /tmp/vps-stripe.sh; rc=\$?; rm -f /tmp/vps-stripe.sh; exit \$rc"
     unset SK WH PRICE
     ;;
+  stripe-annuel)
+    echo "Prix ANNUEL Creator (144 EUR par an, par pack) : l'identifiant price_... n'est pas un secret."
+    read -rp "Identifiant du prix annuel (price_...), ou « none » pour retirer l'offre annuelle : " YP
+    [ -n "$YP" ] || { echo "Identifiant vide."; exit 1; }
+    tr -d '\r' < scripts/ops/vps-stripe-yearly.sh > /tmp/vps-stripe-yearly.sh
+    "${SCP[@]}" /tmp/vps-stripe-yearly.sh "$USER_@$HOST:/tmp/vps-stripe-yearly.sh"; rm -f /tmp/vps-stripe-yearly.sh
+    printf '%s\n' "$YP" | "${SSH[@]}" "bash /tmp/vps-stripe-yearly.sh; rc=\$?; rm -f /tmp/vps-stripe-yearly.sh; exit \$rc"
+    ;;
   tiktok)
     echo "Identifiants de l'application TikTok for Developers : rien ne s'affiche en tapant."
     read -rsp "Client key : " TK; echo
@@ -46,5 +54,5 @@ case "${1:-}" in
     printf '%s\n%s\n' "$TK" "$TS" | "${SSH[@]}" "bash /tmp/vps-tiktok.sh; rc=\$?; rm -f /tmp/vps-tiktok.sh; exit \$rc"
     unset TK TS
     ;;
-  *) echo "Usage : bash scripts/ops/run-on-vps.sh prerequisites|mega|stripe|tiktok"; exit 1 ;;
+  *) echo "Usage : bash scripts/ops/run-on-vps.sh prerequisites|mega|stripe|stripe-annuel|tiktok"; exit 1 ;;
 esac

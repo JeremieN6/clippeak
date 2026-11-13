@@ -104,6 +104,7 @@ const fakeTwitch = createServer((req, res) => {
       if (req.url.startsWith('/v1/customers/')) return res.end(JSON.stringify({ id: req.url.split('/').pop() }))
       if (req.url === '/v1/checkout/sessions') return res.end(JSON.stringify({ id: 'cs_test_1', url: 'https://checkout.stripe.test/c/pay/cs_test_1' }))
       if (req.url === '/v1/billing_portal/sessions') return res.end(JSON.stringify({ url: 'https://billing.stripe.test/p/session' }))
+      if (req.url === '/v1/prices/price_test_creator_yearly') return res.end(JSON.stringify({ unit_amount: 14400, currency: 'eur', recurring: { interval: 'year' } }))
       if (req.url.startsWith('/v1/prices/')) return res.end(JSON.stringify({ unit_amount: 1900, currency: 'eur', recurring: { interval: 'month' } }))
       if (req.method === 'DELETE' && req.url.startsWith('/v1/subscriptions/')) return res.end(JSON.stringify({ status: 'canceled' }))
     }
@@ -114,7 +115,7 @@ const fakeTwitch = createServer((req, res) => {
 await new Promise(r => fakeTwitch.listen(3397, '127.0.0.1', r))
 
 // --- serveur
-const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_GQL_URL: 'http://127.0.0.1:3397/gql', TIKTOK_CLIENT_KEY: 'tkey', TIKTOK_CLIENT_SECRET: 'tsec', TIKTOK_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_USHER_URL: 'http://127.0.0.1:3397/usher/vod', CLIPPEAK_RECHECK_COOLDOWN_MS: '0', GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsec', GOOGLE_TOKEN_URL: 'http://127.0.0.1:3397/token', CLIPPEAK_TOKEN_KEY: randomBytes(32).toString('base64'), STRIPE_SECRET_KEY: 'sk_test_fake', STRIPE_PRICE_CREATOR: 'price_test_creator', STRIPE_WEBHOOK_SECRET: 'whsec_test', STRIPE_API_BASE_URL: 'http://127.0.0.1:3397' }
+const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_GQL_URL: 'http://127.0.0.1:3397/gql', TIKTOK_CLIENT_KEY: 'tkey', TIKTOK_CLIENT_SECRET: 'tsec', TIKTOK_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_USHER_URL: 'http://127.0.0.1:3397/usher/vod', CLIPPEAK_RECHECK_COOLDOWN_MS: '0', GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsec', GOOGLE_TOKEN_URL: 'http://127.0.0.1:3397/token', CLIPPEAK_TOKEN_KEY: randomBytes(32).toString('base64'), STRIPE_SECRET_KEY: 'sk_test_fake', STRIPE_PRICE_CREATOR: 'price_test_creator', STRIPE_PRICE_CREATOR_YEARLY: 'price_test_creator_yearly', STRIPE_WEBHOOK_SECRET: 'whsec_test', STRIPE_API_BASE_URL: 'http://127.0.0.1:3397' }
 const cwd = join(DATA, 'cwd'); mkdirSync(cwd, { recursive: true })
 const logFd = openSync(join(DATA, 'server.log'), 'w')
 const server = spawn('node', [join(ROOT, '.output', 'server', 'index.mjs')], { env, cwd, stdio: ['ignore', logFd, logFd] })
@@ -1020,6 +1021,9 @@ try {
   const bill0 = (await call('/api/studio/billing', streamerAs)).json
   assert.equal(bill0.available, true)
   assert.deepEqual([bill0.plan, bill0.planName, bill0.freeClips, bill0.paidClips, bill0.paidName, bill0.price.amount, bill0.price.currency, bill0.price.interval, bill0.canManage, bill0.testMode], ['free', 'Starter', 40, 120, 'Creator', 1900, 'eur', 'month', false, true])
+  // Prix mensuel ET annuel, packs de 1 a 5 (l'annuel 144 EUR < 12 x 19 EUR)
+  assert.deepEqual([bill0.prices.month.amount, bill0.prices.year.amount, bill0.packs, bill0.maxPacks, bill0.interval, bill0.paidTotalClips], [1900, 14400, 1, 5, null, 120])
+  assert.ok(bill0.prices.month.amount * 12 > bill0.prices.year.amount)
   assert.equal((await call('/api/studio/billing', { auth: false })).status, 401)
   assert.equal((await call('/api/studio/billing')).json.available, false) // l'admin ne voit pas d'offre
   assert.equal((await call('/api/studio/billing/checkout', { method: 'POST' })).status, 403) // ni ne paie a la place d'un streamer
@@ -1032,13 +1036,22 @@ try {
   const custCall = stripeCalls.filter(c => c.url === '/v1/customers').pop()
   assert.deepEqual([custCall.body.name, custCall.body['metadata[channel_id]'], custCall.body['invoice_settings[footer]']], ['Invitee', cid, 'TVA non applicable, art. 293 B du CGI'])
   assert.equal(cCall.body.customer, 'cus_new_1')
-  assert.deepEqual([cCall.body.mode, cCall.body['line_items[0][price]'], cCall.body.client_reference_id, cCall.body['subscription_data[metadata][channel_id]']], ['subscription', 'price_test_creator', cid, cid])
+  // Sans choix : annuel (prix annuel pose), 1 pack
+  assert.deepEqual([cCall.body.mode, cCall.body['line_items[0][price]'], cCall.body['line_items[0][quantity]'], cCall.body.client_reference_id, cCall.body['subscription_data[metadata][channel_id]'], cCall.body['metadata[interval]'], cCall.body['metadata[packs]']], ['subscription', 'price_test_creator_yearly', '1', cid, cid, 'year', '1'])
   assert.ok(cCall.body.success_url.endsWith('/studio?billing=ok') && cCall.body.cancel_url.endsWith('/studio?billing=cancel'))
+  // Choix du rythme et des packs : mensuel x3 ; packs hors limites ramenes a 5 ; valeur inconnue = annuel
+  const pick = async (body) => { assert.equal((await call('/api/studio/billing/checkout', { ...streamerAs, method: 'POST', body })).status, 200); return stripeCalls.filter(c => c.url === '/v1/checkout/sessions').pop().body }
+  const m3 = await pick({ interval: 'month', packs: 3 })
+  assert.deepEqual([m3['line_items[0][price]'], m3['line_items[0][quantity]'], m3['metadata[interval]'], m3['metadata[packs]']], ['price_test_creator', '3', 'month', '3'])
+  const y99 = await pick({ interval: 'year', packs: 99 })
+  assert.deepEqual([y99['line_items[0][price]'], y99['line_items[0][quantity]']], ['price_test_creator_yearly', '5'])
+  const weird = await pick({ interval: 'week', packs: 'x' })
+  assert.deepEqual([weird['line_items[0][price]'], weird['line_items[0][quantity]']], ['price_test_creator_yearly', '1'])
   assert.equal((await call('/api/studio/billing/portal', { ...streamerAs, method: 'POST' })).status, 409) // pas d'abonnement a gerer
 
   // Webhook : signature obligatoire
   const t0 = Math.floor(Date.now() / 1000)
-  const completed = { id: 'evt_1', type: 'checkout.session.completed', created: t0, data: { object: { mode: 'subscription', client_reference_id: cid, customer: 'cus_1', subscription: 'sub_1', payment_status: 'paid' } } }
+  const completed = { id: 'evt_1', type: 'checkout.session.completed', created: t0, data: { object: { mode: 'subscription', client_reference_id: cid, customer: 'cus_1', subscription: 'sub_1', payment_status: 'paid', metadata: { channel_id: cid, packs: '3', interval: 'year' } } } }
   assert.equal((await hook(completed)).status, 400)
   assert.equal((await hook(completed, { 'stripe-signature': signed(JSON.stringify(completed), Date.now(), 'whsec_autre') })).status, 400)
   assert.equal((await hook(completed, { 'stripe-signature': signed(JSON.stringify(completed), Date.now() - 10 * 60 * 1000) })).status, 400)
@@ -1053,7 +1066,9 @@ try {
   assert.equal((await q(`SELECT count(*)::int AS n FROM channel_billing WHERE channel_id = $1`, [cid]))[0].n, 1)
   const bill1 = (await call('/api/studio/billing', streamerAs)).json
   assert.deepEqual([bill1.plan, bill1.planName, bill1.canManage], ['creator', 'Creator', true])
-  assert.equal((await call(qUrl, streamerAs)).json.limit, 120) // le plafond suit l'offre
+  // Le paiement termine porte 3 packs en annuel dans ses metadonnees : le plafond est 3 x 120
+  assert.deepEqual([bill1.packs, bill1.interval, bill1.paidTotalClips], [3, 'year', 360])
+  assert.equal((await call(qUrl, streamerAs)).json.limit, 360) // le plafond suit l'offre ET le nombre de packs
   assert.equal((await call('/api/studio/billing/checkout', { ...streamerAs, method: 'POST' })).status, 409) // deja abonne
   const portal = await call('/api/studio/billing/portal', { ...streamerAs, method: 'POST' })
   assert.equal(portal.json.url, 'https://billing.stripe.test/p/session')
@@ -1074,6 +1089,13 @@ try {
   assert.equal((await (await send(subEvt('evt_y', 'customer.subscription.created', 'active', t0 + 40, { metadata: { channel_id: crypto.randomUUID() }, customer: 'cus_inconnu' }))).json()).result, 'unknown_channel')
   assert.equal((await send(subEvt('evt_4', 'customer.subscription.created', 'active', t0 + 50))).status, 200) // abonnement avant paiement termine : lie par la metadonnee
   assert.equal((await call(qUrl, streamerAs)).json.limit, 120)
+  // Packs et rythme : lus sur l'abonnement (ici un changement fait dans le portail Stripe : 2 packs, annuel) ; le plafond suit (2 x 120)
+  assert.equal((await send(subEvt('evt_4b', 'customer.subscription.updated', 'active', t0 + 55, { items: { data: [{ quantity: 2, price: { recurring: { interval: 'year' } } }] } }))).status, 200)
+  const [bp] = await q(`SELECT packs, billing_interval FROM channel_billing WHERE channel_id = $1`, [cid])
+  assert.deepEqual([bp.packs, bp.billing_interval], [2, 'year'])
+  assert.equal((await call(qUrl, streamerAs)).json.limit, 240)
+  const billPacks = (await call('/api/studio/billing', streamerAs)).json
+  assert.deepEqual([billPacks.packs, billPacks.interval, billPacks.paidTotalClips], [2, 'year', 240])
   assert.equal((await send(subEvt('evt_5', 'customer.subscription.deleted', 'canceled', t0 + 60))).status, 200)
   const [b2] = await q(`SELECT plan, status FROM channel_billing WHERE channel_id = $1`, [cid])
   assert.deepEqual([b2.plan, b2.status], ['free', 'canceled'])

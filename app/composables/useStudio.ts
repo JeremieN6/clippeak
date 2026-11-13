@@ -17,7 +17,7 @@ export interface StudioClip {
 export const isPublished = (clip: { status: string, publications: Array<{ status: string }> }) => clip.status === 'approved' && clip.publications.some(p => p.status === 'published')
 
 export interface StudioPublication { id: string, platform: string, status: string, scheduledAt: string, publishedAt: string | null, url: string | null, error: string | null }
-export interface StudioBilling { available: boolean, testMode?: boolean, plan?: 'free' | 'creator', planName?: string, status?: string | null, renewsAt?: string | null, canManage?: boolean, freeClips?: number, paidClips?: number, paidName?: string, price?: { amount: number, currency: string, interval: string | null } }
+export interface StudioBilling { available: boolean, testMode?: boolean, plan?: 'free' | 'creator', planName?: string, status?: string | null, renewsAt?: string | null, canManage?: boolean, freeClips?: number, paidClips?: number, paidTotalClips?: number, packs?: number, maxPacks?: number, interval?: 'month' | 'year' | null, paidName?: string, price?: { amount: number, currency: string, interval: string | null }, prices?: { month: { amount: number, currency: string }, year: { amount: number, currency: string } | null } }
 export interface VodAlert { id: string, title: string, state: 'blocked' | 'working' | 'restore', since: string | null }
 export interface TiktokCreator { nickname: string, username: string, avatarUrl: string | null, privacyOptions: string[], commentDisabled: boolean, duetDisabled: boolean, stitchDisabled: boolean, maxVideoDurationSec: number }
 export interface LongExtractVod { id: string, title: string | null, startedAt: string, durationSec: number | null }
@@ -151,8 +151,8 @@ export function createStudio() {
   }
 
   // Page de paiement Stripe : on y va en quittant le studio, le retour se fait sur /studio?billing=ok.
-  const startCheckout = () => run(async () => {
-    const { url } = await api<{ url: string }>('/api/studio/billing/checkout', { method: 'POST' })
+  const startCheckout = (options?: { interval: 'month' | 'year', packs: number }) => run(async () => {
+    const { url } = await api<{ url: string }>('/api/studio/billing/checkout', { method: 'POST', body: options ?? {} })
     track('checkout_started')
     window.location.href = url
   })

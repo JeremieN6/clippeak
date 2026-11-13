@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { DEFAULT_INVOICE_FOOTER, invoiceFooter, applySubscriptionEvent, isPayingStatus, periodEnd, PLAN_CLIPS, planFor, signStripePayload, verifyStripeSignature } from './billing.ts'
+import { DEFAULT_INVOICE_FOOTER, invoiceFooter, applySubscriptionEvent, clampPacks, CREATOR_PRICE, isPayingStatus, MAX_PACKS, normalizeInterval, packsClips, periodEnd, PLAN_CLIPS, planFor, signStripePayload, subscriptionShape, verifyStripeSignature, yearlySaving } from './billing.ts'
 
 test('plans : gratuit 40, Creator 120 ; etats payants et grace', () => {
   assert.deepEqual(PLAN_CLIPS, { free: 40, creator: 120 })
@@ -33,11 +33,37 @@ test('signature du webhook : valide, falsifiee, corps modifie, trop ancienne, ma
 })
 
 test('evenements d abonnement : cree/mis a jour selon le statut, supprime = gratuit, autres ignores', () => {
-  assert.deepEqual(applySubscriptionEvent('customer.subscription.created', { status: 'active', current_period_end: 1800000000 }), { plan: 'creator', status: 'active', periodEnd: new Date(1800000000 * 1000) })
+  assert.deepEqual(applySubscriptionEvent('customer.subscription.created', { status: 'active', current_period_end: 1800000000 }), { plan: 'creator', status: 'active', periodEnd: new Date(1800000000 * 1000), packs: 1, interval: null })
   assert.equal(applySubscriptionEvent('customer.subscription.updated', { status: 'past_due' })?.plan, 'creator')
   assert.equal(applySubscriptionEvent('customer.subscription.updated', { status: 'unpaid' })?.plan, 'free')
-  assert.deepEqual(applySubscriptionEvent('customer.subscription.deleted', { status: 'canceled' }), { plan: 'free', status: 'canceled', periodEnd: null })
+  assert.deepEqual(applySubscriptionEvent('customer.subscription.deleted', { status: 'canceled' }), { plan: 'free', status: 'canceled', periodEnd: null, packs: 1, interval: null })
   assert.equal(applySubscriptionEvent('invoice.paid', { status: 'active' }), null)
+})
+
+test('packs : de 1 a 5, 120 clips chacun ; valeurs absurdes ramenees dans les limites', () => {
+  assert.equal(MAX_PACKS, 5)
+  assert.deepEqual([1, 2, 5].map(packsClips), [120, 240, 600])
+  for (const [raw, expected] of [[0, 1], [-3, 1], [7, 5], [2.9, 2], ['3', 3], ['x', 1], [null, 1], [undefined, 1], [NaN, 1]] as const) assert.equal(clampPacks(raw), expected, String(raw))
+})
+
+test('abonnement : packs (quantite) et rythme lus sur le premier element, y compris apres un changement dans le portail', () => {
+  const sub = (quantity: number, interval: string) => ({ status: 'active', items: { data: [{ quantity, price: { recurring: { interval } } }] } })
+  assert.deepEqual(subscriptionShape(sub(3, 'year')), { packs: 3, interval: 'year' })
+  assert.deepEqual(subscriptionShape(sub(1, 'month')), { packs: 1, interval: 'month' })
+  assert.deepEqual(subscriptionShape({ items: { data: [{ quantity: 99, plan: { interval: 'year' } }] } }), { packs: 5, interval: 'year' })
+  assert.deepEqual(subscriptionShape({}), { packs: 1, interval: null })
+  const evt = applySubscriptionEvent('customer.subscription.updated', sub(2, 'year'))
+  assert.equal(evt?.packs, 2)
+  assert.equal(evt?.interval, 'year')
+  assert.equal(normalizeInterval('week'), null)
+})
+
+test('annuel : 19 x 12 = 228 > 144 ; l economie affichee est exacte', () => {
+  assert.deepEqual(CREATOR_PRICE, { monthly: 19, yearly: 144 })
+  const s = yearlySaving(CREATOR_PRICE.monthly, CREATOR_PRICE.yearly)
+  assert.deepEqual(s, { fullYear: 228, saved: 84, percent: 37, perMonth: 12 })
+  assert.ok(CREATOR_PRICE.monthly * 12 > CREATOR_PRICE.yearly)
+  assert.equal(yearlySaving(10, 200).saved, 0)
 })
 
 test('pied de facture : mention auto-entrepreneur par defaut, texte libre, none pour ne rien imprimer', () => {

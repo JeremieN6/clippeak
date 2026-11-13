@@ -320,6 +320,9 @@ model ChannelBilling {
   stripeSubscriptionId String?   @map("stripe_subscription_id") @db.VarChar(80)
   plan                 String    @default("free") @db.VarChar(12)
   status               String?   @db.VarChar(24)
+  // Packs de 120 clips (quantite de l'abonnement Stripe, 1 a 5) et rythme de facturation (month | year).
+  packs                Int       @default(1)
+  billingInterval      String?   @map("billing_interval") @db.VarChar(8)
   currentPeriodEnd     DateTime? @map("current_period_end")
   lastEventAt          DateTime? @map("last_event_at")
   createdAt            DateTime  @default(now()) @map("created_at")

@@ -8,7 +8,8 @@ export class StripeError extends Error {
 }
 
 export interface StripeClient {
-  createCheckoutSession(input: { priceId: string, channelId: string, customerId: string | null, successUrl: string, cancelUrl: string }): Promise<{ url: string }>
+  // `packs` = quantite de l'abonnement ; `interval` = rythme choisi (garde dans les metadonnees, pour l'evenement de fin de paiement).
+  createCheckoutSession(input: { priceId: string, channelId: string, customerId: string | null, successUrl: string, cancelUrl: string, packs?: number, interval?: string }): Promise<{ url: string }>
   createPortalSession(input: { customerId: string, returnUrl: string }): Promise<{ url: string }>
   cancelSubscription(subscriptionId: string): Promise<void>
   createCustomer(input: { channelId: string, name: string, footer: string | null }): Promise<{ id: string }>
@@ -34,18 +35,20 @@ export function createStripeClient(config: { secretKey: string, apiBase?: string
   }
 
   return {
-    async createCheckoutSession({ priceId, channelId, customerId, successUrl, cancelUrl }) {
+    async createCheckoutSession({ priceId, channelId, customerId, successUrl, cancelUrl, packs = 1, interval }) {
       const form: Record<string, string> = {
         mode: 'subscription',
         'line_items[0][price]': priceId,
-        'line_items[0][quantity]': '1',
+        'line_items[0][quantity]': String(packs),
         client_reference_id: channelId,
         'subscription_data[metadata][channel_id]': channelId,
         'metadata[channel_id]': channelId,
+        'metadata[packs]': String(packs),
         allow_promotion_codes: 'true',
         success_url: successUrl,
         cancel_url: cancelUrl
       }
+      if (interval) form['metadata[interval]'] = interval
       if (customerId) form.customer = customerId
       const session = await call<{ url?: string }>('POST', '/v1/checkout/sessions', form)
       if (!session.url) throw new StripeError('Stripe n’a pas renvoyé de page de paiement.', 502)
