@@ -55,7 +55,11 @@ const fakeTwitch = createServer((req, res) => {
     if (req.url.startsWith('/helix/videos?id=')) {
       const id = new URL(req.url, 'http://x').searchParams.get('id')
       const base = { stream_id: '1', user_login: 'friend', user_name: 'Friend', created_at: '2026-10-20T18:00:00Z', duration: '3h0m0s', url: 'https://www.twitch.tv/videos/' + id, title: 'Live de Friend' }
-      const videos = { 111111: { ...base, id, type: 'archive', viewable: 'public' }, 222222: { ...base, id, type: 'highlight', viewable: 'public' }, 333333: { ...base, id, type: 'archive', viewable: 'private' }, 555555: { ...base, id, type: 'archive', viewable: 'public' }, 666666: { ...base, id, type: 'archive', viewable: 'public' } }
+      // VODs de la chaine « yassencore » (celle des tests) : « Analyser une VOD » du streamer.
+      const ownBase = { stream_id: '2', user_id: '198013846', user_login: 'yassencore', user_name: 'YassEncore', created_at: '2026-10-21T18:00:00Z', duration: '2h0m0s', url: 'https://www.twitch.tv/videos/' + id, title: 'Mon live', id }
+      const own = { 880001: ['archive', 'public'], 880002: ['archive', 'public'], 880003: ['archive', 'public'], 880004: ['archive', 'public'], 880005: ['highlight', 'public'], 880006: ['archive', 'private'] }
+      const ownVideos = Object.fromEntries(Object.entries(own).map(([k, [type, viewable]]) => [k, { ...ownBase, type, viewable }]))
+      const videos = { ...ownVideos, 111111: { ...base, id, type: 'archive', viewable: 'public' }, 222222: { ...base, id, type: 'highlight', viewable: 'public' }, 333333: { ...base, id, type: 'archive', viewable: 'private' }, 555555: { ...base, id, type: 'archive', viewable: 'public' }, 666666: { ...base, id, type: 'archive', viewable: 'public' } }
       return res.end(JSON.stringify({ data: videos[id] ? [videos[id]] : [] }))
     }
     if (req.url === '/oauth2/token') {
@@ -733,6 +737,31 @@ try {
   assert.deepEqual([withLong.title, withLong.pct], ['Soiree', 22])
   await q(`DELETE FROM long_analyses`)
   await q(`DELETE FROM vods WHERE twitch_vod_id IN ('prog-1', 'prog-2', 'prog-3')`)
+  // « Analyser une VOD » (streamer) : seulement SES rediffusions, une a la fois, trois par jour
+  const vodsUrl = `/api/studio/channels/${channelId}/vods`
+  const addOwnVod = (url, who = pub) => call(vodsUrl, { ...who, method: 'POST', body: { url } })
+  assert.equal((await addOwnVod('pas un lien')).status, 400)
+  assert.equal((await call(vodsUrl, { ...pub, method: 'POST', body: {} })).status, 400)
+  assert.equal((await addOwnVod('https://www.twitch.tv/videos/111111')).status, 403)
+  assert.equal((await addOwnVod('https://www.twitch.tv/videos/880005')).status, 400)
+  assert.equal((await addOwnVod('https://www.twitch.tv/videos/880006')).status, 400)
+  assert.equal((await addOwnVod('https://www.twitch.tv/videos/999999999')).status, 404)
+  assert.equal((await addOwnVod('https://www.twitch.tv/videos/880001', as(sessionCookie.split('=')[1]))).status, 404)
+  assert.equal((await addOwnVod('https://www.twitch.tv/videos/880001', { auth: false })).status, 401)
+  const ownVod = await addOwnVod('https://www.twitch.tv/videos/880001')
+  assert.equal(ownVod.status, 200)
+  assert.deepEqual([ownVod.json.status, ownVod.json.blocked, ownVod.json.title, ownVod.json.durationSec], ['ended', false, 'Mon live', 7200])
+  const [savedVod] = await q(`SELECT channel_id, source, status, title FROM vods WHERE twitch_vod_id = '880001'`)
+  assert.deepEqual([savedVod.channel_id, savedVod.source, savedVod.status, savedVod.title], [channelId, 'manual', 'ended', 'Mon live'])
+  assert.equal((await addOwnVod('https://www.twitch.tv/videos/880001')).status, 409)
+  assert.equal((await addOwnVod('https://www.twitch.tv/videos/880002')).status, 409)
+  await q(`UPDATE vods SET status = 'done' WHERE twitch_vod_id = '880001'`)
+  assert.equal((await addOwnVod('https://www.twitch.tv/videos/880002')).status, 200)
+  await q(`UPDATE vods SET status = 'done' WHERE twitch_vod_id = '880002'`)
+  assert.equal((await addOwnVod('https://www.twitch.tv/videos/880003')).status, 200)
+  await q(`UPDATE vods SET status = 'done' WHERE twitch_vod_id = '880003'`)
+  assert.equal((await addOwnVod('https://www.twitch.tv/videos/880004')).status, 429)
+  await q(`DELETE FROM vods WHERE twitch_vod_id LIKE '88000%'`)
   // Reglage coupe : on ne peut plus ajouter ni preparer.
   assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: false, maxSec: 600 } })).status, 200)
   assert.equal((await longPost({ vodId, startSec: 100, endSec: 400 })).status, 409)

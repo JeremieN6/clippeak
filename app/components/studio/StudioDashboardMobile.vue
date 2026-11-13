@@ -135,7 +135,8 @@ const openLong = () => { try { localStorage.setItem('clippeak.longSeen', '1') } 
         </template>
         <div v-else class="flex flex-col gap-2 rounded-2xl border border-st-border bg-st-surface px-5 py-7 text-center">
           <div class="st-title text-lg font-bold">Aucun clip ici</div>
-          <div class="text-sm leading-[21px] st-muted">Aucun clip n’a ce statut pour l’instant.</div>
+          <div class="text-sm leading-[21px] st-muted">{{ clips.length ? 'Aucun clip n’a ce statut pour l’instant.' : 'Tes premiers clips arriveront après ton prochain live. Tu peux aussi analyser une ancienne vidéo (VOD) dès maintenant.' }}</div>
+          <div v-if="!clips.length" class="flex justify-center pt-1"><StudioAnalyzeVod /></div>
         </div>
       </template>
 
