@@ -24,6 +24,7 @@ export interface LongExtractVod { id: string, title: string | null, startedAt: s
 export interface LongProposalView { id: string, origin: 'manual' | 'streamer' | 'analysis', state: 'proposed' | 'ignored' | 'preparing' | 'validate', title: string, theme: string | null, why: string | null, score: number | null, progress: number | null, startSec: number, endSec: number, durationSec: number, createdAt: string, vod: { id: string, twitchVodId: string, title: string | null, startedAt: string } }
 export interface LongAnalysisView { vodId: string, status: 'queued' | 'running' | 'done' | 'failed' | 'impossible', progress: number, proposals: number, error: string | null, finishedAt: string | null }
 export interface LongExtractsInfo { analyses: LongAnalysisView[], enabled: boolean, maxSec: number, verified: boolean, startCommand: string, endCommand: string, modsAllowed: boolean, vods: LongExtractVod[], proposals: LongProposalView[] }
+export interface AnalysisItem { id: string, kind: 'analyzing' | 'scanning' | 'long', title: string | null, analyzedSec: number | null, durationSec: number | null, pct: number | null }
 export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null }
 
 // Message comprehensible pour le streamer a partir d'une erreur reseau ou serveur. Une reponse de Clippeak (message ecrit pour lui) est
@@ -78,6 +79,9 @@ export function createStudio() {
   const quota = ref<{ limit: number | null, used: number, remaining: number | null, reached: boolean, resetsAt: string } | null>(null)
   const connections = ref<StudioConnection[]>([])
   const vodAlerts = ref<VodAlert[]>([])
+  // Analyses en cours (bandeau du tableau de bord) et plateforme dont la connexion vient d'echouer (alerte du tableau de bord).
+  const analysis = ref<AnalysisItem[]>([])
+  const connectFailure = ref<'youtube' | 'tiktok' | null>(null)
 
   // 'onboarding' tant que le parcours n'est pas termine, puis 'dashboard' ; le streamer peut revenir a une etape depuis le tableau de bord.
   const view = ref<'onboarding' | 'dashboard' | 'roadmap' | 'long' | 'account'>('onboarding')
@@ -127,6 +131,15 @@ export function createStudio() {
   async function loadConnections() {
     if (!channelId.value) return
     connections.value = (await api<{ connections: StudioConnection[] }>(`/api/studio/channels/${channelId.value}/connections`)).connections
+  }
+
+  async function loadAnalysis() {
+    if (!channelId.value) return
+    try {
+      analysis.value = (await api<{ items: AnalysisItem[] }>(`/api/studio/channels/${channelId.value}/analysis-progress`)).items
+    } catch {
+      analysis.value = []
+    }
   }
 
   async function loadVodAlerts() {
@@ -511,7 +524,7 @@ export function createStudio() {
   }, 'Publication annulée.')
 
   return {
-    connected, error, notice, busy, clipsLoadedAt, channels, channelId, detail, bank, clips, quota, billing, loadBilling, startCheckout, openPortal, connections, vodAlerts, view, step, onboarding, mode,
+    connected, error, notice, busy, clipsLoadedAt, analysis, connectFailure, loadAnalysis, channels, channelId, detail, bank, clips, quota, billing, loadBilling, startCheckout, openPortal, connections, vodAlerts, view, step, onboarding, mode,
     disconnectPlatform, publishClip, publishMany, loadTiktokCreator, loadLongExtracts, saveLongExtractSettings, startLongAnalysis, addLongProposal, updateLongProposal, prepareLongProposal, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
     api, run, track, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, setCaptionTags, advance, finishOnboarding, goToStep, stepStatus,

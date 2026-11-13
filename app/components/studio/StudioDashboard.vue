@@ -116,6 +116,14 @@ const disconnected = computed(() => {
   }).map(pl => ({ id: pl, name: platformNames[pl] ?? pl }))
 })
 
+// « Offre Creator · renouvelée le 30 novembre » (ou « Offre Starter » sans abonnement), sous le compteur de clips du menu.
+const offerLine = computed(() => {
+  const b = studio.billing.value
+  if (!b?.available || !b.planName) return ''
+  const renews = b.renewsAt ? new Date(b.renewsAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : ''
+  return b.plan === 'creator' ? `Offre ${b.planName}${renews ? ` · renouvelée le ${renews}` : ''}` : `Offre ${b.planName}`
+})
+
 const resetDate = computed(() => {
   if (!studio.quota.value) return ''
   const d = new Date(studio.quota.value.resetsAt)
@@ -180,7 +188,13 @@ const selectClass = 'st-field !min-h-11 !w-full'
           <span v-if="s.status === 'warn' || s.status === 'skip'" class="text-xs font-bold" :class="s.status === 'warn' ? 'text-st-warn' : 'text-st-soft'">{{ s.status === 'warn' ? 'À revoir' : 'Passée' }}</span>
         </button>
       </div>
-      <div class="mt-auto hidden items-center gap-2 lg:flex px-2 text-[13px] leading-[18px] st-muted" :class="collapsed ? 'lg:!hidden' : ''"><span class="h-2 w-2 flex-none rounded-full bg-st-ok" />Clippeak surveille ton prochain live</div>
+      <div v-if="studio.quota.value && studio.quota.value.limit !== null" class="mt-auto hidden flex-col gap-2 rounded-xl border border-st-border bg-st-surface p-3.5 lg:flex" :class="collapsed ? 'lg:!hidden' : ''" aria-label="Clips utilisés ce mois-ci">
+        <div class="text-xs font-extrabold uppercase tracking-widest text-st-dim">Clips ce mois-ci</div>
+        <div class="flex items-baseline gap-1.5"><span class="st-title text-2xl font-bold leading-none">{{ studio.quota.value.used }}</span><span class="text-sm st-muted">/ {{ studio.quota.value.limit }}</span></div>
+        <div class="h-1.5 overflow-hidden rounded-[3px] bg-st-raised2" role="progressbar" aria-label="Clips utilisés" aria-valuemin="0" :aria-valuemax="studio.quota.value.limit" :aria-valuenow="studio.quota.value.used"><div class="st-bar h-full" :style="{ width: `${Math.min(100, Math.round(studio.quota.value.used / Math.max(1, studio.quota.value.limit) * 100))}%` }" /></div>
+        <div v-if="offerLine" class="text-[13px] leading-5 st-muted">{{ offerLine }}</div>
+      </div>
+      <div class="hidden items-center gap-2 lg:flex px-2 text-[13px] leading-[18px] st-muted" :class="[collapsed ? 'lg:!hidden' : '', studio.quota.value && studio.quota.value.limit !== null ? '' : 'mt-auto']"><span class="h-2 w-2 flex-none rounded-full bg-st-ok" />Clippeak surveille ton prochain live</div>
     </nav>
 
     <main class="flex min-w-0 flex-[999_1_620px] flex-col gap-7 px-5 py-8 sm:px-10">
@@ -199,6 +213,20 @@ const selectClass = 'st-field !min-h-11 !w-full'
 
       <StudioVodAlerts />
 
+      <StudioAnalysisBanner />
+
+      <div v-if="studio.connectFailure.value" class="st-alert st-alert-error st-rise flex-wrap items-center" role="alert">
+        <div class="min-w-[220px] flex-1">
+          <div class="font-bold">La connexion à {{ platformNames[studio.connectFailure.value] }} a échoué</div>
+          <div class="text-[13px] opacity-90">{{ platformNames[studio.connectFailure.value] }} n’a pas accepté la connexion. Tant que {{ studio.connectFailure.value === 'youtube' ? 'Google' : 'TikTok' }} n’a pas validé Clippeak, ça peut arriver : ça peut prendre du temps. En attendant, télécharge tes clips et publie-les à la main.</div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <a :href="`/api/auth/${studio.connectFailure.value}`" class="st-btn no-underline">Réessayer</a>
+          <button type="button" class="st-btn-ghost" @click="filters.status = 'approved'; studio.connectFailure.value = null">Télécharger les clips</button>
+          <button type="button" class="st-btn-quiet" @click="studio.connectFailure.value = null">Fermer</button>
+        </div>
+      </div>
+
       <p v-if="pubSummary" class="st-pop m-0 -mt-4 text-sm font-semibold text-st-ok">{{ pubSummary }}</p>
 
       <div v-if="studio.quota.value?.reached" class="st-alert st-alert-warn st-rise flex-wrap items-center" role="alert">
@@ -207,7 +235,7 @@ const selectClass = 'st-field !min-h-11 !w-full'
           <div class="text-[13px] opacity-90">Les nouveaux clips reprennent le {{ resetDate }} : tes prochains lives attendent, rien n’est perdu. Tes clips actuels restent disponibles. Besoin de plus de place ? Écris à contact.clippeak@sassify.fr.</div>
         </div>
       </div>
-      <p v-else-if="studio.quota.value && studio.quota.value.limit !== null" class="m-0 -mt-4 text-[13px] st-muted">Clips ce mois-ci : {{ studio.quota.value.used }} / {{ studio.quota.value.limit }}</p>
+      <p v-else-if="studio.quota.value && studio.quota.value.limit !== null" class="m-0 -mt-4 text-[13px] st-muted lg:hidden">Clips ce mois-ci : {{ studio.quota.value.used }} / {{ studio.quota.value.limit }}</p>
 
       <StudioBilling />
 
