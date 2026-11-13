@@ -1,6 +1,7 @@
 import { prisma } from '../../../../utils/prisma'
 import { assertChannel, parseId, requireStudioActor } from '../../../../utils/studioAuth'
 import { READABLE_VOD_STATUSES, longSettings, proposalView } from '../../../../utils/longProposals'
+import { analysisProgress } from '../../../../utils/clipping/longAnalysis'
 
 // Extraits longs YouTube : le reglage de la chaine, les lives parmi lesquels choisir un passage (les plus recents, lisibles par Clippeak)
 // et les propositions d'extraits (proposees, ignorees, en preparation, dans « A valider »).
@@ -21,8 +22,16 @@ export default defineEventHandler(async (event) => {
     take: 200,
     include: { vod: { select: { id: true, twitchVodId: true, title: true, startedAt: true, createdAt: true } }, clipJob: { select: { status: true, progress: true } } }
   })
+  const analyses = await prisma.longAnalysis.findMany({
+    where: { channelId: id },
+    select: { vodId: true, status: true, transcribedSec: true, durationSec: true, proposalsCount: true, error: true, finishedAt: true }
+  })
   return {
     ...settings,
+    analyses: analyses.map(a => ({
+      vodId: a.vodId, status: a.status, progress: analysisProgress(a.status, a.transcribedSec, a.durationSec),
+      proposals: a.proposalsCount, error: a.error, finishedAt: a.finishedAt
+    })),
     vods: vods.map(v => ({
       id: v.id,
       title: v.title,

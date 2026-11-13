@@ -78,6 +78,7 @@ model Channel {
   roadmapIdeas   RoadmapIdea[]
   notifications  Notification[]
   longProposals  LongProposal[]
+  longAnalyses   LongAnalysis[]
   billing        ChannelBilling?
 
   @@map("channels")
@@ -136,6 +137,7 @@ model Vod {
   channel       Channel        @relation(fields: [channelId], references: [id], onDelete: Cascade)
   moments       Moment[]
   longProposals LongProposal[]
+  longAnalysis  LongAnalysis?
 
   @@index([channelId])
   @@map("vods")
@@ -496,4 +498,29 @@ model LongProposal {
 
   @@index([channelId, status])
   @@map("long_proposals")
+}
+
+// Analyse d'un live entier pour proposer des extraits longs : transcription par tranches (transcribedSec), puis recherche des passages
+// par Claude. status : queued | running | done | failed | impossible (VOD privee ou supprimee). La transcription est gardee (transcript :
+// [{s, e, t}]) pour relancer la recherche sans retranscrire.
+model LongAnalysis {
+  id             String    @id @default(uuid()) @db.Uuid
+  channelId      String    @map("channel_id") @db.Uuid
+  vodId          String    @unique @map("vod_id") @db.Uuid
+  status         String    @default("queued") @db.VarChar(12)
+  transcribedSec Float     @default(0) @map("transcribed_sec")
+  durationSec    Float?    @map("duration_sec")
+  proposalsCount Int       @default(0) @map("proposals_count")
+  transcript     Json?
+  error          String?
+  startedAt      DateTime? @map("started_at")
+  finishedAt     DateTime? @map("finished_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  vod     Vod     @relation(fields: [vodId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("long_analyses")
 }
