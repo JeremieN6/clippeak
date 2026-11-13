@@ -27,7 +27,7 @@ export function commandsProblem(start: string, end: string): string | null {
 export interface MarkerOptions {
   startCommand: string
   endCommand: string
-  // Pseudo Twitch du streamer : ses messages sont toujours acceptes.
+  // Pseudo Twitch du streamer (celui de sa connexion a Clippeak) : seuls ses messages sont acceptes.
   channelLogin: string
   // Les moderateurs (badge « moderator ») peuvent-ils aussi taper les commandes ?
   allowModerators: boolean
@@ -49,12 +49,14 @@ export interface MarkedPassage {
   inferredEnd: boolean
 }
 
+// Seul le compte Twitch avec lequel le streamer s'est connecte a Clippeak est ecoute (son pseudo exact), jamais un badge « broadcaster » :
+// avec le chat partage de Twitch, le proprietaire d'une AUTRE chaine pourrait en porter un dans ce chat. Les moderateurs ne sont ecoutes que si
+// le streamer l'a choisi.
 function allowed(message: ChatMessage, options: MarkerOptions): boolean {
   const author = message.author?.toLowerCase()
-  if (author && author === options.channelLogin.toLowerCase()) return true
-  const badges = message.badges ?? []
-  if (badges.includes('broadcaster')) return true
-  return options.allowModerators && badges.includes('moderator')
+  if (!author) return false
+  if (author === options.channelLogin.toLowerCase()) return true
+  return options.allowModerators && (message.badges ?? []).includes('moderator')
 }
 
 const firstWord = (text: string) => text.trim().split(/\s+/)[0]?.toLowerCase() ?? ''

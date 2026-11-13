@@ -33,8 +33,14 @@ test('detectMarkers: only the streamer (and moderators when allowed) are heard, 
   const mod: ChatMessage[] = [{ t: 100, text: '!extrait', author: 'modo', badges: ['moderator'] }, { t: 400, text: '!fin', author: 'modo', badges: ['moderator'] }]
   assert.equal(detectMarkers(mod, base).length, 0)
   assert.equal(detectMarkers(mod, { ...base, allowModerators: true }).length, 1)
-  // Le pseudo suffit meme sans badge ; un message sans auteur connu est refuse.
+  // Le pseudo de connexion suffit (majuscules ignorees) ; un message sans auteur connu est refuse.
   assert.equal(detectMarkers([{ t: 100, text: '!extrait', author: 'JEREMFUT7' }, { t: 400, text: '!fin', author: 'jeremfut7' }], base).length, 1)
+  // Un badge « broadcaster » ne suffit pas (chat partage : le proprietaire d'une autre chaine en porte un) ; il faut le bon pseudo.
+  const guest: ChatMessage[] = [{ t: 100, text: '!extrait', author: 'autre_streamer', badges: ['broadcaster'] }, { t: 400, text: '!fin', author: 'autre_streamer', badges: ['broadcaster'] }]
+  assert.equal(detectMarkers(guest, base).length, 0)
+  assert.equal(detectMarkers(guest, { ...base, allowModerators: true }).length, 0)
+  // Un seul des deux messages venant du streamer ne forme pas un passage avec un spectateur.
+  assert.equal(detectMarkers([streamer(100, '!extrait'), { t: 400, text: '!fin', author: 'spectateur' }], { ...base, final: false }).length, 0)
   assert.equal(detectMarkers([{ t: 100, text: '!extrait' }, { t: 400, text: '!fin' }], base).length, 0)
 })
 
