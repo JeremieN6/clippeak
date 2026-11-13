@@ -8,7 +8,8 @@ const openLots = reactive<Record<string, boolean>>({})
 
 // Un clip est dans UN seul groupe : « Publiés » (au moins une publication partie) passe avant « Approuvés » (pas encore publie).
 const groupOf = (c: StudioClip): Group => isPublished(c) ? 'published' : c.status === 'queued' || c.status === 'rendering' ? 'progress' : (c.status as Group)
-const clips = computed(() => studio.clips.value)
+// Les extraits longs (16:9) ont leur propre page « Vidéos longues » : ils ne se melangent pas aux lots de clips verticaux.
+const clips = computed(() => studio.clips.value.filter(c => c.format !== 'long'))
 const count = (g: Group) => clips.value.filter(c => groupOf(c) === g).length
 const weekAgo = () => Date.now() - 7 * 24 * 3600 * 1000
 
@@ -141,8 +142,6 @@ const selectClass = 'st-field !min-h-11 !w-full'
       </div>
 
       <StudioVodAlerts />
-
-      <StudioLongExtracts />
 
       <p v-if="pubSummary" class="st-pop m-0 -mt-4 text-sm font-semibold text-st-ok">{{ pubSummary }}</p>
 

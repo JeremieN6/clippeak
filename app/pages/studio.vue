@@ -77,6 +77,7 @@ onMounted(async () => {
     <template v-if="connected && studio.detail.value">
       <StudioAccount v-if="view === 'account'" />
       <StudioRoadmap v-else-if="view === 'roadmap'" />
+      <StudioLongVideos v-else-if="view === 'long'" />
       <StudioDashboard v-else-if="view === 'dashboard'" />
       <StudioOnboarding v-else />
     </template>
