@@ -17,7 +17,7 @@ const saved = computed(() => saving.saved * packs.value)
 const fill = computed(() => `${(packs.value - 1) / (MAX_PACKS - 1) * 100}%`)
 
 const starterItems = computed(() => [`${FREE_CLIPS} clips par mois`, 'Aucun filigrane', 'Détection par chat et montage vertical', 'Validation par lots de 4 clips', 'Téléchargement des clips validés'])
-const creatorItems = ['Tout ce qui est dans Starter', 'Résiliable à tout moment']
+const creatorItems = ['Tout ce qui est dans Starter', 'Extraits de VOD (format long 16:9, type YouTube)', 'Résiliable à tout moment']
 </script>
 
 <template>
@@ -54,6 +54,10 @@ const creatorItems = ['Tout ce qui est dans Starter', 'Résiliable à tout momen
           <li v-for="item in starterItems" :key="item" class="flex items-start gap-3">
             <span class="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full bg-[#2A1F4A] text-[#C9B2FF]"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
             <span>{{ item }}</span>
+          </li>
+          <li class="flex items-start gap-3 text-white/60">
+            <span class="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full bg-white/5 text-white/60" aria-hidden="true">×</span>
+            <span>Extraits de VOD (format long 16:9, type YouTube)</span>
           </li>
         </ul>
 
