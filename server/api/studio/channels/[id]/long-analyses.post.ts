@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { prisma } from '../../../../utils/prisma'
 import { assertChannel, parseId, requireStudioActor, uuidSchema } from '../../../../utils/studioAuth'
 import { READABLE_VOD_STATUSES, longSettings } from '../../../../utils/longProposals'
+import { LONG_LOCKED_MESSAGE } from '../../../../utils/clipping/longAccess'
 
 const bodySchema = z.object({ vodId: uuidSchema })
 
@@ -14,7 +15,9 @@ export default defineEventHandler(async (event) => {
   const parsed = bodySchema.safeParse(await readBody(event))
   if (!parsed.success) throw createError({ statusCode: 400, statusMessage: 'Choisis un live à analyser.' })
 
-  if (!(await longSettings(id)).enabled) throw createError({ statusCode: 409, statusMessage: 'Active d’abord les extraits longs dans les réglages.' })
+  const settings = await longSettings(id)
+  if (!settings.allowed) throw createError({ statusCode: 403, statusMessage: LONG_LOCKED_MESSAGE })
+  if (!settings.enabled) throw createError({ statusCode: 409, statusMessage: 'Active d’abord les extraits longs dans les réglages.' })
   const vod = await prisma.vod.findFirst({ where: { id: parsed.data.vodId, channelId: id }, select: { id: true, status: true } })
   if (!vod) throw createError({ statusCode: 404, statusMessage: 'Live introuvable' })
   if (vod.status === 'live') throw createError({ statusCode: 409, statusMessage: 'Ce live est encore en cours : lance l’analyse quand il est terminé.' })

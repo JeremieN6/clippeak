@@ -172,7 +172,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
           </div>
         </section>
       </template>
-      <div v-else class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-st-borderStrong px-6 py-8 text-center">
+      <div v-else-if="info.allowed" class="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-st-borderStrong px-6 py-8 text-center">
         <h2 class="st-title m-0 text-lg font-bold">Les extraits longs sont désactivés</h2>
         <p class="m-0 max-w-md text-sm leading-[22px] st-muted">Active « Activer les extraits longs » ci-dessus pour recevoir des propositions.</p>
       </div>

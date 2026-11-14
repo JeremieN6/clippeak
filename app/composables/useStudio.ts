@@ -23,7 +23,7 @@ export interface TiktokCreator { nickname: string, username: string, avatarUrl: 
 export interface LongExtractVod { id: string, title: string | null, startedAt: string, durationSec: number | null }
 export interface LongProposalView { id: string, origin: 'manual' | 'streamer' | 'analysis', state: 'proposed' | 'ignored' | 'preparing' | 'validate', title: string, theme: string | null, why: string | null, score: number | null, progress: number | null, startSec: number, endSec: number, durationSec: number, createdAt: string, vod: { id: string, twitchVodId: string, title: string | null, startedAt: string } }
 export interface LongAnalysisView { vodId: string, status: 'queued' | 'running' | 'done' | 'failed' | 'impossible', progress: number, proposals: number, error: string | null, finishedAt: string | null }
-export interface LongExtractsInfo { analyses: LongAnalysisView[], enabled: boolean, maxSec: number, verified: boolean, startCommand: string, endCommand: string, modsAllowed: boolean, vods: LongExtractVod[], proposals: LongProposalView[] }
+export interface LongExtractsInfo { analyses: LongAnalysisView[], allowed: boolean, enabled: boolean, maxSec: number, verified: boolean, startCommand: string, endCommand: string, modsAllowed: boolean, vods: LongExtractVod[], proposals: LongProposalView[] }
 export interface AnalysisItem { id: string, kind: 'analyzing' | 'scanning' | 'long', title: string | null, analyzedSec: number | null, durationSec: number | null, pct: number | null }
 export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null }
 

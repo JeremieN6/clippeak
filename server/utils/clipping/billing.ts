@@ -25,7 +25,8 @@ export { clampPacks, packsClips, MAX_PACKS, normalizeInterval, CREATOR_PRICE, ye
 export type { BillingInterval }
 
 // Etats d'abonnement Stripe qui donnent droit a l'offre payante (« past_due » : quelques jours de grace pendant que Stripe relance le paiement).
-const PAYING = new Set(['active', 'trialing', 'past_due'])
+export const PAYING_STATUSES = ['active', 'trialing', 'past_due']
+const PAYING = new Set(PAYING_STATUSES)
 export const isPayingStatus = (status: string | null | undefined): boolean => Boolean(status && PAYING.has(status))
 export const planFor = (status: string | null | undefined): Plan => isPayingStatus(status) ? 'creator' : 'free'
 
