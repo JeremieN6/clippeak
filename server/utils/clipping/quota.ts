@@ -1,7 +1,10 @@
 // Plafond mensuel de clips par chaine (beta gratuite avec plafond, decision du porteur du 2026-10-31) : regles pures, testables.
 // On compte les clips PRODUITS dans le mois (hors echecs de rendu), pas les VODs : c'est ce que le streamer voit et comprend.
 
-export const DEFAULT_MONTHLY_CLIPS = 40
+import { FREE_CLIPS } from './pricing.ts'
+
+// Plafond par defaut = le quota gratuit (une seule source : ./pricing.ts).
+export const DEFAULT_MONTHLY_CLIPS = FREE_CLIPS
 
 // Chaines de demonstration et de test (admin) : jamais plafonnees.
 export const isQuotaExempt = (twitchId: string): boolean => twitchId === 'demo-clippeak' || twitchId.startsWith('test-')

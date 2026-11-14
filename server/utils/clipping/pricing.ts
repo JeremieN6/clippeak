@@ -1,7 +1,8 @@
 // Prix et packs de l'offre : regles pures, SANS dependance (le navigateur les importe aussi, pour la landing). Le prix reellement paye est celui
 // du prix Stripe ; les valeurs d'affichage ci-dessous doivent lui rester identiques.
 
-export const FREE_CLIPS = 40
+// Gratuit : 20 clips par mois (decision du porteur, 2026-11-14 : assez pour voir la valeur, assez peu pour donner envie du plan superieur).
+export const FREE_CLIPS = 20
 // Packs : l'offre Creator s'achete par packs de 120 clips par mois (de 1 a 5, meme prix unitaire). Le nombre de packs est la QUANTITE de
 // l'abonnement Stripe ; le plafond mensuel = 120 x packs.
 export const CLIPS_PER_PACK = 120

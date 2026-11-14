@@ -2,8 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { DEFAULT_INVOICE_FOOTER, invoiceFooter, applySubscriptionEvent, clampPacks, CREATOR_PRICE, isPayingStatus, MAX_PACKS, normalizeInterval, packsClips, periodEnd, PLAN_CLIPS, planFor, signStripePayload, subscriptionShape, verifyStripeSignature, yearlySaving } from './billing.ts'
 
-test('plans : gratuit 40, Creator 120 ; etats payants et grace', () => {
-  assert.deepEqual(PLAN_CLIPS, { free: 40, creator: 120 })
+test('plans : gratuit 20, Creator 120 ; etats payants et grace', () => {
+  assert.deepEqual(PLAN_CLIPS, { free: 20, creator: 120 })
   for (const s of ['active', 'trialing', 'past_due']) assert.equal(planFor(s), 'creator', s)
   for (const s of ['canceled', 'unpaid', 'incomplete', 'incomplete_expired', 'paused', null, undefined]) assert.equal(planFor(s as any), 'free', String(s))
   assert.equal(isPayingStatus('active'), true)

@@ -236,7 +236,7 @@ onBeforeUnmount(() => {
         >
           Se connecter avec Twitch
         </a>
-        <p class="mt-2 text-center text-xs text-clippeak-muted">Accès sur invitation pendant la bêta · gratuit jusqu'à 40 clips par mois</p>
+        <p class="mt-2 text-center text-xs text-clippeak-muted">Accès sur invitation pendant la bêta · gratuit jusqu'à 20 clips par mois</p>
       </div>
     </div>
   </section>

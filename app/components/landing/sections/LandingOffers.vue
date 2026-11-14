@@ -15,6 +15,9 @@ const yearTotal = computed(() => CREATOR_PRICE.yearly * packs.value)
 const fullYear = computed(() => saving.fullYear * packs.value)
 const saved = computed(() => saving.saved * packs.value)
 const fill = computed(() => `${(packs.value - 1) / (MAX_PACKS - 1) * 100}%`)
+
+const starterItems = computed(() => [`${FREE_CLIPS} clips par mois`, 'Aucun filigrane', 'Détection par chat et montage vertical', 'Validation par lots de 4 clips', 'Téléchargement des clips validés'])
+const creatorItems = ['Tout ce qui est dans Starter', 'Résiliable à tout moment']
 </script>
 
 <template>
@@ -41,18 +44,17 @@ const fill = computed(() => `${(packs.value - 1) / (MAX_PACKS - 1) * 100}%`)
       <article class="rounded-3xl bg-black/20 p-8">
         <div class="flex items-center justify-between gap-3">
           <p class="text-lg font-bold uppercase tracking-[0.12em] text-white/70">Starter</p>
-          <span class="rounded-full bg-clippeak-violet/20 px-3 py-1 text-xs font-semibold text-white">Bêta gratuite</span>
+          <span class="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-full bg-[#12302A] px-3 text-[13px] font-extrabold text-[#6EDDB8]"><span class="h-1.5 w-1.5 rounded-full bg-[#6EDDB8]" aria-hidden="true" />Bêta gratuite</span>
         </div>
 
         <p class="mt-6 font-display text-5xl font-bold">0€<span class="ml-2 text-2xl text-clippeak-muted">/mois</span></p>
         <p class="mt-2 text-sm text-clippeak-muted">Pendant toute la période bêta.</p>
 
-        <ul class="mt-6 space-y-3 text-sm text-white/85">
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> {{ FREE_CLIPS }} clips par mois</li>
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Aucun filigrane</li>
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Détection par chat et montage vertical</li>
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Validation par lots de 4 clips</li>
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Téléchargement des clips validés</li>
+        <ul class="mt-6 flex flex-col gap-3.5 text-[15px] leading-[22px] text-white/90">
+          <li v-for="item in starterItems" :key="item" class="flex items-start gap-3">
+            <span class="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full bg-[#2A1F4A] text-[#C9B2FF]"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
+            <span>{{ item }}</span>
+          </li>
         </ul>
 
         <a href="/connexion" class="mt-8 block w-full rounded-2xl bg-clippeak-violet px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-clippeak-violetLight">
@@ -63,7 +65,7 @@ const fill = computed(() => `${(packs.value - 1) / (MAX_PACKS - 1) * 100}%`)
       <article class="rounded-3xl bg-gradient-to-b from-clippeak-violet/25 to-black/20 p-8 shadow-glow">
         <div class="flex items-center justify-between gap-3">
           <p class="text-lg font-bold uppercase tracking-[0.12em] text-white">Creator</p>
-          <span class="whitespace-nowrap rounded-full bg-clippeak-violet/30 px-3 py-1 text-xs font-semibold text-white">Bientôt disponible</span>
+          <span class="inline-flex h-7 items-center whitespace-nowrap rounded-full bg-[#33280F] px-3 text-[13px] font-extrabold text-[#F6C260]">Bientôt disponible</span>
         </div>
 
         <div class="mt-6">
@@ -81,17 +83,23 @@ const fill = computed(() => `${(packs.value - 1) / (MAX_PACKS - 1) * 100}%`)
           {{ eur(perMonth) }}<span class="ml-2 text-2xl text-white/60">/mois</span>
         </p>
         <p v-if="yearly" class="mt-2 text-sm text-white/80">
-          Facturé {{ eur(yearTotal) }} par an, au lieu de <span class="line-through">{{ eur(fullYear) }}</span> ({{ eur(CREATOR_PRICE.monthly * packs) }} × 12) :
-          <strong class="text-white">tu économises {{ eur(saved) }}</strong>.
+          Facturé {{ eur(yearTotal) }} par an, au lieu de <span class="line-through">{{ eur(fullYear) }}</span> ({{ eur(CREATOR_PRICE.monthly * packs) }} × 12).
         </p>
-        <p v-else class="mt-2 text-sm text-white/80">
-          Facturé chaque mois, sans engagement. En annuel : {{ eur(saving.perMonth * packs) }}/mois, soit {{ eur(saved) }} d'économie par an.
+        <p v-else class="mt-2 text-sm text-white/80">Facturé chaque mois, sans engagement.</p>
+        <!-- Economie en vert : acquise en annuel, proposee en mensuel (meme montant). -->
+        <p class="mt-3 inline-flex min-h-[30px] items-center rounded-full bg-[#12302A] px-3 py-1 text-[13px] font-extrabold text-[#6EDDB8]">
+          {{ yearly ? `Tu économises ${eur(saved)} par an` : `En annuel, tu économiserais ${eur(saved)} par an` }}
         </p>
 
-        <ul class="mt-6 space-y-3 text-sm text-white/90">
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> {{ clips }} clips par mois (au lieu de {{ FREE_CLIPS }})</li>
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Tout ce qui est dans Starter</li>
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Résiliable à tout moment</li>
+        <ul class="mt-6 flex flex-col gap-3.5 text-[15px] leading-[22px] text-white/90">
+          <li class="flex items-start gap-3">
+            <span class="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full bg-[#3B2A6E] text-[#E4D9FF]"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
+            <span><strong class="font-extrabold">{{ clips }} clips par mois</strong> (au lieu de {{ FREE_CLIPS }})</span>
+          </li>
+          <li v-for="item in creatorItems" :key="item" class="flex items-start gap-3">
+            <span class="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full bg-[#3B2A6E] text-[#E4D9FF]"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
+            <span>{{ item }}</span>
+          </li>
         </ul>
 
         <button type="button" disabled class="mt-8 w-full rounded-2xl bg-clippeak-violet px-5 py-3 text-sm font-semibold text-white opacity-60">
