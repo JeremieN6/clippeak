@@ -21,6 +21,9 @@ watch(verified, (v) => { if (!v && maxSec.value > LONG_UNVERIFIED_MAX_SEC) maxSe
 const dirty = computed(() => enabled.value !== props.info.enabled || maxSec.value !== props.info.maxSec || verified.value !== props.info.verified
   || normalizeCommand(startCommand.value) !== props.info.startCommand || normalizeCommand(endCommand.value) !== props.info.endCommand || modsAllowed.value !== props.info.modsAllowed)
 
+// Plan gratuit : on renvoie vers le tableau de bord, ou se trouve la carte « Mon offre ».
+const seeOffer = () => { studio.view.value = 'dashboard' }
+
 async function save() {
   await studio.saveLongExtractSettings({ enabled: enabled.value, maxSec: maxSec.value, verified: verified.value, startCommand: startCommand.value, endCommand: endCommand.value, modsAllowed: modsAllowed.value })
   emit('changed')
@@ -28,7 +31,16 @@ async function save() {
 </script>
 
 <template>
-  <section class="st-card flex flex-col gap-4 !p-5" aria-label="Réglage des extraits longs">
+  <!-- Offre gratuite : les extraits longs sont un avantage de l'offre Creator. -->
+  <section v-if="!info.allowed" class="st-card flex flex-col gap-3 !p-5" aria-label="Extraits longs réservés à l’offre Creator">
+    <div class="flex flex-wrap items-center gap-2">
+      <h2 class="st-title m-0 text-lg font-bold">Réservé à l’offre Creator</h2>
+      <span class="st-badge st-badge-violet">Creator</span>
+    </div>
+    <p class="m-0 text-sm leading-relaxed st-muted">Les extraits longs, des passages de ton live de plusieurs minutes en 16:9 publiés sur YouTube, font partie de l’offre Creator. Avec l’offre gratuite, tu gardes tes clips verticaux.</p>
+    <div><button type="button" class="st-btn" @click="seeOffer">Voir l’offre Creator</button></div>
+  </section>
+  <section v-else class="st-card flex flex-col gap-4 !p-5" aria-label="Réglage des extraits longs">
     <div class="flex flex-wrap items-center gap-2">
       <h2 class="st-title m-0 text-lg font-bold">Réglage</h2>
       <span class="st-badge" :class="info.enabled ? 'st-badge-ok' : 'st-badge-neutral'">{{ info.enabled ? 'Activé' : 'Désactivé' }}</span>

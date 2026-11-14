@@ -1,6 +1,7 @@
 import { prisma } from '../../../../../../utils/prisma'
 import { assertChannel, parseId, requireStudioActor } from '../../../../../../utils/studioAuth'
 import { READABLE_VOD_STATUSES, longSettings, rangeProblem } from '../../../../../../utils/longProposals'
+import { LONG_LOCKED_MESSAGE } from '../../../../../../utils/clipping/longAccess'
 import { formatClock } from '../../../../../../utils/clipping/longExtract'
 
 // « Preparer l'extrait » : cree le moment et le rendu en file (meme file et meme worker que les clips). L'extrait revient ensuite dans « A valider ».
@@ -12,6 +13,7 @@ export default defineEventHandler(async (event) => {
   assertChannel(actor, id)
 
   const settings = await longSettings(id)
+  if (!settings.allowed) throw createError({ statusCode: 403, statusMessage: LONG_LOCKED_MESSAGE })
   if (!settings.enabled) throw createError({ statusCode: 409, statusMessage: 'Active d’abord les extraits longs dans les réglages.' })
   const proposal = await prisma.longProposal.findFirst({ where: { id: pid, channelId: id }, include: { vod: { select: { id: true, title: true, status: true, startedAt: true, endedAt: true } } } })
   if (!proposal) throw createError({ statusCode: 404, statusMessage: 'Proposition introuvable' })

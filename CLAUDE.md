@@ -87,6 +87,8 @@ Livrer Clippeak V1: landing page Nuxt interactive avec simulation complete du fl
 
 - **2026-11-14 (maquette tarifs, gratuit a 20)** : branche `feat/tarifs-maquette`. Landing alignee sur la maquette du kit (pastilles beta vert / bientot ambre, puces rondes, ligne verte « Tu economises X EUR par an » en annuel et « En annuel, tu economiserais X EUR par an » en mensuel). Gratuit : 20 clips par mois (`FREE_CLIPS` dans `pricing.ts`, `DEFAULT_MONTHLY_CLIPS`, defaut de la colonne `streamer_settings.monthly_clip_quota`). Migration `202611141000_free_clips_20` : MODIFIE DES DONNEES (les plafonds de 40 deviennent 20) donc le deploiement s'arrete au garde-fou : `migrations.sh apply` sur le VPS puis relancer le deploiement.
 
+- **2026-11-14 (extraits longs reserves a Creator)** : branche `feat/tarifs-format-long`. Les extraits longs YouTube (16:9) sont un argument de l'offre payante : ligne ajoutee sur la landing (incluse dans Creator, croix dans Starter) ET reserve cote serveur. Regle unique `canUseLongExtracts` (`server/utils/clipping/longAccess.ts`) : abonnement Creator en cours, OU chaine de demo/test (`test-`), OU plafond illimite accorde par l'admin. `longSettings()` renvoie `allowed` et `enabled = allowed ET actif` ; activer, proposer, analyser et preparer un extrait donnent 403 en gratuit (couper reste possible) ; le worker (`prismaMarkerStore`) ne lit plus les lives d'une chaine non autorisee. Les chaines gratuites qui avaient deja active la fonction la perdent. Ecran studio : carte « Reserve a l'offre Creator » + bouton vers la carte « Mon offre ».
+
 ---
 
 ## Lecons Apprises

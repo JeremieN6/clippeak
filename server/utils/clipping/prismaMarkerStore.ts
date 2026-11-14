@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client'
 import { clampLongMax } from './longExtract.ts'
+import { LONG_ACCESS_CHANNEL_FILTER } from './longAccess.ts'
 import type { MarkerStore, MarkerTarget } from './markerScan.ts'
 
 type Db = Pick<PrismaClient, 'vod' | 'longProposal'>
@@ -14,7 +15,8 @@ export function createPrismaMarkerStore(db: Db): MarkerStore {
       const since = new Date(Date.now() - RECENT_DAYS * 24 * 3600 * 1000)
       const rows = await db.vod.findMany({
         where: {
-          channel: { settings: { is: { longExtracts: true } } },
+          // Extraits longs actives ET autorises (offre Creator, test, illimite) : une chaine gratuite qui les avait actives n'est plus lue.
+          channel: { AND: [{ settings: { is: { longExtracts: true } } }, LONG_ACCESS_CHANNEL_FILTER] },
           OR: [{ status: 'live' }, { status: { in: ['ended', 'done'] }, markersDoneAt: null, createdAt: { gte: since } }]
         },
         orderBy: { createdAt: 'desc' },

@@ -99,5 +99,8 @@ Comparaison avec Opus Clip (concurrent) : eux facturent des minutes de vidéo im
 ## 2026-11-14 -- Gratuit baissé à 20 clips par mois
 Décision du porteur : le plan gratuit passe de 40 à 20 clips par mois (il aurait même dit 15), pour « appuyer sur la douleur » et donner envie du plan supérieur. Risque connu : les streamers déjà en bêta qui ont produit plus de 20 clips ce mois-ci sont immédiatement au plafond (leurs lives sont mis en attente jusqu'au mois suivant) ; les chaînes de test et de démonstration restent illimitées. À surveiller : la conversion vers Creator et les retours des premiers streamers.
 
+## 2026-11-14 -- Les extraits longs YouTube deviennent un argument de l'offre payante
+Décision du porteur : les extraits longs (passages de live de plusieurs minutes en 16:9, publiés sur la chaîne YouTube, souvent secondaire) sont réservés à l'offre Creator, affichés comme tels sur la page Tarifs (coche chez Creator, croix chez Starter). Ils étaient jusqu'ici ouverts à tous ; les chaînes gratuites qui les avaient activées les perdent. Les chaînes de test, de démonstration et celles à plafond illimité (accordé par l'admin) les gardent. À surveiller : si des streamers en bêta s'en servaient déjà, leur retour sur ce changement.
+
 ## Derniere mise a jour
 2026-11-13 -- TikTok : premiere revue refusee (icone), corrigee. 2026-11-02 -- Statut mis a jour (produit reel, Stripe en production). 2026-10-25 -- Banque de reference redefinie (base de tout). 2026-10-24 -- Ajout du bilan du pipeline de clips (verifie en local, non deploye). Pivot V2 du 2026-10-23 conserve. Creation initiale du fichier le 2026-08-27 a partir de l'historique git et de `tasks/lessons.md`.

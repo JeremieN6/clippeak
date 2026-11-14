@@ -278,13 +278,18 @@ async function main() {
 
   // 7b. Reperes d'extrait long : lives a lire (extraits longs actives seulement), propositions creees une fois, lecture terminee
   const markerStore = createPrismaMarkerStore(prisma as any)
-  const mkChannel = await prisma.channel.create({ data: { twitchId: 'mk-1', login: 'MarqueurTV', displayName: 'MarqueurTV', settings: { create: { longExtracts: true, longModsAllowed: false } } } })
+  const mkChannel = await prisma.channel.create({ data: { twitchId: 'mk-1', login: 'MarqueurTV', displayName: 'MarqueurTV', settings: { create: { longExtracts: true, longModsAllowed: false } }, billing: { create: { plan: 'creator', status: 'active' } } } })
   const mkEnded = await prisma.vod.create({ data: { channelId: mkChannel.id, twitchVodId: 'mk-ended', url: 'u', status: 'ended', title: 'Soirée', startedAt: new Date('2026-11-12T18:00:00Z'), endedAt: new Date('2026-11-12T22:00:00Z') } })
   const mkLive = await prisma.vod.create({ data: { channelId: mkChannel.id, twitchVodId: 'mk-live', url: 'u', status: 'live', startedAt: new Date() } })
   await prisma.vod.create({ data: { channelId: mkChannel.id, twitchVodId: 'mk-old', url: 'u', status: 'done', markersDoneAt: new Date() } })
   await prisma.vod.create({ data: { channelId: mkChannel.id, twitchVodId: 'mk-blocked', url: 'u', status: 'blocked' } })
   const off = await prisma.channel.create({ data: { twitchId: 'mk-2', login: 'sans', displayName: 'Sans', settings: { create: {} } } })
   await prisma.vod.create({ data: { channelId: off.id, twitchVodId: 'mk-off', url: 'u', status: 'ended' } })
+  // Chaine gratuite qui avait active les extraits longs (avant qu'ils soient reserves a Creator) : plus lue. Abonnement annule : idem.
+  const gratuit = await prisma.channel.create({ data: { twitchId: 'mk-3', login: 'gratuit', displayName: 'Gratuit', settings: { create: { longExtracts: true } } } })
+  await prisma.vod.create({ data: { channelId: gratuit.id, twitchVodId: 'mk-free', url: 'u', status: 'ended' } })
+  const annule = await prisma.channel.create({ data: { twitchId: 'mk-4', login: 'annule', displayName: 'Annule', settings: { create: { longExtracts: true } }, billing: { create: { plan: 'free', status: 'canceled' } } } })
+  await prisma.vod.create({ data: { channelId: annule.id, twitchVodId: 'mk-canceled', url: 'u', status: 'ended' } })
   const targets = await markerStore.targets()
   assert.deepEqual(targets.map(t => t.twitchVodId).sort(), ['mk-ended', 'mk-live'])
   const mkTarget = targets.find(t => t.twitchVodId === 'mk-ended')!
@@ -309,7 +314,7 @@ async function main() {
 
   // 7c. Analyse d'un live entier : file, transcription gardee, propositions remplacees a la relance (celles ignorees ou a la main restent), cloche
   const laStore = createPrismaLongAnalysisStore(prisma as any)
-  const laChannel = await prisma.channel.create({ data: { twitchId: 'la-1', login: 'analyse', displayName: 'Analyse', settings: { create: { longExtracts: true } } } })
+  const laChannel = await prisma.channel.create({ data: { twitchId: 'la-1', login: 'analyse', displayName: 'Analyse', settings: { create: { longExtracts: true } }, billing: { create: { plan: 'creator', status: 'active' } } } })
   const laVod = await prisma.vod.create({ data: { channelId: laChannel.id, twitchVodId: 'la-vod', url: 'u', status: 'ended', title: 'Soirée', startedAt: new Date('2026-11-12T18:00:00Z'), endedAt: new Date('2026-11-12T20:00:00Z') } })
   const analysis = await prisma.longAnalysis.create({ data: { channelId: laChannel.id, vodId: laVod.id } })
   await prisma.longProposal.create({ data: { channelId: laChannel.id, vodId: laVod.id, origin: 'manual', title: 'Ajout', startSec: 100, endSec: 400 } })

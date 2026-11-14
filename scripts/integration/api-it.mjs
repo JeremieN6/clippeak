@@ -575,7 +575,16 @@ try {
   assert.equal((await call(longUrl, as(sessionCookie.split('=')[1]))).status, 404)
   assert.equal((await call(longUrl, { auth: false })).status, 401)
   const longPost = body => call(propUrl, { ...pub, method: 'POST', body })
-  assert.equal((await longPost({ vodId, startSec: 100, endSec: 400 })).status, 409)
+  // Offre GRATUITE : les extraits longs sont reserves a Creator. Voir le reglage : oui (avec allowed false) ; l'activer, proposer, analyser : 403.
+  assert.equal(longOff.allowed, false)
+  assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 600 } })).status, 403)
+  assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: false, maxSec: 600 } })).status, 200) // couper reste possible
+  assert.equal((await longPost({ vodId, startSec: 100, endSec: 400 })).status, 403)
+  assert.equal((await call(`/api/studio/channels/${channelId}/long-analyses`, { ...pub, method: 'POST', body: { vodId } })).status, 403)
+  // Abonnement Creator actif : la fonction s'ouvre
+  await q(`INSERT INTO channel_billing (id, channel_id, plan, status, updated_at) VALUES (gen_random_uuid(), $1, 'creator', 'active', now())`, [channelId])
+  assert.equal((await call(longUrl, pub)).json.allowed, true)
+  assert.equal((await longPost({ vodId, startSec: 100, endSec: 400 })).status, 409) // payant mais pas active
   assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 5 } })).status, 400)
   assert.equal((await call(longUrl, { ...pub, method: 'PUT', body: { enabled: true, maxSec: 3600 } })).status, 400)
   assert.equal((await call(longUrl, { ...as(sessionCookie.split('=')[1]), method: 'PUT', body: { enabled: true, maxSec: 600 } })).status, 404)
