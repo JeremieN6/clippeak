@@ -19,6 +19,7 @@ test('plafond effectif : reglage, defaut, illimite', () => {
   assert.equal(effectiveQuota({ twitchId: '1', setting: 25 }), 25)
   assert.equal(effectiveQuota({ twitchId: '1', setting: null }), null)
   assert.equal(effectiveQuota({ twitchId: '1', setting: undefined }), DEFAULT_MONTHLY_CLIPS)
+  assert.equal(DEFAULT_MONTHLY_CLIPS, 20) // gratuit : 20 clips par mois
 })
 
 test('offre payante : plus grand entre reglage et offre, jamais moins ; illimite reste illimite', () => {

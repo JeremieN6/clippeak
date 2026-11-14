@@ -32,7 +32,7 @@ useSeoMeta({
   title: 'Clippeak : tes meilleurs moments Twitch, en clips verticaux',
   description: 'Clippeak repère les pics de réaction de ton chat Twitch et prépare des clips verticaux avec titre et sous-titres. Tu valides, puis tu publies. Bêta sur invitation.',
   ogTitle: 'Clippeak : tes meilleurs moments Twitch, en clips verticaux',
-  ogDescription: 'Des clips verticaux prêts à valider, tirés de tes lives Twitch. Bêta sur invitation, gratuite jusqu’à 40 clips par mois.',
+  ogDescription: 'Des clips verticaux prêts à valider, tirés de tes lives Twitch. Bêta sur invitation, gratuite jusqu’à 20 clips par mois.',
   ogType: 'website',
   twitterCard: 'summary'
 })

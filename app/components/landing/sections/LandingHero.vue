@@ -43,7 +43,7 @@ const props = defineProps<{
           </a>
         </div>
 
-        <p class="mt-3 text-sm text-white/70">Accès sur invitation · Gratuit jusqu’à 40 clips par mois · Rien n’est publié sans ton accord</p>
+        <p class="mt-3 text-sm text-white/70">Accès sur invitation · Gratuit jusqu’à 20 clips par mois · Rien n’est publié sans ton accord</p>
     </div>
   </section>
 </template>

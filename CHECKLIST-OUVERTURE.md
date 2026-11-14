@@ -5,7 +5,7 @@ Légende : ✅ fait et vérifié · 🔧 je peux le faire (code ou réglage) · 
 
 ## 1. Pour que les gens trouvent l'outil
 - ✅ Bouton « Se connecter » (en-tête) et « Se connecter avec Twitch » (héros, offres, appel final) vers `/connexion`. Une personne non invitée arrive sur `/attente` et peut demander un accès.
-- ✅ Page d'accueil alignée sur le produit réel (bêta sur invitation, 40 clips gratuits par mois, faux témoignages supprimés, FAQ corrigée).
+- ✅ Page d'accueil alignée sur le produit réel (bêta sur invitation, 20 clips gratuits par mois, faux témoignages supprimés, FAQ corrigée).
 - ✅ Démo `/try-now` conservée comme **simulation annoncée** (aucun faux ZIP).
 - 🔧 Plan du site (`sitemap.xml` absent) et image de partage (aperçu dans Discord, X, WhatsApp) : petit, utile pour l'ouverture.
 - 👤 Choisir le canal de lancement (Discord, Twitch, X) et qui invite en premier. Aujourd'hui : **1 seule invitation** (jeremfut7), aucune demande d'accès.
@@ -38,8 +38,8 @@ Légende : ✅ fait et vérifié · 🔧 je peux le faire (code ou réglage) · 
 - ✅ Serveur en bonne santé (voir mesures), certificat HTTPS valide jusqu'au 2027-01-29 avec renouvellement automatique, déploiement continu avec garde-fou des migrations, sauvegardes chiffrées (fichiers + base) avec copie sur Mega, essai de restauration réussi.
 - 👤 **Première sauvegarde automatique** : le cron de 3 h 30 n'a pas été vérifié seul. À contrôler : `/var/log/clippeak-backup.log`.
 - 🔧 **Chaînes de test** (Joel, Arthur) : à supprimer en fin d'essais, avec leurs photos et clips (données d'amis). Tu m'as demandé de les garder pour l'instant.
-- 👤 **`jeremfut7` est plafonnée à 40 clips** comme tout le monde : la mettre en illimité dans `/admin` si tu veux continuer tes essais sans limite.
-- ⏳ **Charge** : le serveur n'a que 2 cœurs pour 16 applications. À mesurer avec plusieurs streamers réels ; le plafond de 40 clips protège en attendant.
+- 👤 **`jeremfut7` est plafonnée à 20 clips** comme tout le monde : la mettre en illimité dans `/admin` si tu veux continuer tes essais sans limite.
+- ⏳ **Charge** : le serveur n'a que 2 cœurs pour 16 applications. À mesurer avec plusieurs streamers réels ; le plafond de 20 clips protège en attendant.
 - ⏳ Analyse **pendant un live** : jamais vérifiée sur un vrai direct (non bloquant : le traitement reprend à la fin du live).
 - 👤 Rotation des clés (SSH de déploiement, clé de chiffrement des jetons) : à planifier, pas urgent.
 - Décisions du porteur : pas de surveillance des sauvegardes pour l'instant, pas de notifications par streamer tant que l'outil n'est pas public.

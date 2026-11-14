@@ -93,8 +93,8 @@ model StreamerSettings {
   subtitles           Boolean  @default(true)
   accentColor         String   @default("#FFFFFF") @map("accent_color") @db.VarChar(9)
   highlightColor      String   @default("#FFD400") @map("highlight_color") @db.VarChar(9)
-  // Plafond de clips produits par mois (defaut 40, null = illimite, reglable par l'admin). Chaines de demo et de test : jamais plafonnees.
-  monthlyClipQuota    Int?     @default(40) @map("monthly_clip_quota")
+  // Plafond de clips produits par mois (defaut 20, null = illimite, reglable par l'admin). Chaines de demo et de test : jamais plafonnees.
+  monthlyClipQuota    Int?     @default(20) @map("monthly_clip_quota")
   // Extraits longs YouTube (16:9, plusieurs minutes, choisis par le streamer) : desactives par defaut, duree maximale en secondes.
   longExtracts        Boolean  @default(false) @map("long_extracts")
   longExtractMaxSec   Int      @default(600) @map("long_extract_max_sec")

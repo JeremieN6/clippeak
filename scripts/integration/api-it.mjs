@@ -1028,7 +1028,7 @@ try {
   const cid = created.id
   const qUrl = `/api/studio/channels/${cid}/quota`
   const q0 = (await call(qUrl, as(sessionCookie.split('=')[1]))).json
-  assert.deepEqual([q0.limit, q0.used, q0.remaining, q0.reached], [40, 0, 40, false])
+  assert.deepEqual([q0.limit, q0.used, q0.remaining, q0.reached], [20, 0, 20, false])
   assert.ok(new Date(q0.resetsAt).getUTCDate() === 1)
   assert.equal((await call(`/api/studio/channels/${crypto.randomUUID()}/quota`, as(sessionCookie.split('=')[1]))).status, 404)
   assert.equal((await call(qUrl, { auth: false })).status, 401)
@@ -1040,7 +1040,7 @@ try {
   assert.equal((await call(qUrl, as(sessionCookie.split('=')[1]))).json.used, 1) // l'echec de rendu ne compte pas
   const [{ id: testQid }] = await q(`INSERT INTO channels (id, twitch_id, login, display_name) VALUES (gen_random_uuid(), 'test-quota', 'test-quota', 'Test quota') RETURNING id`)
   const adminQ = (await call('/api/admin/quotas')).json.quotas
-  assert.equal(adminQ[cid].limit, 40)
+  assert.equal(adminQ[cid].limit, 20)
   assert.equal(adminQ[cid].used, 1)
   assert.equal(adminQ[testQid], undefined)
   assert.equal((await call('/api/admin/quotas', as(sessionCookie.split('=')[1]))).status, 401)
@@ -1057,7 +1057,7 @@ try {
   assert.equal((await putQuota(cid, null)).status, 200)
   const q2 = (await call(qUrl, as(sessionCookie.split('=')[1]))).json
   assert.deepEqual([q2.limit, q2.remaining, q2.reached], [null, null, false])
-  assert.equal((await putQuota(cid, 40)).status, 200)
+  assert.equal((await putQuota(cid, 20)).status, 200)
   await q(`DELETE FROM channels WHERE id = $1`, [testQid])
   ok('plafond mensuel : lecture par le streamer (sa chaine seulement), echecs non comptes, liste et reglage admin (validation, 404, chaine de test 409, jamais par un streamer), le reglage du streamer ne change pas le plafond')
 
@@ -1069,7 +1069,7 @@ try {
   const streamerAs = as(sessionCookie.split('=')[1])
   const bill0 = (await call('/api/studio/billing', streamerAs)).json
   assert.equal(bill0.available, true)
-  assert.deepEqual([bill0.plan, bill0.planName, bill0.freeClips, bill0.paidClips, bill0.paidName, bill0.price.amount, bill0.price.currency, bill0.price.interval, bill0.canManage, bill0.testMode], ['free', 'Starter', 40, 120, 'Creator', 1900, 'eur', 'month', false, true])
+  assert.deepEqual([bill0.plan, bill0.planName, bill0.freeClips, bill0.paidClips, bill0.paidName, bill0.price.amount, bill0.price.currency, bill0.price.interval, bill0.canManage, bill0.testMode], ['free', 'Starter', 20, 120, 'Creator', 1900, 'eur', 'month', false, true])
   // Prix mensuel ET annuel, packs de 1 a 5 (l'annuel 144 EUR < 12 x 19 EUR)
   assert.deepEqual([bill0.prices.month.amount, bill0.prices.year.amount, bill0.packs, bill0.maxPacks, bill0.interval, bill0.paidTotalClips], [1900, 14400, 1, 5, null, 120])
   assert.ok(bill0.prices.month.amount * 12 > bill0.prices.year.amount)
@@ -1133,7 +1133,7 @@ try {
   assert.equal((await q(`SELECT status FROM channel_billing WHERE channel_id = $1`, [cid]))[0].status, 'past_due')
   assert.equal((await send(subEvt('evt_3', 'customer.subscription.updated', 'unpaid', t0 + 20))).status, 200)
   assert.equal((await q(`SELECT plan FROM channel_billing WHERE channel_id = $1`, [cid]))[0].plan, 'free')
-  assert.equal((await call(qUrl, streamerAs)).json.limit, 40) // retour au gratuit
+  assert.equal((await call(qUrl, streamerAs)).json.limit, 20) // retour au gratuit
   assert.equal((await (await send({ id: 'evt_x', type: 'invoice.paid', created: t0 + 30, data: { object: {} } })).json()).result, 'ignored')
   assert.equal((await (await send(subEvt('evt_y', 'customer.subscription.created', 'active', t0 + 40, { metadata: { channel_id: crypto.randomUUID() }, customer: 'cus_inconnu' }))).json()).result, 'unknown_channel')
   assert.equal((await send(subEvt('evt_4', 'customer.subscription.created', 'active', t0 + 50))).status, 200) // abonnement avant paiement termine : lie par la metadonnee
