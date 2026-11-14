@@ -4,9 +4,17 @@
 import { CLIPS_PER_PACK, CREATOR_PRICE, FREE_CLIPS, MAX_PACKS, yearlySaving } from '~~/server/utils/clipping/pricing'
 
 const yearly = ref(true)
+const packs = ref(1)
 const saving = yearlySaving(CREATOR_PRICE.monthly, CREATOR_PRICE.yearly)
 const eur = (n: number) => `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(n)} €`
-const maxClips = CLIPS_PER_PACK * MAX_PACKS
+
+// Curseur de packs : meme prix par pack, donc tout se multiplie par le nombre de packs.
+const clips = computed(() => CLIPS_PER_PACK * packs.value)
+const perMonth = computed(() => (yearly.value ? saving.perMonth : CREATOR_PRICE.monthly) * packs.value)
+const yearTotal = computed(() => CREATOR_PRICE.yearly * packs.value)
+const fullYear = computed(() => saving.fullYear * packs.value)
+const saved = computed(() => saving.saved * packs.value)
+const fill = computed(() => `${(packs.value - 1) / (MAX_PACKS - 1) * 100}%`)
 </script>
 
 <template>
@@ -33,7 +41,7 @@ const maxClips = CLIPS_PER_PACK * MAX_PACKS
       <article class="rounded-3xl bg-black/20 p-8">
         <div class="flex items-center justify-between gap-3">
           <p class="text-lg font-bold uppercase tracking-[0.12em] text-white/70">Starter</p>
-          <span class="rounded-full bg-clippeak-violet/20 px-3 py-1 text-xs font-semibold text-clippeak-violetLight">Bêta gratuite</span>
+          <span class="rounded-full bg-clippeak-violet/20 px-3 py-1 text-xs font-semibold text-white">Bêta gratuite</span>
         </div>
 
         <p class="mt-6 font-display text-5xl font-bold">0€<span class="ml-2 text-2xl text-clippeak-muted">/mois</span></p>
@@ -55,23 +63,33 @@ const maxClips = CLIPS_PER_PACK * MAX_PACKS
       <article class="rounded-3xl bg-gradient-to-b from-clippeak-violet/25 to-black/20 p-8 shadow-glow">
         <div class="flex items-center justify-between gap-3">
           <p class="text-lg font-bold uppercase tracking-[0.12em] text-white">Creator</p>
-          <span class="rounded-full bg-clippeak-violet/30 px-3 py-1 text-xs font-semibold text-clippeak-violetLight">Bientôt disponible</span>
+          <span class="whitespace-nowrap rounded-full bg-clippeak-violet/30 px-3 py-1 text-xs font-semibold text-white">Bientôt disponible</span>
         </div>
 
-        <p class="mt-6 font-display text-5xl font-bold text-white">
-          {{ eur(yearly ? saving.perMonth : CREATOR_PRICE.monthly) }}<span class="ml-2 text-2xl text-white/60">/mois</span>
+        <div class="mt-6">
+          <div class="flex items-baseline justify-between gap-3 text-sm">
+            <span class="font-semibold text-white" aria-live="polite">{{ clips }} clips par mois</span>
+            <span class="text-white/60">{{ packs }} pack{{ packs > 1 ? 's' : '' }} de {{ CLIPS_PER_PACK }}</span>
+          </div>
+          <input v-model.number="packs" type="range" min="1" :max="MAX_PACKS" step="1" class="pack-range mt-3 w-full" :style="{ '--fill': fill }" aria-label="Nombre de clips par mois" :aria-valuetext="`${clips} clips par mois`">
+          <div class="mt-2 flex justify-between text-[11px] text-white/50" aria-hidden="true">
+            <span v-for="n in MAX_PACKS" :key="n" :class="n === packs ? 'font-bold text-white' : ''">{{ n * CLIPS_PER_PACK }}</span>
+          </div>
+        </div>
+
+        <p class="mt-5 font-display text-5xl font-bold text-white">
+          {{ eur(perMonth) }}<span class="ml-2 text-2xl text-white/60">/mois</span>
         </p>
         <p v-if="yearly" class="mt-2 text-sm text-white/80">
-          Facturé {{ eur(CREATOR_PRICE.yearly) }} par an, au lieu de <span class="line-through">{{ eur(saving.fullYear) }}</span> ({{ eur(CREATOR_PRICE.monthly) }} × 12) :
-          <strong class="text-white">tu économises {{ eur(saving.saved) }}</strong>.
+          Facturé {{ eur(yearTotal) }} par an, au lieu de <span class="line-through">{{ eur(fullYear) }}</span> ({{ eur(CREATOR_PRICE.monthly * packs) }} × 12) :
+          <strong class="text-white">tu économises {{ eur(saved) }}</strong>.
         </p>
         <p v-else class="mt-2 text-sm text-white/80">
-          Facturé chaque mois, sans engagement. En annuel : {{ eur(saving.perMonth) }}/mois, soit {{ eur(saving.saved) }} d'économie par an.
+          Facturé chaque mois, sans engagement. En annuel : {{ eur(saving.perMonth * packs) }}/mois, soit {{ eur(saved) }} d'économie par an.
         </p>
 
         <ul class="mt-6 space-y-3 text-sm text-white/90">
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> {{ CLIPS_PER_PACK }} clips par mois (au lieu de {{ FREE_CLIPS }})</li>
-          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Plus de clips ? Jusqu'à {{ MAX_PACKS }} packs ({{ maxClips }} clips), au même prix par pack</li>
+          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> {{ clips }} clips par mois (au lieu de {{ FREE_CLIPS }})</li>
           <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Tout ce qui est dans Starter</li>
           <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Résiliable à tout moment</li>
         </ul>
@@ -85,3 +103,12 @@ const maxClips = CLIPS_PER_PACK * MAX_PACKS
     <p class="mx-auto mt-6 max-w-2xl text-center text-xs text-clippeak-muted">Prix en euros, sans TVA (TVA non applicable, art. 293 B du CGI). Tu paies le nombre de clips produits, pas la durée de tes lives.</p>
   </section>
 </template>
+
+<style scoped>
+/* Curseur de packs : une barre de progression violette jusqu'au pouce (--fill), pouce blanc de 24 px (zone de toucher confortable). */
+.pack-range { -webkit-appearance: none; appearance: none; height: 8px; border-radius: 999px; cursor: pointer; background: linear-gradient(to right, #9f67ff var(--fill), rgba(255, 255, 255, 0.18) var(--fill)); }
+.pack-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 3px solid #7c3aed; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); }
+.pack-range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid #7c3aed; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); }
+.pack-range::-moz-range-track { height: 8px; border-radius: 999px; background: transparent; }
+.pack-range:focus-visible { outline: 2px solid #b9a0ff; outline-offset: 6px; }
+</style>
