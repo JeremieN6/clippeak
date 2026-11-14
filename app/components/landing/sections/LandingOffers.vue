@@ -22,6 +22,7 @@
           <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Détection par chat et montage vertical</li>
           <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Validation par lots de 4 clips</li>
           <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Téléchargement des clips validés</li>
+          <li class="flex items-center gap-2"><span class="text-clippeak-muted" aria-hidden="true">×</span> Extraits de VOD (format long 16:9, type YouTube)</li>
         </ul>
 
         <a href="/connexion" class="mt-8 block w-full rounded-2xl bg-clippeak-violet px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-clippeak-violetLight">
@@ -41,6 +42,7 @@
         <ul class="mt-6 space-y-3 text-sm text-white/90">
           <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> 120 clips par mois (au lieu de 40)</li>
           <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Tout ce qui est dans Starter</li>
+          <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Extraits de VOD (format long 16:9, type YouTube)</li>
           <li class="flex items-center gap-2"><span class="text-clippeak-violetLight">✓</span> Résiliable à tout moment</li>
         </ul>
 
