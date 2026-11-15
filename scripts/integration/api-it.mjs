@@ -1070,6 +1070,29 @@ try {
   await q(`DELETE FROM channels WHERE id = $1`, [testQid])
   ok('plafond mensuel : lecture par le streamer (sa chaine seulement), echecs non comptes, liste et reglage admin (validation, 404, chaine de test 409, jamais par un streamer), le reglage du streamer ne change pas le plafond')
 
+  // --- capacite du serveur : admin seulement ; derniere mesure, verdict, temps de rendu et d'attente, conseil
+  assert.equal((await call('/api/admin/capacity', { auth: false })).status, 401)
+  assert.equal((await call('/api/admin/capacity', as(sessionCookie.split('=')[1]))).status, 401) // un streamer ne voit pas l'etat du serveur
+  const emptyCap = (await call('/api/admin/capacity')).json
+  assert.equal(emptyCap.latest, null); assert.equal(emptyCap.samples7d, 0); assert.match(emptyCap.recommendation, /Aucune mesure/)
+  const [{ id: capChannel }] = await q(`INSERT INTO channels (id, twitch_id, login, display_name) VALUES (gen_random_uuid(), 'test-cap', 'test-cap', 'Test cap') RETURNING id`)
+  const [{ id: capVod }] = await q(`INSERT INTO vods (id, channel_id, twitch_vod_id, url, status) VALUES (gen_random_uuid(), $1, 'cap-vod', 'u', 'done') RETURNING id`, [capChannel])
+  const [{ id: capMoment }] = await q(`INSERT INTO moments (id, vod_id, start_sec, end_sec, peak_sec, score, signals) VALUES (gen_random_uuid(), $1, 0, 30, 15, 7, '{}') RETURNING id`, [capVod])
+  await q(`INSERT INTO clip_jobs (id, moment_id, status, batch, start_sec, end_sec, updated_at, created_at, render_started_at, rendered_at) VALUES (gen_random_uuid(), $1, 'review', 1, 0, 30, now(), now() - interval '15 minutes', now() - interval '10 minutes', now() - interval '8 minutes')`, [capMoment])
+  await q(`INSERT INTO ops_samples (at, load1, load5, cores, mem_total_mb, mem_free_mb) VALUES (now(), 0.5, 0.4, 2, 8000, 5000)`)
+  const okCap = (await call('/api/admin/capacity')).json
+  assert.deepEqual([okCap.latest.load1, okCap.latest.cores, okCap.latest.verdict, okCap.silent], [0.5, 2, 'ok', false])
+  assert.deepEqual([okCap.render.n, Math.round(okCap.render.medianSec), Math.round(okCap.wait.medianSec)], [1, 120, 300]) // 2 min de rendu, 5 min d'attente
+  assert.ok(okCap.series.length >= 1)
+  assert.match(okCap.recommendation, /Rien à faire/)
+  await q(`INSERT INTO ops_samples (at, load1, load5, cores, mem_total_mb, mem_free_mb, clips_queued, oldest_wait_sec) VALUES (now() + interval '1 second', 5.0, 4.0, 2, 8000, 5000, 3, 1500)`)
+  const hotCap = (await call('/api/admin/capacity')).json
+  assert.deepEqual([hotCap.latest.verdict, hotCap.samples7d, hotCap.saturatedShare], ['sature', 2, 0.5]) // charge 5 pour 2 coeurs, un clip attend 25 minutes
+  assert.match(hotCap.recommendation, /KVM 4/)
+  await q(`DELETE FROM ops_samples`)
+  await q(`DELETE FROM channels WHERE id = $1`, [capChannel])
+  ok('capacite du serveur : admin seulement, sans mesure = message clair, derniere mesure + verdict, temps de rendu et d attente calcules, serveur sature = conseil de changer de palier')
+
   // --- facturation Stripe (faux Stripe) : offre visible seulement pour le streamer, paiement et portail, webhook signe, plafond selon l'offre
   const { createHmac } = await import('node:crypto')
   const WH = 'whsec_test'

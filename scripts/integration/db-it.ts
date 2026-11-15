@@ -108,6 +108,10 @@ async function main() {
   // 3. File de rendu : ordre de prise, review, echec
   const first = await queue.claimNext()
   assert.equal(first?.id, jobs[0].id)
+  // Chronometrage pour la page « Capacite » : le debut du rendu est note a la prise, pas la fin.
+  const claimedRow = await prisma.clipJob.findUniqueOrThrow({ where: { id: first!.id }, select: { renderStartedAt: true, renderedAt: true, createdAt: true } })
+  assert.ok(claimedRow.renderStartedAt && claimedRow.renderStartedAt >= claimedRow.createdAt)
+  assert.equal(claimedRow.renderedAt, null)
   const ctx = await store.loadJobContext(first!.id)
   assert.equal(ctx.channelName, 'YassEncore')
   assert.equal(ctx.vodTwitchId, '999001')
@@ -146,6 +150,7 @@ async function main() {
   await queue.markReview(first!.id, `clips/${first!.id}.mp4`)
   const done = await prisma.clipJob.findUniqueOrThrow({ where: { id: first!.id } })
   assert.equal(done.status, 'review')
+  assert.ok(done.renderedAt && done.renderStartedAt && done.renderedAt >= done.renderStartedAt) // fin du rendu notee
   assert.equal(done.outputPath, `clips/${first!.id}.mp4`)
   assert.equal(done.title, 'Mon titre')
   assert.equal(done.hashtags, '#twitch #clip')

@@ -197,6 +197,9 @@ model ClipJob {
   reviewNote    String?   @map("review_note")
   reviewedAt    DateTime? @map("reviewed_at")
   notifiedAt    DateTime? @map("notified_at")
+  // Chronometrage du rendu : debut (pris par le worker) et fin (clip pret). L'attente en file = debut du rendu - creation.
+  renderStartedAt DateTime? @map("render_started_at")
+  renderedAt      DateTime? @map("rendered_at")
 
   moment       Moment        @relation(fields: [momentId], references: [id], onDelete: Cascade)
   publications Publication[]
@@ -526,4 +529,24 @@ model LongAnalysis {
 
   @@index([status, createdAt])
   @@map("long_analyses")
+}
+
+// Mesure de capacite du serveur, une ligne par minute (ecrite par le worker, gardee 7 jours) : charge et memoire de TOUT le serveur,
+// files d'attente de Clippeak. Lue par l'onglet « Capacite » de l'administration.
+model OpsSample {
+  id              String   @id @default(uuid()) @db.Uuid
+  at              DateTime @default(now())
+  load1           Float
+  load5           Float
+  cores           Int
+  memTotalMb      Int      @map("mem_total_mb")
+  memFreeMb       Int      @map("mem_free_mb")
+  clipsQueued     Int      @default(0) @map("clips_queued")
+  clipsRendering  Int      @default(0) @map("clips_rendering")
+  analysesQueued  Int      @default(0) @map("analyses_queued")
+  analysesRunning Int      @default(0) @map("analyses_running")
+  oldestWaitSec   Int?     @map("oldest_wait_sec")
+
+  @@index([at])
+  @@map("ops_samples")
 }
