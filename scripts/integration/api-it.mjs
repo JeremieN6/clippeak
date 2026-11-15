@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict'
 import { spawn, spawnSync } from 'node:child_process'
 import { openSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs'
-import { createHash, randomBytes } from 'node:crypto'
+import { createHash, createHmac, randomBytes } from 'node:crypto'
 import { createServer } from 'node:http'
 import { join, resolve } from 'node:path'
 import { PGlite } from '@electric-sql/pglite'
@@ -46,6 +46,7 @@ let open666 = false
 const stripeCalls = []
 // --- faux Twitch (jeton et profil) pour jouer le retour de connexion sans le vrai service
 const tiktokRevoked = []
+const igCalls = []
 const fakeTwitch = createServer((req, res) => {
   let body = ''
   req.on('data', c => { body += c })
@@ -86,6 +87,28 @@ const fakeTwitch = createServer((req, res) => {
     if (req.url.startsWith('/v2/user/info/')) return res.end(JSON.stringify({ data: { user: { open_id: 'oid-1', display_name: 'Pseudo TikTok' } } }))
     if (req.url === '/v2/oauth/revoke/') { tiktokRevoked.push(body); return res.end('{}') }
     if (req.url === '/v2/post/publish/creator_info/query/') return res.end(JSON.stringify({ data: { creator_nickname: 'Pseudo TikTok', creator_username: 'pseudo', privacy_level_options: ['SELF_ONLY', 'PUBLIC_TO_EVERYONE'], comment_disabled: false, duet_disabled: true, stitch_disabled: false, max_video_post_duration_sec: 600 }, error: { code: 'ok' } }))
+    // faux Meta (Instagram) : echange du code, jeton de longue duree, renouvellement, profil, conteneur de Reel, statut, publication
+    if (req.url === '/oauth/access_token') {
+      const form = new URLSearchParams(body)
+      igCalls.push({ url: '/oauth/access_token', form: Object.fromEntries(form) })
+      const code = form.get('code')
+      if (code === 'i-code' || code === 'i-noscope' || code === 'i-personal') return res.end(JSON.stringify({ data: [{ access_token: code === 'i-personal' ? 'short-personal' : 'ig-short', user_id: code === 'i-personal' ? 5 : 1020, permissions: code === 'i-noscope' ? 'instagram_business_basic' : 'instagram_business_basic,instagram_business_content_publish' }] }))
+      res.statusCode = 400
+      return res.end(JSON.stringify({ error_type: 'OAuthException', code: 400, error_message: 'Matching code was not found or was already used' }))
+    }
+    if (req.url.startsWith('/access_token?') || req.url.startsWith('/refresh_access_token?')) {
+      const params = new URL(req.url, 'http://x').searchParams
+      igCalls.push({ url: req.url.split('?')[0], query: Object.fromEntries(params) })
+      const token = req.url.startsWith('/refresh') ? 'ig-long-2' : (params.get('access_token') === 'short-personal' ? 'ig-long-personal' : 'ig-long')
+      return res.end(JSON.stringify({ access_token: token, token_type: 'bearer', expires_in: 5183944 }))
+    }
+    if (req.url.startsWith('/v27.0/me?')) {
+      const personal = req.headers.authorization === 'Bearer ig-long-personal'
+      return res.end(JSON.stringify({ data: [{ user_id: personal ? '5' : '1020', username: 'streamer_ig', account_type: personal ? 'PERSONAL' : 'MEDIA_CREATOR' }] }))
+    }
+    if (req.url === '/v27.0/1020/media' && req.method === 'POST') { igCalls.push({ url: 'media', form: Object.fromEntries(new URLSearchParams(body)), auth: req.headers.authorization }); return res.end(JSON.stringify({ id: 'cont-77' })) }
+    if (req.url.startsWith('/v27.0/cont-77?')) return res.end(JSON.stringify({ status_code: 'FINISHED' }))
+    if (req.url === '/v27.0/1020/media_publish' && req.method === 'POST') { igCalls.push({ url: 'media_publish', form: Object.fromEntries(new URLSearchParams(body)) }); return res.end(JSON.stringify({ id: 'media-77' })) }
     if (req.url === '/open-666666') { open666 = true; return res.end('{}') }
     if (req.url === '/gql' && req.method === 'POST') {
       const asked = JSON.parse(body || '{}')
@@ -119,7 +142,7 @@ const fakeTwitch = createServer((req, res) => {
 await new Promise(r => fakeTwitch.listen(3397, '127.0.0.1', r))
 
 // --- serveur
-const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_GQL_URL: 'http://127.0.0.1:3397/gql', TIKTOK_CLIENT_KEY: 'tkey', TIKTOK_CLIENT_SECRET: 'tsec', TIKTOK_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_USHER_URL: 'http://127.0.0.1:3397/usher/vod', CLIPPEAK_RECHECK_COOLDOWN_MS: '0', GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsec', GOOGLE_TOKEN_URL: 'http://127.0.0.1:3397/token', CLIPPEAK_TOKEN_KEY: randomBytes(32).toString('base64'), STRIPE_SECRET_KEY: 'sk_test_fake', STRIPE_PRICE_CREATOR: 'price_test_creator', STRIPE_PRICE_CREATOR_YEARLY: 'price_test_creator_yearly', STRIPE_WEBHOOK_SECRET: 'whsec_test', STRIPE_API_BASE_URL: 'http://127.0.0.1:3397' }
+const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_GQL_URL: 'http://127.0.0.1:3397/gql', TIKTOK_CLIENT_KEY: 'tkey', TIKTOK_CLIENT_SECRET: 'tsec', TIKTOK_API_BASE_URL: 'http://127.0.0.1:3397', INSTAGRAM_APP_ID: 'iid', INSTAGRAM_APP_SECRET: 'isec', INSTAGRAM_OAUTH_BASE_URL: 'http://127.0.0.1:3397', INSTAGRAM_API_BASE_URL: 'http://127.0.0.1:3397', CLIPPEAK_PUBLIC_URL: `http://127.0.0.1:${PORT}`, TWITCH_USHER_URL: 'http://127.0.0.1:3397/usher/vod', CLIPPEAK_RECHECK_COOLDOWN_MS: '0', GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsec', GOOGLE_TOKEN_URL: 'http://127.0.0.1:3397/token', CLIPPEAK_TOKEN_KEY: randomBytes(32).toString('base64'), STRIPE_SECRET_KEY: 'sk_test_fake', STRIPE_PRICE_CREATOR: 'price_test_creator', STRIPE_PRICE_CREATOR_YEARLY: 'price_test_creator_yearly', STRIPE_WEBHOOK_SECRET: 'whsec_test', STRIPE_API_BASE_URL: 'http://127.0.0.1:3397' }
 const cwd = join(DATA, 'cwd'); mkdirSync(cwd, { recursive: true })
 const logFd = openSync(join(DATA, 'server.log'), 'w')
 const server = spawn('node', [join(ROOT, '.output', 'server', 'index.mjs')], { env, cwd, stdio: ['ignore', logFd, logFd] })
@@ -497,12 +520,12 @@ try {
   await q(`INSERT INTO studio_sessions (id, channel_id, token_hash, expires_at) VALUES (gen_random_uuid(), $1, $2, now() + interval '1 day')`, [channelId, sha('jeton-pub')])
   const pub = as('jeton-pub')
   const conns = (await call(`/api/studio/channels/${channelId}/connections`, pub)).json.connections
-  assert.deepEqual(conns.map(c => [c.platform, c.available, c.connected]), [['youtube', true, false], ['tiktok', true, false], ['instagram', false, false]])
+  assert.deepEqual(conns.map(c => [c.platform, c.available, c.connected]), [['youtube', true, false], ['tiktok', true, false], ['instagram', true, false]])
   assert.equal((await call(`/api/studio/channels/${channelId}/connections`, as(sessionCookie.split('=')[1]))).status, 404)
   const publish = (id, body, who = pub) => call(`/api/studio/clips/${id}/publish`, { ...who, method: 'POST', body })
   assert.equal((await publish(reviewId, { platform: 'youtube' })).status, 409)
   assert.equal((await publish(queuedId, { platform: 'youtube' })).status, 409)
-  ok('connexions : YouTube disponible et non connecte, TikTok disponible, Instagram pas encore ; publier sans compte connecte ou sans approbation = 409')
+  ok('connexions : YouTube disponible et non connecte, TikTok et Instagram disponibles ; publier sans compte connecte ou sans approbation = 409')
 
   const ytStart = await redirect('/api/auth/youtube')
   assert.equal(ytStart.status, 302); assert.equal(ytStart.headers.get('location'), '/connexion')
@@ -530,7 +553,8 @@ try {
   ok('connexion YouTube : depart vers Google (portee minimale, hors ligne, etat en cookie HttpOnly), etat faux / droit refuse / sans session / annulation geres, jetons CHIFFRES en base')
 
   assert.equal((await publish(reviewId, { platform: 'tiktok' })).status, 409) // TikTok existe mais le compte n'est pas connecte
-  assert.equal((await publish(reviewId, { platform: 'instagram' })).status, 400) // plateforme pas encore geree
+  assert.equal((await publish(reviewId, { platform: 'instagram' })).status, 409) // Instagram existe mais le compte n'est pas connecte
+  assert.equal((await publish(reviewId, { platform: 'facebook' })).status, 400) // plateforme inconnue
   assert.equal((await publish(reviewId, { platform: 'youtube', at: 'demain' })).status, 400)
   assert.equal((await publish(reviewId, { platform: 'youtube', at: new Date(Date.now() + 90 * 24 * 3600 * 1000).toISOString() })).status, 400)
   assert.equal((await publish(otherClip, { platform: 'youtube' })).status, 404)
@@ -831,6 +855,119 @@ try {
   assert.equal((await q(`SELECT 1 FROM platform_connections WHERE channel_id = $1`, [channelId])).length, 0)
   ok('deconnexion TikTok : autorisation retiree chez TikTok, jetons effaces, publication programmee annulee')
 
+  // --- connexion Instagram (faux Meta) : depart, retour, compte professionnel exige, publication sur clic, lien video signe, rappels de Meta, deconnexion
+  const igGo = await fetch(B + '/api/auth/instagram', { redirect: 'manual', headers: { cookie: 'clippeak_session=jeton-pub' } })
+  const igUrl = new URL(igGo.headers.get('location'))
+  assert.equal(igUrl.origin + igUrl.pathname, 'https://www.instagram.com/oauth/authorize')
+  assert.equal(igUrl.searchParams.get('scope'), 'instagram_business_basic,instagram_business_content_publish')
+  assert.equal(igUrl.searchParams.get('client_id'), 'iid')
+  assert.equal(igUrl.searchParams.get('redirect_uri'), `http://127.0.0.1:${PORT}/api/auth/instagram/callback`)
+  const igState = igUrl.searchParams.get('state')
+  const igSetCookie = igGo.headers.getSetCookie().find(c => c.startsWith('clippeak_oauth_ig='))
+  const igCookie = igSetCookie.split(';')[0]
+  assert.ok(igSetCookie.includes('HttpOnly'))
+  assert.equal((await fetch(B + '/api/auth/instagram', { redirect: 'manual', headers: { cookie: adminCookie } })).headers.get('location'), '/studio?connect=admin')
+  assert.equal((await fetch(B + '/api/auth/instagram', { redirect: 'manual' })).headers.get('location'), '/connexion')
+  const igCb = (code, st, cookie) => fetch(B + `/api/auth/instagram/callback?code=${code}%23_&state=${st}`, { redirect: 'manual', headers: { cookie } })
+  const igSess = `clippeak_session=jeton-pub; ${igCookie}`
+  assert.equal((await igCb('i-code', 'autre', igSess)).headers.get('location'), '/studio?connect=error&platform=instagram')
+  assert.equal((await igCb('i-noscope', igState, igSess)).headers.get('location'), '/studio?connect=error&platform=instagram')
+  assert.equal((await igCb('i-personal', igState, igSess)).headers.get('location'), '/studio?connect=instagram-personal')
+  assert.equal((await igCb('i-code', igState, igCookie)).headers.get('location'), '/connexion')
+  assert.equal((await fetch(B + '/api/auth/instagram/callback?error=access_denied', { redirect: 'manual', headers: { cookie: 'clippeak_session=jeton-pub' } })).headers.get('location'), '/studio?connect=cancelled')
+  assert.equal((await q(`SELECT 1 FROM platform_connections WHERE channel_id = $1 AND platform = 'instagram'`, [channelId])).length, 0)
+  assert.equal((await igCb('i-code', igState, igSess)).headers.get('location'), '/studio?connect=instagram')
+  const igExchange = igCalls.find(c => c.url === '/oauth/access_token' && c.form.code === 'i-code')
+  assert.deepEqual([igExchange.form.client_id, igExchange.form.client_secret, igExchange.form.grant_type], ['iid', 'isec', 'authorization_code'])
+  const [igSaved] = await q(`SELECT account_name, external_id, access_token_enc, refresh_token_enc, expires_at FROM platform_connections WHERE channel_id = $1 AND platform = 'instagram'`, [channelId])
+  assert.deepEqual([igSaved.account_name, igSaved.external_id], ['streamer_ig', '1020'])
+  assert.ok(!igSaved.access_token_enc.includes('ig-long') && !igSaved.refresh_token_enc.includes('ig-long'), 'jeton Instagram chiffre')
+  assert.ok(new Date(igSaved.expires_at).getTime() > Date.now() + 50 * 86400_000)
+  const igConn = (await call(`/api/studio/channels/${channelId}/connections`, pub)).json.connections.find(c => c.platform === 'instagram')
+  assert.deepEqual([igConn.available, igConn.connected, igConn.accountName, igConn.needsReconnect], [true, true, 'streamer_ig', undefined])
+  ok('connexion Instagram : portees minimales, etat en cookie HttpOnly, etat faux / droit de publier refuse / compte personnel / sans session / annulation geres, jeton CHIFFRE, nom du compte affiche')
+
+  const igOptions = { caption: 'Mon Reel #gta6', consent: true }
+  assert.equal((await publish(reviewId, { platform: 'instagram' })).status, 400)
+  assert.equal((await publish(reviewId, { platform: 'instagram', options: { ...igOptions, consent: false } })).status, 400)
+  assert.equal((await publish(reviewId, { platform: 'instagram', options: { caption: 'x'.repeat(2201), consent: true } })).status, 400)
+  assert.equal((await publish(reviewId, { platform: 'instagram', options: igOptions, at: new Date(Date.now() + 3600_000).toISOString() })).status, 400)
+  assert.equal((await publish(queuedId, { platform: 'instagram', options: igOptions })).status, 409)
+  assert.equal((await q(`SELECT 1 FROM publications WHERE clip_job_id = $1 AND platform = 'instagram'`, [reviewId])).length, 0)
+  // chaine de test : jamais de publication Instagram
+  const [{ twitch_id: realTwitchId }] = await q(`SELECT twitch_id FROM channels WHERE id = $1`, [channelId])
+  await q(`UPDATE channels SET twitch_id = $2 WHERE id = $1`, [channelId, 'test-ig-guard'])
+  assert.equal((await publish(reviewId, { platform: 'instagram', options: igOptions })).status, 403)
+  await q(`UPDATE channels SET twitch_id = $2 WHERE id = $1`, [channelId, realTwitchId])
+  // acces expire : reconnecter
+  await q(`UPDATE platform_connections SET expires_at = now() - interval '1 day' WHERE channel_id = $1 AND platform = 'instagram'`, [channelId])
+  assert.equal((await publish(reviewId, { platform: 'instagram', options: igOptions })).status, 409)
+  const igExpired = (await call(`/api/studio/channels/${channelId}/connections`, pub)).json.connections.find(c => c.platform === 'instagram')
+  assert.equal(igExpired.needsReconnect, true)
+  // jeton bientot a renouveler : renouvele a l'ouverture du studio, chiffre
+  await q(`UPDATE platform_connections SET expires_at = now() + interval '10 days' WHERE channel_id = $1 AND platform = 'instagram'`, [channelId])
+  const igBefore = (await q(`SELECT access_token_enc FROM platform_connections WHERE channel_id = $1 AND platform = 'instagram'`, [channelId]))[0].access_token_enc
+  const igRenewed = (await call(`/api/studio/channels/${channelId}/connections`, pub)).json.connections.find(c => c.platform === 'instagram')
+  assert.equal(igRenewed.needsReconnect, undefined)
+  const [igAfter] = await q(`SELECT access_token_enc, expires_at FROM platform_connections WHERE channel_id = $1 AND platform = 'instagram'`, [channelId])
+  assert.notEqual(igAfter.access_token_enc, igBefore)
+  assert.ok(new Date(igAfter.expires_at).getTime() > Date.now() + 50 * 86400_000)
+  assert.ok(igCalls.some(c => c.url === '/refresh_access_token' && c.query.grant_type === 'ig_refresh_token' && c.query.access_token === 'ig-long'))
+  const igPub = await publish(reviewId, { platform: 'instagram', options: igOptions })
+  assert.equal(igPub.status, 200)
+  const [igRow] = await q(`SELECT status, options FROM publications WHERE id = $1`, [igPub.json.id])
+  assert.equal(igRow.status, 'scheduled')
+  assert.deepEqual(igRow.options, { caption: 'Mon Reel #gta6' })
+  ok('publication Instagram : legende et clic obligatoires, pas de programmation, refusee pour une chaine de test, acces expire = reconnecter, jeton renouvele a l ouverture, reglages gardes sans le clic')
+
+  // lien video public pour Meta : propre a un clip, signe, 2 h ; HEAD et Range acceptes
+  const igKey = Buffer.from(env.CLIPPEAK_TOKEN_KEY, 'base64')
+  const igSecret = createHmac('sha256', igKey).update('clippeak-instagram-video').digest('hex')
+  const igToken = (id, exp) => `${exp}.${createHmac('sha256', igSecret).update(`igclip:${id}.${exp}`).digest('base64url')}`
+  const igExp = Date.now() + 3600_000
+  const igMedia = `/api/media/instagram/${reviewId}?t=${igToken(reviewId, igExp)}`
+  const igFull = await call(igMedia, { auth: false, raw: true })
+  assert.equal(igFull.status, 200)
+  assert.equal(igFull.headers.get('content-type'), 'video/mp4')
+  await igFull.arrayBuffer()
+  const igHead = await call(igMedia, { auth: false, raw: true, method: 'HEAD' })
+  assert.equal(igHead.status, 200)
+  assert.ok(Number(igHead.headers.get('content-length')) > 1000)
+  assert.equal((await call(igMedia, { auth: false, raw: true, headers: { range: 'bytes=0-99' } })).status, 206)
+  assert.equal((await call(`/api/media/instagram/${reviewId}`, { auth: false, raw: true })).status, 403)
+  assert.equal((await call(`/api/media/instagram/${reviewId}?t=${igToken(reviewId, igExp).replace(/.$/, 'x')}`, { auth: false, raw: true })).status, 403)
+  assert.equal((await call(`/api/media/instagram/${queuedId}?t=${igToken(reviewId, igExp)}`, { auth: false, raw: true })).status, 403)
+  assert.equal((await call(`/api/media/instagram/${reviewId}?t=${igToken(reviewId, Date.now() - 1000)}`, { auth: false, raw: true })).status, 403)
+  ok('lien video Instagram : public mais signe, propre a un clip, expire, HEAD / Range')
+
+  // rappels de Meta : signes avec le secret de l'application, sinon refuses ; la suppression des donnees efface la connexion
+  const igSigned = (payload, secret = 'isec') => { const data = Buffer.from(JSON.stringify(payload)).toString('base64url'); return `${createHmac('sha256', secret).update(data).digest('base64url')}.${data}` }
+  const igHook = (path, signed) => fetch(B + path, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ signed_request: signed }) })
+  assert.equal((await igHook('/api/auth/instagram/deauthorize', igSigned({ user_id: '1020', algorithm: 'HMAC-SHA256' }, 'mauvais'))).status, 400)
+  assert.equal((await igHook('/api/auth/instagram/data-deletion', 'nimportequoi')).status, 400)
+  assert.equal((await q(`SELECT 1 FROM platform_connections WHERE channel_id = $1 AND platform = 'instagram'`, [channelId])).length, 1)
+  assert.equal((await igHook('/api/auth/instagram/deauthorize', igSigned({ user_id: '999', algorithm: 'HMAC-SHA256' }))).status, 200)
+  assert.equal((await q(`SELECT 1 FROM platform_connections WHERE channel_id = $1 AND platform = 'instagram'`, [channelId])).length, 1)
+  const igDel = await igHook('/api/auth/instagram/data-deletion', igSigned({ user_id: '1020', algorithm: 'HMAC-SHA256' }))
+  assert.equal(igDel.status, 200)
+  const igDelJson = await igDel.json()
+  assert.ok(igDelJson.url.startsWith('https://') && igDelJson.confirmation_code)
+  assert.equal((await q(`SELECT 1 FROM platform_connections WHERE channel_id = $1 AND platform = 'instagram'`, [channelId])).length, 0)
+  assert.equal((await q(`SELECT status FROM publications WHERE id = $1`, [igPub.json.id]))[0].status, 'cancelled')
+  ok('rappels de Meta : signature obligatoire, autre compte intact, suppression des donnees efface la connexion et annule la publication programmee, code de confirmation rendu')
+
+  // deconnexion par le streamer : le jeton est efface chez nous (Meta n'a pas de methode pour le revoquer)
+  const igGo2 = await fetch(B + '/api/auth/instagram', { redirect: 'manual', headers: { cookie: 'clippeak_session=jeton-pub' } })
+  const igState2 = new URL(igGo2.headers.get('location')).searchParams.get('state')
+  const igCookie2 = igGo2.headers.getSetCookie().find(c => c.startsWith('clippeak_oauth_ig=')).split(';')[0]
+  assert.equal((await igCb('i-code', igState2, `clippeak_session=jeton-pub; ${igCookie2}`)).headers.get('location'), '/studio?connect=instagram')
+  const igPub2 = await publish(reviewId, { platform: 'instagram', options: igOptions })
+  assert.equal(igPub2.status, 200)
+  assert.equal((await call(`/api/studio/channels/${channelId}/connections/instagram`, { ...pub, method: 'DELETE' })).status, 200)
+  assert.equal((await q(`SELECT 1 FROM platform_connections WHERE channel_id = $1`, [channelId])).length, 0)
+  assert.equal((await q(`SELECT status FROM publications WHERE id = $1`, [igPub2.json.id]))[0].status, 'cancelled')
+  ok('deconnexion Instagram : jeton efface chez nous, publication programmee annulee')
+
   // --- ajout manuel de VOD (admin) avec un faux Helix
   const addVod = (body, who = {}) => call('/api/admin/vods', { method: 'POST', body, ...who })
   const pubSession = as('jeton-pub')
@@ -1071,7 +1208,6 @@ try {
   ok('plafond mensuel : lecture par le streamer (sa chaine seulement), echecs non comptes, liste et reglage admin (validation, 404, chaine de test 409, jamais par un streamer), le reglage du streamer ne change pas le plafond')
 
   // --- facturation Stripe (faux Stripe) : offre visible seulement pour le streamer, paiement et portail, webhook signe, plafond selon l'offre
-  const { createHmac } = await import('node:crypto')
   const WH = 'whsec_test'
   const signed = (body, at = Date.now(), secret = WH) => { const t = Math.floor(at / 1000); return `t=${t},v1=${createHmac('sha256', secret).update(`${t}.${body}`).digest('hex')}` }
   const hook = (evt, headers) => fetch(B + '/api/stripe/webhook', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: typeof evt === 'string' ? evt : JSON.stringify(evt) })

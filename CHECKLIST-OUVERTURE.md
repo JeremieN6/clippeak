@@ -32,7 +32,7 @@ Légende : ✅ fait et vérifié · 🔧 je peux le faire (code ou réglage) · 
 - ⏳ **Réponses de Google et de YouTube** (par e-mail). Tant qu'elles ne sont pas là, les vidéos publiées restent **privées** et la publication n'est pas utilisable par d'autres.
 - 👤 À la réponse : me la transmettre, puis renvoyer un clip de test pour vérifier qu'il sort en public. Pense aussi à déconnecter puis reconnecter YouTube sur jeremfut7.
 - 👤 **TikTok** : procédure complète dans `PROCEDURE-TIKTOK.md` (créer l'application, la faire approuver, l'auditer). Le code de publication TikTok n'est pas écrit : on le fait une fois l'application créée.
-- ⏳ Instagram : accès à obtenir chez Meta (voir `ACCES-API-PLATEFORMES.md`), pas bloquant pour l'ouverture.
+- 👤 **Instagram (Reels)** : code écrit le 2026-11-15, PAS ENCORE essayé contre le vrai Meta. Procédure et dossier de validation dans `PROCEDURE-INSTAGRAM.md` : lancer tout de suite la vérification de l'entreprise chez Meta (étape la plus longue), puis tester en mode Développement, puis déposer la revue. Identifiants : `cd /srv/saas/clippeak && bash scripts/ops/vps-instagram.sh` (sur le VPS).
 
 ## 5. Exploitation
 - ✅ Serveur en bonne santé (voir mesures), certificat HTTPS valide jusqu'au 2027-01-29 avec renouvellement automatique, déploiement continu avec garde-fou des migrations, sauvegardes chiffrées (fichiers + base) avec copie sur Mega, essai de restauration réussi.

@@ -353,6 +353,8 @@ model PlatformConnection {
   channelId       String    @map("channel_id") @db.Uuid
   platform        String    @db.VarChar(12)
   accountName     String?   @map("account_name") @db.VarChar(120)
+  // Identifiant du compte chez la plateforme (Instagram : identifiant du compte professionnel).
+  externalId      String?   @map("external_id") @db.VarChar(40)
   accessTokenEnc  String    @map("access_token_enc")
   refreshTokenEnc String?   @map("refresh_token_enc")
   expiresAt       DateTime? @map("expires_at")
