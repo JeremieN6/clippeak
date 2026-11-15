@@ -26,7 +26,9 @@ export const REQUIRED_SCHEMA = [
   { table: 'platform_connections', column: 'refresh_token_enc' },
   { table: 'vods', column: 'sources_saved_at' },
   { table: 'streamer_settings', column: 'monthly_clip_quota' },
-  { table: 'channel_billing', column: 'status' }
+  { table: 'channel_billing', column: 'status' },
+  { table: 'clip_jobs', column: 'render_started_at' },
+  { table: 'ops_samples', column: 'at' }
 ]
 
 export function commandWorks(command: string, args: string[]): boolean {
