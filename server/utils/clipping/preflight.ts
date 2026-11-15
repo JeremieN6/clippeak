@@ -22,6 +22,8 @@ export const REQUIRED_SCHEMA = [
   { table: 'reference_clips', column: 'view_count' },
   { table: 'reference_items', column: 'analysis' },
   { table: 'vods', column: 'scan_sec' },
+  { table: 'vod_transcripts', column: 'segments' },
+  { table: 'streamer_settings', column: 'detection_mode' },
   { table: 'publications', column: 'scheduled_at' },
   { table: 'platform_connections', column: 'refresh_token_enc' },
   { table: 'vods', column: 'sources_saved_at' },

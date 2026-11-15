@@ -10,7 +10,8 @@ const settingsSchema = z.object({
   clipMaxSec: z.number().int().min(15).max(180),
   subtitles: z.boolean(),
   accentColor: hex,
-  highlightColor: hex
+  highlightColor: hex,
+  detectionMode: z.enum(['both', 'content', 'chat']).default('both')
 }).refine(s => s.clipMaxSec >= s.clipMinSec, { message: 'La duree maximale doit etre superieure a la duree minimale', path: ['clipMaxSec'] })
 
 export default defineEventHandler(async (event) => {

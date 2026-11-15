@@ -9,6 +9,8 @@ import { createPrismaPublishStore } from '../../server/utils/clipping/prismaPubl
 import { createPrismaMarkerStore } from '../../server/utils/clipping/prismaMarkerStore'
 import { scanMarkers } from '../../server/utils/clipping/markerScan'
 import { createPrismaLongAnalysisStore } from '../../server/utils/clipping/prismaLongAnalysisStore'
+import { toAnalyzedMoment } from '../../server/utils/clipping/contentDetection'
+import { createContentStore, monthlyDetectionUsageSec } from '../../server/utils/clipping/prismaContentStore'
 
 // Meme requete que server/worker/index.ts (missingSchema).
 async function missingSchemaCheck(db: any): Promise<string[]> {
@@ -356,6 +358,81 @@ async function main() {
   assert.deepEqual([laFailed.status, laFailed.error], ['impossible', 'VOD privée'])
   assert.equal(await laStore.next(), null)
   log('analyse d un live : file, duree du live, transcription gardee par tranches, propositions remplacees a la relance (ignorees et a la main gardees), cloche, echec')
+
+  // 7b. Detection par le contenu : lives a lire, transcription partagee, plafond d'heures, reglage de detection, reprise par l'analyse longue
+  const cStore = createContentStore(prisma as any)
+  const cChannel = await prisma.channel.create({ data: { twitchId: '777001', login: 'petitstreamer', displayName: 'PetitStreamer', settings: { create: {} } } })
+  const cStart = new Date(Date.now() - 4 * 3600_000)
+  const cVod = await prisma.vod.create({ data: { channelId: cChannel.id, twitchVodId: '999701', url: 'https://twitch.tv/videos/999701', status: 'done', startedAt: cStart, endedAt: new Date(cStart.getTime() + 3 * 3600_000) } })
+  const mine = async () => (await cStore.targets()).find(t => t.vodId === cVod.id)
+  const cFirst = (await mine())!
+  assert.deepEqual([cFirst.mode, cFirst.transcribedSec, cFirst.detectedSec, cFirst.secLeft, cFirst.live], ['both', 0, 0, 36000, false])
+  assert.equal(Math.round(cFirst.durationSec!), 3 * 3600)
+  assert.equal(await prisma.vodTranscript.count({ where: { vodId: cVod.id } }), 0)
+
+  await cStore.appendSlice(cFirst, { startSec: 0, endSec: 300, audioSec: 300, workSec: 4, provider: 'groq' }, [{ start: 10, end: 20, text: 'bonjour', words: [{ start: 10, end: 11, text: 'bonjour' }] }, { start: 280, end: 295, text: 'coupee' }])
+  // La tranche suivante recule de 30 s : la phrase coupee a la jonction est remplacee par sa version complete.
+  await cStore.appendSlice(cFirst, { startSec: 270, endSec: 570, audioSec: 300, workSec: 5, provider: 'local' }, [{ start: 280, end: 300, text: 'phrase complete', words: [{ start: 280, end: 281, text: 'phrase' }] }, { start: 400, end: 410, text: 'la suite' }])
+  assert.deepEqual((await cStore.segments(cVod.id)).map(sg => sg.text), ['bonjour', 'phrase complete', 'la suite'])
+  assert.equal((await cStore.segments(cVod.id))[1]!.words![0]!.text, 'phrase')
+  const row = await prisma.vodTranscript.findUniqueOrThrow({ where: { vodId: cVod.id } })
+  assert.deepEqual([row.transcribedSec, row.audioSec, row.workSec, row.provider], [570, 600, 9, 'local'])
+  assert.equal((await mine())!.transcribedSec, 570)
+  assert.equal(await monthlyDetectionUsageSec(prisma as any, cChannel.id), 600)
+  assert.equal((await mine())!.secLeft, 36000 - 600)
+
+  // Plafond d'heures atteint : on ne transcrit plus (secLeft = 0) mais le deja transcrit reste a lire.
+  await prisma.vodTranscript.update({ where: { vodId: cVod.id }, data: { audioSec: 36000 } })
+  assert.equal((await mine())!.secLeft, 0)
+  // Le mois precedent ne compte pas.
+  await prisma.vodTranscript.update({ where: { vodId: cVod.id }, data: { createdAt: new Date(Date.UTC(2020, 0, 5)) } })
+  assert.equal((await mine())!.secLeft, 36000)
+  await prisma.vodTranscript.update({ where: { vodId: cVod.id }, data: { audioSec: 600 } })
+
+  // Reglage « Chat seul » : plus de lecture du contenu. « Contenu seul » : lue.
+  await prisma.streamerSettings.update({ where: { channelId: cChannel.id }, data: { detectionMode: 'chat' } })
+  assert.equal(await mine(), undefined)
+  await prisma.streamerSettings.update({ where: { channelId: cChannel.id }, data: { detectionMode: 'content' } })
+  assert.equal((await mine())!.mode, 'content')
+  // Plafond mensuel de clips atteint : pas de lecture.
+  await prisma.streamerSettings.update({ where: { channelId: cChannel.id }, data: { monthlyClipQuota: 0 } })
+  assert.equal(await mine(), undefined)
+  await prisma.streamerSettings.update({ where: { channelId: cChannel.id }, data: { monthlyClipQuota: 20 } })
+  await cStore.markDetected(cVod.id, 570)
+  assert.equal((await mine())!.detectedSec, 570)
+
+  // Un live SANS chat actif : le moment trouve par le contenu entre dans le pipeline habituel (moment valide + clip en file pour le rendu vertical).
+  const spoken = await cStore.segments(cVod.id)
+  const contentMoment = toAnalyzedMoment({ startSec: 280, endSec: 330, hook: 'phrase complete', title: 'Une histoire', category: 'histoire', kind: 'story', score: 8, why: 'Bonne chute.' }, [...spoken, { start: 300, end: 330, text: 'et voila la chute', words: [{ start: 300, end: 301, text: 'et' }] }])
+  const savedContent = await store.saveAnalysis(cVod.id, [contentMoment], 4)
+  assert.deepEqual(savedContent, { moments: 1, queued: 1 })
+  const contentRow = await prisma.moment.findFirstOrThrow({ where: { vodId: cVod.id }, include: { jobs: true } })
+  assert.deepEqual([contentRow.status, contentRow.aiScore, contentRow.peakSec, contentRow.jobs.length, contentRow.jobs[0]!.status, contentRow.jobs[0]!.batch !== null], ['validated', 8, 328, 1, 'queued', true])
+  assert.match(contentRow.rationale ?? '', /^detecte par le contenu du live/)
+  assert.equal((await store.existingPeaks(cVod.id)).includes(328), true) // le chat ne refera pas ce moment
+
+  // L'analyse d'un live long reprend la transcription deja faite au lieu de la refaire.
+  const cLong = await prisma.longAnalysis.create({ data: { channelId: cChannel.id, vodId: cVod.id } })
+  const seeded = (await laStore.next())!
+  assert.equal(seeded.id, cLong.id)
+  assert.equal(seeded.transcribedSec, 570)
+  assert.deepEqual(seeded.transcript.map(x => x.t), ['bonjour', 'phrase complete', 'la suite'])
+  assert.equal((await prisma.longAnalysis.findUniqueOrThrow({ where: { id: cLong.id } })).transcribedSec, 570)
+  await prisma.longAnalysis.update({ where: { id: cLong.id }, data: { status: 'done' } })
+
+  await cStore.markDone(cVod.id)
+  assert.equal(await mine(), undefined)
+
+  // La prise en charge d'une VOD terminee transmet le reglage de detection (« Contenu seul » : le chat ne cherche pas de moments).
+  const modeChannel = await prisma.channel.create({ data: { twitchId: '777002', login: 'contenuseul', displayName: 'ContenuSeul', settings: { create: { detectionMode: 'content' } } } })
+  const modeVod = await prisma.vod.create({ data: { channelId: modeChannel.id, twitchVodId: '999702', url: 'https://twitch.tv/videos/999702', status: 'ended' } })
+  let claimedMode = await store.claimVodToAnalyze()
+  // D'autres VODs terminees des essais precedents peuvent passer avant : on les prend jusqu'a trouver la bonne.
+  for (let i = 0; claimedMode && claimedMode.id !== modeVod.id && i < 10; i++) claimedMode = await store.claimVodToAnalyze()
+  assert.deepEqual([claimedMode?.id, claimedMode?.detectionMode], [modeVod.id, 'content'])
+  await prisma.channel.deleteMany({ where: { id: { in: [cChannel.id, modeChannel.id] } } })
+  assert.equal(await prisma.vodTranscript.count(), 0)
+  log('detection par le contenu : lives a lire, transcription partagee (jonction remplacee), heures par mois, plafonds, reglage de detection, reprise par l analyse longue')
 
   // 8. Preflight : sur une base migree, plus rien ne manque
   assert.deepEqual(await missingSchemaCheck(prisma), [])

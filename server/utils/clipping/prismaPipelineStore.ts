@@ -9,6 +9,8 @@ import { channelClipRoom } from './prismaQuota'
 import { tagsFromFilename } from './illustrations'
 import type { JobContext, JobResult } from './clipJobPipeline'
 import type { AnalyzedMoment } from './vodAnalysis'
+import { parseDetectionMode } from './contentDetection'
+import type { DetectionMode } from './contentDetection'
 import type { TranscriptSegment } from './whisperTranscribe'
 import type { IllustrationItem } from './illustrations'
 import type { ReferenceClip } from './referenceClips'
@@ -22,6 +24,7 @@ export interface VodToAnalyze {
   channelName: string
   keywords: string[]
   startedAt: Date | null
+  detectionMode: DetectionMode
 }
 
 export interface ScanTarget {
@@ -162,7 +165,8 @@ export function createPipelineStore(db: Db) {
         channelId: candidate.channelId,
         channelName: candidate.channel.displayName,
         keywords: candidate.channel.settings?.keywords ?? [],
-        startedAt: candidate.startedAt
+        startedAt: candidate.startedAt,
+        detectionMode: parseDetectionMode(candidate.channel.settings?.detectionMode)
       }
     },
 
@@ -182,7 +186,8 @@ export function createPipelineStore(db: Db) {
         channelId: row.channelId,
         channelName: row.channel.displayName,
         keywords: row.channel.settings?.keywords ?? [],
-        startedAt: row.startedAt
+        startedAt: row.startedAt,
+        detectionMode: parseDetectionMode(row.channel.settings?.detectionMode)
       }))
     },
 

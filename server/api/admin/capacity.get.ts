@@ -10,7 +10,7 @@ const BUCKET_MS = 15 * 60_000
 export default defineEventHandler(async (event) => {
   requireStudioAdmin(event)
   const now = Date.now()
-  const [latest, recent, renders, analysis, share] = await Promise.all([
+  const [latest, recent, renders, analysis, share, detection] = await Promise.all([
     prisma.opsSample.findFirst({ orderBy: { at: 'desc' } }),
     prisma.opsSample.findMany({ where: { at: { gte: new Date(now - 24 * 3600_000) } }, orderBy: { at: 'asc' }, select: { at: true, load1: true, cores: true }, take: 2000 }),
     prisma.$queryRaw<Array<{ render_sec: number, wait_sec: number }>>`
@@ -20,7 +20,13 @@ export default defineEventHandler(async (event) => {
       SELECT count(*)::int AS n, coalesce(sum("transcribed_sec"), 0)::float AS audio_sec, coalesce(sum(extract(epoch FROM ("finished_at" - "started_at"))), 0)::float AS work_sec
       FROM "public"."long_analyses" WHERE "status" = 'done' AND "started_at" IS NOT NULL AND "finished_at" > now() - interval '30 days'`,
     prisma.$queryRaw<Array<{ n: number, hot: number }>>`
-      SELECT count(*)::int AS n, count(*) FILTER (WHERE "load1" > 1.5 * "cores")::int AS hot FROM "public"."ops_samples" WHERE "at" > now() - interval '7 days'`
+      SELECT count(*)::int AS n, count(*) FILTER (WHERE "load1" > 1.5 * "cores")::int AS hot FROM "public"."ops_samples" WHERE "at" > now() - interval '7 days'`,
+    // Detection des clips par le contenu : audio transcrit, temps de calcul (Groq ou Whisper local), lives en cours de lecture.
+    prisma.$queryRaw<Array<{ n: number, running: number, audio_sec: number, work_sec: number, local_n: number }>>`
+      SELECT count(*)::int AS n, count(*) FILTER (WHERE "done_at" IS NULL)::int AS running,
+             coalesce(sum("audio_sec"), 0)::float AS audio_sec, coalesce(sum("work_sec"), 0)::float AS work_sec,
+             count(*) FILTER (WHERE "provider" = 'local')::int AS local_n
+      FROM "public"."vod_transcripts" WHERE "created_at" > now() - interval '30 days'`
   ])
 
   // Courbe : une valeur par quart d'heure (la charge la plus haute du quart d'heure, c'est elle qui fait ralentir).
@@ -46,6 +52,7 @@ export default defineEventHandler(async (event) => {
     render: { n: render.n, medianSec: render.median, p90Sec: render.p90, maxSec: render.max, perDay: Math.round(render.n / 7 * 10) / 10 },
     wait: { n: wait.n, medianSec: wait.median, p90Sec: wait.p90, maxSec: wait.max },
     analysis: { n: a?.n ?? 0, audioSec: a?.audio_sec ?? 0, workSec: a?.work_sec ?? 0, speed: a && a.work_sec > 0 ? Math.round(a.audio_sec / a.work_sec * 100) / 100 : null },
+    detection: { lives: detection[0]?.n ?? 0, running: detection[0]?.running ?? 0, audioSec: detection[0]?.audio_sec ?? 0, workSec: detection[0]?.work_sec ?? 0, localLives: detection[0]?.local_n ?? 0, speed: detection[0] && detection[0].work_sec > 0 ? Math.round(detection[0].audio_sec / detection[0].work_sec * 10) / 10 : null },
     samples7d,
     saturatedShare,
     recommendation: recommendation({ verdict, saturatedShare, waitP90Sec: wait.p90, samples: samples7d }),

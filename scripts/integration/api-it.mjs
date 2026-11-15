@@ -163,6 +163,15 @@ try {
   assert.equal((await put({ ...settings, clipMaxSec: 10 })).status, 400)
   assert.equal((await put({ ...settings, highlightColor: 'rouge' })).status, 400)
   assert.equal((await put({ ...settings, keywords: [] })).status, 400)
+  // Reglage de detection : « contenu + chat » par defaut, trois valeurs permises, jamais autre chose.
+  assert.equal(after.json.settings.detectionMode, 'both')
+  assert.equal((await put({ ...settings, detectionMode: 'content' })).status, 200)
+  assert.equal((await call(`/api/studio/channels/${channelId}`)).json.settings.detectionMode, 'content')
+  assert.equal((await put({ ...settings, detectionMode: 'chat' })).status, 200)
+  assert.equal((await call(`/api/studio/channels/${channelId}`)).json.settings.detectionMode, 'chat')
+  assert.equal((await put({ ...settings, detectionMode: 'au-hasard' })).status, 400)
+  assert.equal((await put(settings)).status, 200) // sans le champ : retour a « contenu + chat »
+  assert.equal((await call(`/api/studio/channels/${channelId}`)).json.settings.detectionMode, 'both')
   ok('reglages : enregistres (mots-cles dedoublonnes), durees et couleurs invalides refusees')
 
   const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4E, 0x47]), Buffer.alloc(64)])
@@ -1084,6 +1093,10 @@ try {
   assert.deepEqual([okCap.latest.load1, okCap.latest.cores, okCap.latest.verdict, okCap.silent], [0.5, 2, 'ok', false])
   assert.deepEqual([okCap.render.n, Math.round(okCap.render.medianSec), Math.round(okCap.wait.medianSec)], [1, 120, 300]) // 2 min de rendu, 5 min d'attente
   assert.ok(okCap.series.length >= 1)
+  assert.deepEqual([okCap.detection.lives, okCap.detection.running, okCap.detection.speed], [0, 0, null]) // aucun live lu : rien d'invente
+  await q(`INSERT INTO vod_transcripts (vod_id, channel_id, transcribed_sec, audio_sec, work_sec, provider, updated_at) VALUES ($1, $2, 3600, 3600, 36, 'groq', now())`, [capVod, capChannel])
+  const detCap = (await call('/api/admin/capacity')).json.detection
+  assert.deepEqual([detCap.lives, detCap.running, detCap.audioSec, detCap.workSec, detCap.localLives, detCap.speed], [1, 1, 3600, 36, 0, 100]) // 1 h d'audio en 36 s (service externe)
   assert.match(okCap.recommendation, /Rien à faire/)
   await q(`INSERT INTO ops_samples (at, load1, load5, cores, mem_total_mb, mem_free_mb, clips_queued, oldest_wait_sec) VALUES (now() + interval '1 second', 5.0, 4.0, 2, 8000, 5000, 3, 1500)`)
   const hotCap = (await call('/api/admin/capacity')).json

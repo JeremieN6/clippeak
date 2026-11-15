@@ -39,6 +39,8 @@ mkdir -p /srv/saas/clippeak-data
 ```
 # Clips de reference (liens YouTube / TikTok / Instagram) : yt-dlp dans le meme venv, mis a jour regulierement (les sites changent)
 # .venv/bin/pip install -U yt-dlp   puis YTDLP_BIN=/srv/saas/clippeak/.venv/bin/yt-dlp
+GROQ_API_KEY=               # transcription externe (Groq, whisper-large-v3-turbo) pour la detection par le contenu ; absente = Whisper local (4x le temps reel : tres lourd)
+WORKER_CONTENT_DETECTION=1  # 0 = couper la detection par le contenu (reprend alors le balayage par ressemblance ci-dessous)
 WORKER_SIMILARITY_SCAN=1     # 0 = ne pas balayer la parole des lives/VODs a la recherche de clips ressemblant aux references dans .env.local
 Si le site est derriere nginx, autoriser les depots jusqu'a 60 Mo (`client_max_body_size 64m;`) pour les videos d'illustration.
 

@@ -1,9 +1,10 @@
 import type { PrismaClient } from '@prisma/client'
 import { clampLongMax } from './longExtract.ts'
+import { compactSegments } from './longAnalysis.ts'
 import type { Seg } from './longAnalysis.ts'
 import type { AnalysisJob, AnalysisStore } from './longAnalysisRun.ts'
 
-type Db = Pick<PrismaClient, 'longAnalysis' | 'longProposal' | 'notification' | '$transaction'>
+type Db = Pick<PrismaClient, 'longAnalysis' | 'longProposal' | 'notification' | 'vodTranscript' | '$transaction'>
 
 const seconds = (a: Date | null, b: Date | null) => a && b ? Math.max(0, (b.getTime() - a.getTime()) / 1000) : null
 
@@ -17,13 +18,22 @@ export function createPrismaLongAnalysisStore(db: Db, options: { skip?: () => st
         include: { vod: { select: { twitchVodId: true, title: true, startedAt: true, endedAt: true } }, channel: { select: { settings: { select: { longExtractMaxSec: true, longExtractVerified: true } } } } }
       })
       if (!row) return null
+      // Le live a deja ete transcrit par la detection des clips : on reprend cette transcription au lieu de la refaire (la plus lourde des taches).
+      let transcript = Array.isArray(row.transcript) ? row.transcript as unknown as Seg[] : []
+      let transcribedSec = row.transcribedSec
+      const shared = transcribedSec <= 0 ? await db.vodTranscript.findUnique({ where: { vodId: row.vodId }, select: { segments: true, transcribedSec: true } }) : null
+      if (shared && shared.transcribedSec > 60 && Array.isArray(shared.segments)) {
+        transcript = compactSegments(shared.segments as any)
+        transcribedSec = shared.transcribedSec
+        await db.longAnalysis.update({ where: { id: row.id }, data: { transcript: transcript as any, transcribedSec } })
+      }
       const taken = await db.longProposal.findMany({ where: { vodId: row.vodId, NOT: { AND: [{ origin: 'analysis' }, { status: 'proposed' }] } }, select: { startSec: true, endSec: true } })
       const settings = row.channel.settings
       return {
         id: row.id, vodId: row.vodId, channelId: row.channelId, twitchVodId: row.vod.twitchVodId, vodTitle: row.vod.title, status: row.status,
-        transcribedSec: row.transcribedSec,
+        transcribedSec,
         durationSec: row.durationSec ?? seconds(row.vod.startedAt, row.vod.endedAt),
-        transcript: Array.isArray(row.transcript) ? row.transcript as unknown as Seg[] : [],
+        transcript,
         maxSec: clampLongMax(settings?.longExtractMaxSec ?? 600, settings?.longExtractVerified ?? false),
         taken
       } satisfies AnalysisJob

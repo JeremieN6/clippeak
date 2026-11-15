@@ -3,6 +3,11 @@ const studio = useStudio()
 const detail = studio.detail
 const invalid = computed(() => detail.value?.settings && detail.value.settings.clipMinSec >= detail.value.settings.clipMaxSec)
 const lo = computed(() => Math.min(detail.value?.settings.clipMinSec ?? 0, detail.value?.settings.clipMaxSec ?? 0))
+const modes = [
+  { id: 'both', label: 'Contenu + chat', text: 'Recommandé. Clippeak écoute ton live et choisit les moments forts. Quand ton chat réagit au même moment, la note monte.' },
+  { id: 'content', label: 'Contenu seul', text: 'Clippeak n’écoute que ce que tu dis. Pratique si ton chat est petit ou presque vide.' },
+  { id: 'chat', label: 'Chat seul', text: 'Clippeak ne regarde que les moments où ton chat s’emballe. Rien n’est écouté ni transcrit.' }
+] as const
 const hi = computed(() => Math.max(detail.value?.settings.clipMinSec ?? 0, detail.value?.settings.clipMaxSec ?? 0))
 defineExpose({ invalid })
 </script>
@@ -10,10 +15,21 @@ defineExpose({ invalid })
 <template>
   <div v-if="detail?.settings" class="flex max-w-[820px] flex-col gap-6">
     <StudioStepHeader :n="6" tag="Conseillé" title="Repérer tes bons moments">
-      Clippeak cherche d’abord ce qui ressemble à tes clips, puis les moments où ton chat s’emballe.
+      Clippeak écoute ton live pour trouver les moments qui marcheraient en vidéo verticale, en s’inspirant de tes clips de référence. Ton chat sert de bonus.
     </StudioStepHeader>
 
     <section class="st-card flex flex-col gap-3">
+      <h2 class="m-0 text-[17px] font-bold" id="st-detection-title">Comment repérer les moments</h2>
+      <div class="flex flex-col gap-2" role="radiogroup" aria-labelledby="st-detection-title">
+        <label v-for="mode in modes" :key="mode.id" class="flex cursor-pointer items-start gap-3 rounded-lg border border-st-border p-3" :class="detail.settings.detectionMode === mode.id ? 'border-st-accent' : ''">
+          <input v-model="detail.settings.detectionMode" type="radio" name="st-detection" :value="mode.id" class="mt-1">
+          <span class="flex flex-col gap-0.5"><span class="st-label">{{ mode.label }}</span><span class="text-xs text-st-dim">{{ mode.text }}</span></span>
+        </label>
+      </div>
+      <div class="st-hint">L’écoute de ton live est comprise dans ton offre, y compris en gratuit (dans la limite de 10 heures de live par mois). Le son du live public est envoyé à un service de transcription : voir la politique de confidentialité.</div>
+    </section>
+
+    <section v-if="detail.settings.detectionMode !== 'content'" class="st-card flex flex-col gap-3">
       <h2 class="m-0 text-[17px] font-bold"><label for="st-chatwords">Mots que ton chat écrit quand il réagit</label></h2>
       <div class="st-hint">Quand beaucoup de ces mots arrivent d’un coup, ou beaucoup de messages en MAJUSCULES, Clippeak regarde ce moment. Exemple : mdr, omg, kekw.</div>
       <StudioChips v-model="detail.settings.keywords" input-id="st-chatwords" />
