@@ -179,10 +179,6 @@ const selectClass = 'st-field !min-h-11 !w-full'
           <span v-if="!longSeen && !collapsed" class="st-badge st-badge-violet">Nouveau</span>
           <span v-if="!longSeen && collapsed" class="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-st-accentLight" aria-hidden="true" />
         </button>
-        <button type="button" class="st-nav-item !min-h-12 text-[15px] font-semibold" :class="collapsed ? '!w-12 !justify-center !px-0' : ''" aria-label="Parrainage" @click="studio.view.value = 'referral'">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="flex-none"><path d="M20 12v8H4v-8M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" /></svg>
-          <span v-if="!collapsed">Parrainage</span>
-        </button>
       </div>
       <button type="button" class="st-btn-ghost w-full lg:hidden" :aria-expanded="navOpen" aria-controls="st-settings" @click="navOpen = !navOpen">{{ navOpen ? 'Masquer mes réglages' : 'Mes réglages' }}</button>
       <button v-if="collapsed" type="button" class="st-nav-item relative hidden !min-h-12 !w-12 !justify-center !px-0 lg:flex" :aria-label="todoCount ? `Mes réglages, ${todoCount} à revoir` : 'Mes réglages, tout est réglé'" @click="collapsed = false">

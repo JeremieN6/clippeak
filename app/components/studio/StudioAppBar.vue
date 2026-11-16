@@ -102,7 +102,7 @@ async function logout() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5" /><path d="M10 9.5v5l4.5-2.5z" /></svg>
             Extraits longs
           </button>
-          <button v-if="view !== 'referral'" type="button" role="menuitem" class="st-menu-item sm:hidden" @click="go('referral')">
+          <button v-if="view !== 'referral'" type="button" role="menuitem" class="st-menu-item" @click="go('referral')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12v8H4v-8M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" /></svg>
             Parrainage
           </button>
