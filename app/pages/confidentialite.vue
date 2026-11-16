@@ -39,6 +39,7 @@ useHead({ title: 'Politique de confidentialité – Clippeak' })
       <li><strong>Twitch :</strong> connexion et lecture des données publiques de ta chaîne.</li>
       <li><strong>Hébergement :</strong> base de données (Neon) et serveur privé virtuel pour le calcul et le stockage des fichiers.</li>
       <li><strong>API Claude (Anthropic) :</strong> lorsque cette option est activée, des extraits de transcription et des images de tes clips peuvent être envoyés pour aider à noter les moments et analyser tes références.</li>
+      <li><strong>Transcription (Groq) :</strong> pour repérer les bons moments de ton live, le son de tes lives publics est envoyé par tranches de 5 minutes à Groq, qui le transforme en texte. Si tu choisis « Chat seul » dans l’étape « Repérer tes bons moments », aucun son n’est envoyé. La transcription est conservée sur nos serveurs pour te proposer des clips, puis supprimée avec ton compte.</li>
       <li><strong>YouTube, TikTok et Instagram :</strong> publication de tes clips approuvés, si tu connectes ces comptes (voir plus bas).</li>
       <li><strong>PostHog :</strong> mesure d’audience du site public.</li>
       <li><strong>Stripe :</strong> paiement de l’offre payante, si tu t’abonnes. Ta carte est saisie chez Stripe : Clippeak ne la voit jamais et ne garde que l’identifiant client Stripe, l’état de ton abonnement et sa date d’échéance. À la suppression de ton compte, ton abonnement est annulé ; Stripe conserve ses propres données de facturation selon ses obligations légales.</li>

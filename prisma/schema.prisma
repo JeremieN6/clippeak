@@ -79,6 +79,7 @@ model Channel {
   notifications  Notification[]
   longProposals  LongProposal[]
   longAnalyses   LongAnalysis[]
+  vodTranscripts VodTranscript[]
   billing        ChannelBilling?
 
   @@map("channels")
@@ -96,6 +97,8 @@ model StreamerSettings {
   // Plafond de clips produits par mois (defaut 20, null = illimite, reglable par l'admin). Chaines de demo et de test : jamais plafonnees.
   monthlyClipQuota    Int?     @default(20) @map("monthly_clip_quota")
   // Extraits longs YouTube (16:9, plusieurs minutes, choisis par le streamer) : desactives par defaut, duree maximale en secondes.
+  // Detection des clips : "both" (contenu + chat), "content" (contenu seul) ou "chat" (chat seul).
+  detectionMode       String   @default("both") @map("detection_mode") @db.VarChar(10)
   longExtracts        Boolean  @default(false) @map("long_extracts")
   longExtractMaxSec   Int      @default(600) @map("long_extract_max_sec")
   // Le streamer confirme que sa chaine YouTube est verifiee (telephone) : extraits de plus de 15 minutes possibles.
@@ -138,6 +141,7 @@ model Vod {
   moments       Moment[]
   longProposals LongProposal[]
   longAnalysis  LongAnalysis?
+  transcript    VodTranscript?
 
   @@index([channelId])
   @@map("vods")
@@ -551,4 +555,28 @@ model OpsSample {
 
   @@index([at])
   @@map("ops_samples")
+}
+
+// Transcription d'un live, gardee UNE fois et partagee (detection par le contenu, analyse des extraits longs). `segments` : phrases avec leurs
+// mots (temps de VOD). `audioSec` compte l'audio transcrit (plafond mensuel en gratuit), `workSec` le temps de calcul (onglet Capacite).
+model VodTranscript {
+  id             String    @id @default(uuid()) @db.Uuid
+  vodId          String    @unique @map("vod_id") @db.Uuid
+  channelId      String    @map("channel_id") @db.Uuid
+  segments       Json      @default("[]")
+  transcribedSec Float     @default(0) @map("transcribed_sec")
+  detectedSec    Float     @default(0) @map("detected_sec")
+  audioSec       Float     @default(0) @map("audio_sec")
+  workSec        Float     @default(0) @map("work_sec")
+  provider       String?   @db.VarChar(12)
+  error          String?
+  doneAt         DateTime? @map("done_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  vod     Vod     @relation(fields: [vodId], references: [id], onDelete: Cascade)
+
+  @@index([channelId, createdAt])
+  @@map("vod_transcripts")
 }

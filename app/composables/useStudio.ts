@@ -256,7 +256,7 @@ export function createStudio() {
     const r = detail.value.settings
     await api(`/api/studio/channels/${channelId.value}/settings`, {
       method: 'PUT',
-      body: { keywords: r.keywords, clipMinSec: r.clipMinSec, clipMaxSec: r.clipMaxSec, subtitles: detail.value.style.subtitles.enabled, accentColor: r.accentColor, highlightColor: r.highlightColor }
+      body: { keywords: r.keywords, clipMinSec: r.clipMinSec, clipMaxSec: r.clipMaxSec, subtitles: detail.value.style.subtitles.enabled, accentColor: r.accentColor, highlightColor: r.highlightColor, detectionMode: r.detectionMode ?? 'both' }
     })
   }
 
