@@ -26,7 +26,7 @@ setvars() {
   local pattern="^($(printf '%s|' "$@" | sed 's/|$//' | sed 's/=[^|]*//g'))="
   grep -vE "$pattern" "$file" > "$tmp" || true
   { cat "$tmp"; printf '%s\n' "$@"; } > "$file"
-  rm -f "$tmp"; chmod 600 "$file"
+  rm -f "$tmp"  # on ecrit DANS le fichier : droits et proprietaire restent ceux d'origine (le worker doit pouvoir lire worker.env)
 }
 setvars "$ENVFILE" "INSTAGRAM_APP_ID=$ID" "INSTAGRAM_APP_SECRET=$SECRET" "INSTAGRAM_CONFIG_ID=$CONFIG"
 grep -q '^CLIPPEAK_PUBLIC_URL=' "$ENVFILE" || printf '%s\n' "CLIPPEAK_PUBLIC_URL=$PUBLIC_URL" >> "$ENVFILE"
@@ -37,6 +37,8 @@ WORKERENV=/etc/clippeak/worker.env
 if [ -f "$WORKERENV" ]; then
   setvars "$WORKERENV" "INSTAGRAM_APP_ID=$ID" "INSTAGRAM_APP_SECRET=$SECRET" "INSTAGRAM_CONFIG_ID=$CONFIG"
   grep -q '^CLIPPEAK_PUBLIC_URL=' "$WORKERENV" || printf '%s\n' "CLIPPEAK_PUBLIC_URL=$PUBLIC_URL" >> "$WORKERENV"
+  # le worker tourne sous l'utilisateur `clippeak` : root:clippeak 640 (voir DEPLOIEMENT-WORKER.md), jamais 600 sinon il ne demarre plus
+  chown root:clippeak "$WORKERENV" && chmod 640 "$WORKERENV"
   echo "Identifiants aussi poses pour le worker."
 fi
 pm2 reload clippeak --update-env >/dev/null 2>&1 && echo "Site recharge." || echo "Site non recharge : relance-le a la main."
