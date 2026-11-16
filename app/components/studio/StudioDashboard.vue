@@ -298,7 +298,7 @@ const selectClass = 'st-field !min-h-11 !w-full'
           <div class="flex flex-col gap-1.5"><label for="f-cat" class="text-[13px] font-bold text-st-dim">Catégorie</label>
             <select id="f-cat" v-model="filters.cat" :class="selectClass"><option value="all">Toutes</option><option v-for="c in categories" :key="c" :value="c">{{ c }}</option></select></div>
           <div class="flex flex-col gap-1.5"><label for="f-origin" class="text-[13px] font-bold text-st-dim">Origine du moment</label>
-            <select id="f-origin" v-model="filters.origin" :class="selectClass"><option value="all">Toutes</option><option value="chat">Détecté par le chat</option><option value="ref">Ressemble à un de tes clips</option></select></div>
+            <select id="f-origin" v-model="filters.origin" :class="selectClass"><option value="all">Toutes</option><option value="content">Détecté par le contenu</option><option value="chat">Détecté par le chat</option><option value="ref">Ressemble à un de tes clips</option></select></div>
         </div>
       </section>
 

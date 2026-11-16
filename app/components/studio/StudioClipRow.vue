@@ -21,7 +21,7 @@ const look = computed(() => ({
   failed: { label: 'Échec du rendu', cls: 'st-badge-error' }
 } as Record<string, { label: string, cls: string }>)[state.value] ?? { label: 'À valider', cls: 'st-badge-warn' })
 
-const origin = computed(() => props.clip.origin === 'ref' ? 'Ressemble à un de tes clips' : 'Détecté par le chat')
+const origin = computed(() => props.clip.origin === 'ref' ? 'Ressemble à un de tes clips' : props.clip.origin === 'content' ? 'Détecté par le contenu' : 'Détecté par le chat')
 const score = computed(() => props.clip.score == null ? '' : String(props.clip.score).replace('.', ','))
 const duration = computed(() => props.clip.durationSec == null ? '' : `${Math.floor(props.clip.durationSec / 60)}:${String(props.clip.durationSec % 60).padStart(2, '0')}`)
 const hasIssue = computed(() => (props.clip.qc?.issues ?? []).length > 0)

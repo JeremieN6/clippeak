@@ -26,7 +26,7 @@ const statusLook: Record<string, { label: string, cls: string }> = {
 const look = computed(() => isPublished(props.clip) ? { label: 'Publié', cls: 'st-badge-ok' } : statusLook[props.clip.status] ?? statusLook.review)
 const issues = computed(() => props.clip.qc?.issues ?? [])
 const minutes = computed(() => props.clip.durationSec == null ? '' : `${Math.floor(props.clip.durationSec / 60)}:${String(props.clip.durationSec % 60).padStart(2, '0')}`)
-const originLabel = computed(() => isLong.value ? 'Extrait choisi par toi' : props.clip.origin === 'ref' ? 'Ressemble à un de tes clips' : 'Détecté par le chat')
+const originLabel = computed(() => isLong.value ? 'Extrait choisi par toi' : props.clip.origin === 'ref' ? 'Ressemble à un de tes clips' : props.clip.origin === 'content' ? 'Détecté par le contenu' : 'Détecté par le chat')
 const working = computed(() => props.clip.status === 'queued' || props.clip.status === 'rendering')
 // Le titre peut etre change tant que le clip n'est pas approuve ni en cours de rendu : un changement relance le rendu.
 const titleEditable = computed(() => ['review', 'failed', 'rejected'].includes(props.clip.status))
