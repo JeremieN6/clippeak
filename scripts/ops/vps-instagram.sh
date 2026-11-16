@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
-# Pose les identifiants Instagram (application Meta) dans /srv/saas/clippeak/.env.local du serveur (lus par le site ET par le worker, jamais affiches).
+# Pose les identifiants Instagram (application Meta, connexion unifiee) dans /srv/saas/clippeak/.env.local du serveur (lus par le site ET par le worker, jamais affiches).
 # A lancer SUR LE VPS : cd /srv/saas/clippeak && bash scripts/ops/vps-instagram.sh
-# Les deux valeurs sont saisies MASQUEES (ou arrivent par l'entree standard, 2 lignes) : ID de l'app Instagram, puis secret de l'app Instagram
-# (tableau de bord Meta > Instagram > API setup with Instagram login > Business login settings).
+# Trois valeurs (ou 3 lignes sur l'entree standard) : ID de l'app Meta (visible), secret de l'app Meta (MASQUE), ID de configuration (visible).
+# ID et secret : tableau de bord Meta > Parametres de l'app > General. ID de configuration : Instagram > API setup with Unified login > 1. Configurez.
 set -euo pipefail
 ENVFILE=/srv/saas/clippeak/.env.local
 PUBLIC_URL=https://clippeak.sassify.fr
 if [ -t 0 ]; then
-  read -rsp "ID de l'app Instagram : " ID; echo
-  read -rsp "Secret de l'app Instagram : " SECRET; echo
+  read -rp "ID de l'app Meta : " ID
+  read -rsp "Secret de l'app Meta (masque) : " SECRET; echo
+  read -rp "ID de configuration (Unified login) : " CONFIG
 else
-  read -r ID; read -r SECRET
+  read -r ID; read -r SECRET; read -r CONFIG
 fi
-[ -n "$ID" ] && [ -n "$SECRET" ] || { echo "ID ou secret vide."; exit 1; }
-case "$ID$SECRET" in *[[:space:]]*|*\"*|*\'*) echo "Valeur invalide (espace ou guillemet)."; exit 1 ;; esac
+[ -n "$ID" ] && [ -n "$SECRET" ] && [ -n "$CONFIG" ] || { echo "ID, secret ou configuration vide."; exit 1; }
+case "$ID$SECRET$CONFIG" in *[[:space:]]*|*\"*|*\'*) echo "Valeur invalide (espace ou guillemet)."; exit 1 ;; esac
 [ -f "$ENVFILE" ] || { echo "$ENVFILE introuvable"; exit 1; }
 install -d -m 700 /root/env-backups
 cp -p "$ENVFILE" "/root/env-backups/clippeak.env.local.$(date +%Y%m%d-%H%M)"
@@ -27,14 +28,14 @@ setvars() {
   { cat "$tmp"; printf '%s\n' "$@"; } > "$file"
   rm -f "$tmp"; chmod 600 "$file"
 }
-setvars "$ENVFILE" "INSTAGRAM_APP_ID=$ID" "INSTAGRAM_APP_SECRET=$SECRET"
+setvars "$ENVFILE" "INSTAGRAM_APP_ID=$ID" "INSTAGRAM_APP_SECRET=$SECRET" "INSTAGRAM_CONFIG_ID=$CONFIG"
 grep -q '^CLIPPEAK_PUBLIC_URL=' "$ENVFILE" || printf '%s\n' "CLIPPEAK_PUBLIC_URL=$PUBLIC_URL" >> "$ENVFILE"
 echo "Identifiants Instagram enregistres (ID de $(printf '%s' "$ID" | wc -c) caracteres)."
 
 # Le worker lit /etc/clippeak/worker.env : memes valeurs, et l'adresse publique (Meta telecharge la video depuis le site).
 WORKERENV=/etc/clippeak/worker.env
 if [ -f "$WORKERENV" ]; then
-  setvars "$WORKERENV" "INSTAGRAM_APP_ID=$ID" "INSTAGRAM_APP_SECRET=$SECRET"
+  setvars "$WORKERENV" "INSTAGRAM_APP_ID=$ID" "INSTAGRAM_APP_SECRET=$SECRET" "INSTAGRAM_CONFIG_ID=$CONFIG"
   grep -q '^CLIPPEAK_PUBLIC_URL=' "$WORKERENV" || printf '%s\n' "CLIPPEAK_PUBLIC_URL=$PUBLIC_URL" >> "$WORKERENV"
   echo "Identifiants aussi poses pour le worker."
 fi

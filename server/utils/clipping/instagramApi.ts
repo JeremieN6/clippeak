@@ -1,25 +1,21 @@
-// Client Instagram minimal (« Instagram API with Instagram Login »), sans dependance : connexion (jeton de longue duree), profil, Reels.
+// Client Instagram minimal (« Instagram API with Unified Login », Facebook Login for Business), sans dependance : connexion, compte, Reels.
 // Les messages d'erreur ne contiennent jamais de jeton ni de secret. `fetchFn` est injectable pour les essais.
-// Adresses et noms de parametres : pages officielles de Meta lues le 2026-11-15 (voir PROCEDURE-INSTAGRAM.md).
+// Adresses et noms de parametres : pages officielles de Meta lues les 2026-11-15 et 2026-11-16 (voir PROCEDURE-INSTAGRAM.md).
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
 type FetchFn = typeof fetch
 
-export const INSTAGRAM_OAUTH_BASE = 'https://api.instagram.com'
-export const INSTAGRAM_GRAPH_BASE = 'https://graph.instagram.com'
+export const INSTAGRAM_OAUTH_BASE = 'https://www.facebook.com'
+export const INSTAGRAM_GRAPH_BASE = 'https://graph.facebook.com'
 export const INSTAGRAM_GRAPH_VERSION = 'v27.0'
-// Seulement ce dont Clippeak a besoin : le nom du compte (affiche avant la publication) et la publication.
-export const INSTAGRAM_SCOPES = ['instagram_business_basic', 'instagram_business_content_publish'] as const
-// Jeton de longue duree : 60 jours. Renouvelable des 24 h d'age, tant qu'il n'a pas expire.
-export const INSTAGRAM_TOKEN_DAYS = 60
-const DAY_MS = 86_400_000
-
-export function buildInstagramAuthUrl(params: { appId: string, redirectUri: string, state: string }): string {
-  const url = new URL('https://www.instagram.com/oauth/authorize')
+// Avec la connexion unifiee, les droits (instagram_basic, instagram_content_publish) sont fixes dans la « configuration » creee dans le tableau
+// de bord Meta, pas dans le lien de connexion.
+export function buildInstagramAuthUrl(params: { appId: string, configId: string, redirectUri: string, state: string, oauthBase?: string }): string {
+  const url = new URL(`${params.oauthBase ?? INSTAGRAM_OAUTH_BASE}/dialog/oauth`)
   url.searchParams.set('client_id', params.appId)
+  url.searchParams.set('config_id', params.configId)
   url.searchParams.set('redirect_uri', params.redirectUri)
   url.searchParams.set('response_type', 'code')
-  url.searchParams.set('scope', INSTAGRAM_SCOPES.join(','))
   url.searchParams.set('state', params.state)
   return url.toString()
 }
@@ -72,65 +68,41 @@ async function call<T>(fetchFn: FetchFn, url: string, init: RequestInit | undefi
 
 export interface InstagramTokens {
   accessToken: string
-  expiresAt: Date
-  userId: string
-  permissions: string
+  // Absent : Meta n'a donne aucune echeance (jeton d'utilisateur systeme configure « jamais »).
+  expiresAt: Date | null
 }
 
-interface ExchangeParams { appId: string, appSecret: string, code: string, redirectUri: string, oauthBase?: string, graphBase?: string, now?: () => number }
+interface ExchangeParams { appId: string, appSecret: string, code: string, redirectUri: string, graphBase?: string, now?: () => number }
 
-// Echange le code d'autorisation (valable une heure, une seule fois) contre un jeton court, puis le jeton court contre un jeton de 60 jours.
+// Echange le code d'autorisation contre le jeton de l'entreprise du streamer (jeton d'utilisateur systeme). Pas de renouvellement : il dure
+// selon la configuration (« jamais » chez nous) et cesse de marcher si le streamer retire l'application, il doit alors reconnecter.
 export async function exchangeInstagramCode(fetchFn: FetchFn, params: ExchangeParams): Promise<InstagramTokens> {
   const now = params.now ?? Date.now
-  const form = new URLSearchParams({ client_id: params.appId, client_secret: params.appSecret, grant_type: 'authorization_code', redirect_uri: params.redirectUri, code: params.code })
-  const short = await call<{ access_token?: string, user_id?: string | number, permissions?: string, data?: Array<{ access_token?: string, user_id?: string | number, permissions?: string }> }>(
-    fetchFn, `${params.oauthBase ?? INSTAGRAM_OAUTH_BASE}/oauth/access_token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: form }, 'Connexion Instagram')
-  const first = short.data?.[0] ?? short
-  if (!first.access_token || first.user_id == null) throw new InstagramApiError('rejected', '', 'Connexion Instagram : Instagram n’a pas renvoyé de jeton')
-  const permissions = Array.isArray(first.permissions) ? (first.permissions as string[]).join(',') : String(first.permissions ?? '')
-  if (permissions && !permissions.split(/[,\s]+/).includes('instagram_business_content_publish')) throw new InstagramApiError('rejected', '', 'Connexion Instagram : le droit de publier n’a pas été accordé')
-
-  const url = new URL(`${params.graphBase ?? INSTAGRAM_GRAPH_BASE}/access_token`)
-  url.searchParams.set('grant_type', 'ig_exchange_token')
+  const url = new URL(`${params.graphBase ?? INSTAGRAM_GRAPH_BASE}/${INSTAGRAM_GRAPH_VERSION}/oauth/access_token`)
+  url.searchParams.set('client_id', params.appId)
   url.searchParams.set('client_secret', params.appSecret)
-  url.searchParams.set('access_token', first.access_token)
-  const long = await call<{ access_token?: string, expires_in?: number }>(fetchFn, url.toString(), undefined, 'Connexion Instagram')
-  if (!long.access_token) throw new InstagramApiError('rejected', '', 'Connexion Instagram : Instagram n’a pas renvoyé de jeton de longue durée')
-  return { accessToken: long.access_token, expiresAt: new Date(now() + (long.expires_in ?? INSTAGRAM_TOKEN_DAYS * 86400) * 1000), userId: String(first.user_id), permissions }
+  url.searchParams.set('redirect_uri', params.redirectUri)
+  url.searchParams.set('code', params.code)
+  const body = await call<{ access_token?: string, expires_in?: number }>(fetchFn, url.toString(), undefined, 'Connexion Instagram')
+  if (!body.access_token) throw new InstagramApiError('rejected', '', 'Connexion Instagram : Meta n’a pas renvoyé de jeton')
+  const expiresIn = Number(body.expires_in)
+  return { accessToken: body.access_token, expiresAt: Number.isFinite(expiresIn) && expiresIn > 0 ? new Date(now() + expiresIn * 1000) : null }
 }
 
-// Renouvelle un jeton de longue duree (a partir de 24 h d'age, avant son expiration) : le nouveau remplace l'ancien pour 60 jours.
-export async function refreshInstagramToken(fetchFn: FetchFn, params: { token: string, graphBase?: string, now?: () => number }): Promise<{ accessToken: string, expiresAt: Date }> {
-  const url = new URL(`${params.graphBase ?? INSTAGRAM_GRAPH_BASE}/refresh_access_token`)
-  url.searchParams.set('grant_type', 'ig_refresh_token')
-  url.searchParams.set('access_token', params.token)
-  const body = await call<{ access_token?: string, expires_in?: number }>(fetchFn, url.toString(), undefined, 'Renouvellement de l’accès Instagram')
-  if (!body.access_token) throw new InstagramApiError('rejected', '', 'Renouvellement de l’accès Instagram : pas de jeton renvoyé')
-  return { accessToken: body.access_token, expiresAt: new Date((params.now ?? Date.now)() + (body.expires_in ?? INSTAGRAM_TOKEN_DAYS * 86400) * 1000) }
+// L'acces a expire seulement si Meta a donne une echeance et qu'elle est passee.
+export const instagramTokenExpired = (expiresAt: Date | null, nowMs: number): boolean => expiresAt !== null && expiresAt.getTime() <= nowMs
+
+export interface InstagramProfile { userId: string, username: string }
+
+// Comptes Instagram professionnels que le streamer a partages avec Clippeak pendant la connexion. On prend le premier : un streamer en partage
+// en general un seul, et Clippeak publie sur un seul compte par chaine.
+export async function fetchInstagramProfile(fetchFn: FetchFn, accessToken: string, graphBase = INSTAGRAM_GRAPH_BASE): Promise<InstagramProfile | null> {
+  const url = new URL(`${graphBase}/${INSTAGRAM_GRAPH_VERSION}/me/assigned_instagram_accounts`)
+  url.searchParams.set('fields', 'id,username')
+  const body = await call<{ data?: Array<Record<string, string>> }>(fetchFn, url.toString(), { headers: { authorization: `Bearer ${accessToken}` } }, 'Lecture du compte Instagram')
+  const row = body.data?.find(item => item.id)
+  return row ? { userId: String(row.id), username: String(row.username ?? '').slice(0, 120) } : null
 }
-
-// Le jeton doit etre renouvele quand il lui reste moins de `INSTAGRAM_REFRESH_BELOW_DAYS` jours (donc qu'il a plus de quelques jours).
-export const INSTAGRAM_REFRESH_BELOW_DAYS = 50
-export function instagramRefreshDue(expiresAt: Date | null, nowMs: number): 'expired' | 'due' | 'fresh' {
-  if (!expiresAt || expiresAt.getTime() <= nowMs) return 'expired'
-  return expiresAt.getTime() - nowMs < INSTAGRAM_REFRESH_BELOW_DAYS * DAY_MS ? 'due' : 'fresh'
-}
-
-export interface InstagramProfile { userId: string, username: string, accountType: string | null }
-
-// Compte connecte : identifiant, nom d'utilisateur, type (professionnel ou non). Un compte personnel ne peut pas publier par l'API.
-export async function fetchInstagramProfile(fetchFn: FetchFn, accessToken: string, graphBase = INSTAGRAM_GRAPH_BASE): Promise<InstagramProfile> {
-  const url = new URL(`${graphBase}/${INSTAGRAM_GRAPH_VERSION}/me`)
-  url.searchParams.set('fields', 'user_id,username,account_type')
-  const body = await call<{ data?: Array<Record<string, string>> } & Record<string, string>>(fetchFn, url.toString(), { headers: { authorization: `Bearer ${accessToken}` } }, 'Lecture du compte Instagram')
-  const row = body.data?.[0] ?? body
-  const userId = String(row.user_id ?? row.id ?? '')
-  if (!userId) throw new InstagramApiError('rejected', '', 'Lecture du compte Instagram : identifiant manquant')
-  return { userId, username: String(row.username ?? '').slice(0, 120), accountType: row.account_type ? String(row.account_type).toUpperCase() : null }
-}
-
-// Un compte professionnel est « BUSINESS » ou « MEDIA_CREATOR ». Type absent : on laisse Instagram trancher a la publication.
-export const isProfessionalAccount = (type: string | null): boolean => type === null || type === 'BUSINESS' || type === 'MEDIA_CREATOR'
 
 const reelUrl = (graphBase: string, path: string) => `${graphBase}/${INSTAGRAM_GRAPH_VERSION}/${path}`
 const bearer = (token: string) => ({ authorization: `Bearer ${token}` })

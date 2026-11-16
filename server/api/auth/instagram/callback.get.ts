@@ -5,13 +5,13 @@ import { instagramConfig, tokenKey } from '../../../utils/publishConfig'
 import { isDemoTwitchId, isTestTwitchId } from '../../../utils/demoChannel'
 import { safeEqual } from '../../../utils/clipping/adminAuth'
 import { encryptToken } from '../../../utils/clipping/tokenVault'
-import { exchangeInstagramCode, fetchInstagramProfile, isProfessionalAccount } from '../../../utils/clipping/instagramApi'
+import { exchangeInstagramCode, fetchInstagramProfile } from '../../../utils/clipping/instagramApi'
 
 const STATE_COOKIE = 'clippeak_oauth_ig'
 const back = (event: H3Event, result: string) => sendRedirect(event, result === 'error' ? '/studio?connect=error&platform=instagram' : `/studio?connect=${result}`, 302)
 
-// Retour d'Instagram : verifie l'etat et la session, echange le code, range le jeton de 60 jours CHIFFRE pour la chaine du streamer connecte.
-// Le meme jeton sert d'acces et de renouvellement (Instagram n'a pas de jeton de renouvellement separe).
+// Retour de Meta (connexion unifiee) : verifie l'etat et la session, echange le code, range le jeton de l'entreprise CHIFFRE pour la chaine du
+// streamer connecte. Le meme jeton sert d'acces et de « renouvellement » (il n'y a pas de jeton de renouvellement separe).
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const expected = getCookie(event, STATE_COOKIE) ?? ''
@@ -34,11 +34,12 @@ export default defineEventHandler(async (event) => {
   if (!channel || isDemoTwitchId(channel.twitchId) || isTestTwitchId(channel.twitchId)) return back(event, 'unavailable')
 
   try {
-    const tokens = await exchangeInstagramCode(fetch, { appId: config.appId, appSecret: config.appSecret, code, redirectUri: config.redirectUri, oauthBase: config.oauthBase, graphBase: config.graphBase })
+    const tokens = await exchangeInstagramCode(fetch, { appId: config.appId, appSecret: config.appSecret, code, redirectUri: config.redirectUri, graphBase: config.graphBase })
     const profile = await fetchInstagramProfile(fetch, tokens.accessToken, config.graphBase)
-    if (!isProfessionalAccount(profile.accountType)) return back(event, 'instagram-personal')
+    // Aucun compte professionnel partage pendant la connexion : rien a publier.
+    if (!profile) return back(event, 'instagram-personal')
     const enc = encryptToken(tokens.accessToken, key)
-    const data = { accessTokenEnc: enc, refreshTokenEnc: enc, expiresAt: tokens.expiresAt, scopes: tokens.permissions || null, accountName: profile.username || null, externalId: (profile.userId || tokens.userId).slice(0, 40) }
+    const data = { accessTokenEnc: enc, refreshTokenEnc: enc, expiresAt: tokens.expiresAt, scopes: 'instagram_basic,instagram_content_publish', accountName: profile.username || null, externalId: profile.userId.slice(0, 40) }
     await prisma.platformConnection.upsert({
       where: { channelId_platform: { channelId: actor.channelId, platform: 'instagram' } },
       update: data,

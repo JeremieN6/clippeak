@@ -7,7 +7,7 @@ import { buildInstagramAuthUrl } from '../../utils/clipping/instagramApi'
 const INSTAGRAM_STATE_COOKIE = 'clippeak_oauth_ig'
 
 // Debut de « Connecter Instagram » : reserve a un streamer connecte. Un etat aleatoire (anti-falsification) est garde 10 minutes dans
-// un cookie, puis le navigateur part vers Instagram.
+// un cookie, puis le navigateur part vers la fenetre de connexion de Meta.
 export default defineEventHandler(async (event) => {
   const actor = await requireStudioActor(event).catch(() => null)
   if (!actor) return sendRedirect(event, '/connexion', 302)
@@ -16,5 +16,5 @@ export default defineEventHandler(async (event) => {
   if (!config.configured) return sendRedirect(event, '/studio?connect=unavailable', 302)
   const state = newToken()
   setCookie(event, INSTAGRAM_STATE_COOKIE, state, cookieOptions(event, 600, '/api/auth'))
-  return sendRedirect(event, buildInstagramAuthUrl({ appId: config.appId, redirectUri: config.redirectUri, state }), 302)
+  return sendRedirect(event, buildInstagramAuthUrl({ appId: config.appId, configId: config.configId, redirectUri: config.redirectUri, state, oauthBase: config.oauthBase }), 302)
 })

@@ -1,7 +1,7 @@
 import { stat } from 'node:fs/promises'
 import { PublishError, instagramCaption } from './publishing.ts'
 import type { PublishInput, PublishResult, Publisher } from './publishing.ts'
-import { InstagramApiError, createReelContainer, fetchContainerStatus, fetchPermalink, instagramRefreshDue, publishContainer, refreshInstagramToken } from './instagramApi.ts'
+import { InstagramApiError, createReelContainer, fetchContainerStatus, fetchPermalink, instagramTokenExpired, publishContainer } from './instagramApi.ts'
 
 type FetchFn = typeof fetch
 
@@ -23,7 +23,7 @@ export const MAX_INSTAGRAM_VIDEO_BYTES = 300 * 1024 * 1024
 
 const toPublishError = (error: unknown): PublishError => error instanceof InstagramApiError ? new PublishError(error.kind, error.message) : error instanceof PublishError ? error : new PublishError('transient', 'Erreur inattendue pendant l’envoi à Instagram')
 
-// Publication d'un Reel : acces (renouvele si besoin), conteneur avec le lien video signe, attente du traitement, publication, lien du Reel.
+// Publication d'un Reel : acces (jamais renouvele : le jeton de l'entreprise ne se renouvelle pas), conteneur avec le lien video signe, attente du traitement, publication, lien du Reel.
 // Une fois « publier » demande a Instagram, on ne rejoue jamais l'appel (risque de doublon).
 export function createInstagramPublisher(deps: InstagramDeps): Publisher {
   const fetchFn = deps.fetchFn ?? fetch
@@ -38,19 +38,8 @@ export function createInstagramPublisher(deps: InstagramDeps): Publisher {
     async publish(input: PublishInput): Promise<PublishResult> {
       if (!input.clipId) throw new PublishError('rejected', 'Clip inconnu : rien n’a été publié.')
       if (!input.accountId) throw new PublishError('auth', 'Le compte Instagram est incomplet. Reconnecte-le puis relance la publication.')
-      let token = input.accessToken || input.refreshToken
-      let expiresAt = input.expiresAt
-      const state = instagramRefreshDue(expiresAt, now())
-      if (state === 'expired') throw new PublishError('auth', 'L’accès à ton compte Instagram a expiré. Reconnecte-le.')
-      let renewed: { value: string, expiresAt: Date, refreshToken: string } | undefined
-      if (state === 'due') {
-        try {
-          const fresh = await refreshInstagramToken(fetchFn, { token, graphBase: deps.graphBase, now })
-          token = fresh.accessToken
-          expiresAt = fresh.expiresAt
-          renewed = { value: token, expiresAt: fresh.expiresAt, refreshToken: token }
-        } catch { /* le jeton actuel est encore valable : on publie avec, le renouvellement sera retente */ }
-      }
+      const token = input.accessToken || input.refreshToken
+      if (instagramTokenExpired(input.expiresAt, now())) throw new PublishError('auth', 'L’accès à ton compte Instagram a expiré. Reconnecte-le.')
 
       try {
         const size = await fileSize(input.videoPath).catch(() => { throw new PublishError('rejected', 'Le fichier du clip est introuvable') })
@@ -83,11 +72,9 @@ export function createInstagramPublisher(deps: InstagramDeps): Publisher {
           throw error
         }
         const permalink = await fetchPermalink(fetchFn, token, mediaId, deps.graphBase)
-        return { externalId: mediaId, url: permalink ?? 'https://www.instagram.com/', ...(renewed ? { accessToken: renewed } : {}) }
+        return { externalId: mediaId, url: permalink ?? 'https://www.instagram.com/' }
       } catch (error) {
-        const failure = toPublishError(error)
-        if (renewed) failure.renewed = renewed
-        throw failure
+        throw toPublishError(error)
       }
     }
   }
