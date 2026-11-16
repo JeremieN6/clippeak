@@ -8,7 +8,8 @@ export interface ClipMetrics {
   height: number
   videoSec: number
   audioSec: number | null
-  // Image figee detectee dans les dernieres secondes (debut de gel, en s depuis le debut du clip) ou null.
+  // Image figee jusqu'a la fin du clip (debut du gel, en s depuis le debut du clip) ou null. Une scene qui ne bouge pas (ecran partage, pause)
+  // donne le meme resultat qu'un vrai blocage de la video : voir evaluateQc.
   freezeAtEndSec: number | null
   leadingSilenceSec: number
   trailingSilenceSec: number
@@ -73,6 +74,9 @@ export function checkNames(texts: string[], names: string[]): QcIssue[] {
   return issues
 }
 
+// Part du clip figee en fin de clip au-dela de laquelle on refuse le clip (en dessous : simple avertissement).
+export const FROZEN_REFUSE_SHARE = 0.5
+
 export function evaluateQc(metrics: ClipMetrics, expect: QcExpectations): QcReport {
   const issues: QcIssue[] = []
   const drift = expect.maxSyncDriftSec ?? 0.15
@@ -92,7 +96,14 @@ export function evaluateQc(metrics: ClipMetrics, expect: QcExpectations): QcRepo
     issues.push({ severity: 'error', code: 'sync', message: `Decalage son/image de ${Math.abs(metrics.audioSec - metrics.videoSec).toFixed(2)} s` })
   }
   if (metrics.freezeAtEndSec !== null) {
-    issues.push({ severity: 'error', code: 'frozen_end', message: `Image figee en fin de clip (des ${metrics.freezeAtEndSec.toFixed(1)} s)` })
+    // Un live de parole montre souvent un ecran qui ne bouge pas : une image fixe sur la fin n'est pas un defaut du rendu et le streamer valide
+    // chaque clip lui-meme. On ne REFUSE que si le clip est fige sur plus de la moitie de sa duree (video bloquee ou inutilisable) ; sinon, avertissement.
+    const frozenSec = Math.max(0, metrics.videoSec - metrics.freezeAtEndSec)
+    if (frozenSec > metrics.videoSec * FROZEN_REFUSE_SHARE) {
+      issues.push({ severity: 'error', code: 'frozen_end', message: `Image figee sur ${frozenSec.toFixed(1)} s, plus de la moitie du clip (des ${metrics.freezeAtEndSec.toFixed(1)} s)` })
+    } else {
+      issues.push({ severity: 'warning', code: 'frozen_end', message: `Image fixe sur les ${frozenSec.toFixed(1)} dernieres secondes (la scene ne bouge pas) : regarde la fin avant de valider` })
+    }
   }
   if (metrics.leadingSilenceSec > edge) {
     issues.push({ severity: 'error', code: 'leading_silence', message: `Silence de ${metrics.leadingSilenceSec.toFixed(1)} s au debut` })
@@ -126,11 +137,11 @@ export function probeClip(path: string): Pick<ClipMetrics, 'width' | 'height' | 
   }
 }
 
-// Analyse ffmpeg : silences aux deux extremites et image figee dans les 3 dernieres secondes.
+// Analyse ffmpeg : silences aux deux extremites et image figee jusqu'a la fin du clip (tout le clip est lu : sa duree reste courte).
 export async function collectClipMetrics(path: string, options: RunFfmpegOptions = {}): Promise<ClipMetrics> {
   const base = probeClip(path)
   const silenceLog = await runFfmpeg(['-i', path, '-vn', '-af', 'silencedetect=noise=-35dB:d=0.3', '-f', 'null', '-'], options)
-  const freezeLog = await runFfmpeg(['-sseof', '-3', '-i', path, '-an', '-vf', 'freezedetect=n=-55dB:d=0.8', '-f', 'null', '-'], options)
+  const freezeLog = await runFfmpeg(['-i', path, '-an', '-vf', 'freezedetect=n=-55dB:d=0.8', '-f', 'null', '-'], options)
 
   let leading = 0
   let trailing = 0
@@ -144,7 +155,11 @@ export async function collectClipMetrics(path: string, options: RunFfmpegOptions
     if (lastEnd >= audioSec - 0.1) trailing = audioSec - Math.max(0, lastStart)
   }
 
-  const freeze = freezeLog.match(/freeze_start: ([\d.]+)/)
-  const freezeAtEndSec = freeze ? Math.max(0, base.videoSec - 3) + Number(freeze[1]) : null
+  // Seul un gel qui va jusqu'a la fin compte (une scene fixe au milieu du clip est normale).
+  const freezeStarts = [...freezeLog.matchAll(/freeze_start: ([\d.]+)/g)].map(m => Number(m[1]))
+  const freezeEnds = [...freezeLog.matchAll(/freeze_end: ([\d.]+)/g)].map(m => Number(m[1]))
+  const lastStart = freezeStarts.length ? freezeStarts[freezeStarts.length - 1]! : null
+  const reachesEnd = lastStart !== null && (freezeEnds.length < freezeStarts.length || freezeEnds[freezeEnds.length - 1]! >= base.videoSec - 0.2)
+  const freezeAtEndSec = lastStart !== null && reachesEnd ? lastStart : null
   return { ...base, freezeAtEndSec, leadingSilenceSec: leading, trailingSilenceSec: trailing }
 }
