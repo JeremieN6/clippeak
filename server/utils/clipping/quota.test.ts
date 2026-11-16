@@ -41,13 +41,22 @@ test('clipRoom : jamais negatif, illimite = Infinity', () => {
 
 test('quotaView : atteint, reste, illimite, date de remise a zero', () => {
   const now = new Date('2026-10-20T10:00:00Z')
-  assert.deepEqual(quotaView(40, 40, now), { limit: 40, used: 40, remaining: 0, reached: true, resetsAt: '2026-11-01T00:00:00.000Z' })
+  assert.deepEqual(quotaView(40, 40, now), { limit: 40, used: 40, remaining: 0, reached: true, resetsAt: '2026-11-01T00:00:00.000Z', bonus: 0 })
   assert.equal(quotaView(40, 3, now).remaining, 37)
-  assert.deepEqual(quotaView(null, 7, now), { limit: null, used: 7, remaining: null, reached: false, resetsAt: '2026-11-01T00:00:00.000Z' })
+  assert.deepEqual(quotaView(null, 7, now), { limit: null, used: 7, remaining: null, reached: false, resetsAt: '2026-11-01T00:00:00.000Z', bonus: 0 })
 })
 
 test('parseQuotaInput : entier 0..1000 ou null, rien d autre', () => {
   assert.deepEqual(parseQuotaInput(40), { ok: true, value: 40 })
   assert.deepEqual(parseQuotaInput(null), { ok: true, value: null })
   for (const bad of [-1, 1001, 1.5, '40', undefined, NaN]) assert.deepEqual(parseQuotaInput(bad), { ok: false })
+})
+
+test('bonus de parrainage : s’ajoute au plafond, sans offre payante, jamais aux chaines illimitees ou exemptees', () => {
+  assert.equal(effectiveQuota({ twitchId: '1', setting: undefined, bonusClips: 5 }), 25)
+  assert.equal(effectiveQuota({ twitchId: '1', setting: 40, planClips: 120, bonusClips: 25 }), 145)
+  assert.equal(effectiveQuota({ twitchId: '1', setting: null, bonusClips: 5 }), null)
+  assert.equal(effectiveQuota({ twitchId: 'test-x', setting: 5, bonusClips: 5 }), null)
+  assert.equal(effectiveQuota({ twitchId: '1', setting: 20, bonusClips: -4 }), 20)
+  assert.equal(quotaView(25, 25, new Date('2026-10-05T00:00:00Z'), 5).bonus, 5)
 })

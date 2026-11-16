@@ -18,8 +18,8 @@ const date = (value: string | null) => value ? new Date(value).toLocaleDateStrin
 
     <section class="st-card flex flex-col gap-1 !pb-2">
       <h2 class="m-0 mb-1 text-[17px] font-bold">Demandes d’accès ({{ admin.accessRequests.value.length }})</h2>
-      <p class="m-0 mb-3 text-[13px] st-muted">Des streamers non invités qui se sont connectés avec Twitch et ont demandé à être prévenus. Effacées après 90 jours.</p>
-      <p v-if="!admin.accessRequests.value.length" class="st-muted m-0 border-t border-st-border pb-3 pt-3.5 text-sm">Aucune demande pour l’instant. Les streamers qui cliquent sur « Prévenez-moi quand une place s’ouvre » apparaîtront ici.</p>
+      <p class="m-0 mb-3 text-[13px] st-muted">Des streamers non invités qui se sont connectés avec Twitch et ont réservé leur place. Les vagues automatiques (onglet Vagues) les invitent dans l’ordre ; tu peux aussi inviter à la main ici. Effacées après 90 jours.</p>
+      <p v-if="!admin.accessRequests.value.length" class="st-muted m-0 border-t border-st-border pb-3 pt-3.5 text-sm">Aucune demande pour l’instant. Les streamers qui cliquent sur « Réserver ma place » apparaîtront ici.</p>
       <div v-for="r in admin.accessRequests.value" :key="r.id" class="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-st-border py-3.5">
         <div class="min-w-0 flex-1 basis-44">
           <div class="break-words text-[15px] font-bold">{{ r.displayName || r.login }}</div>

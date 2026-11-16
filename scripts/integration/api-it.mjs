@@ -441,6 +441,80 @@ try {
   assert.equal((await call(`/api/admin/access-requests/${kept[0].id}`, { method: 'DELETE' })).status, 404)
   ok('demande d acces : rien d enregistre avant le clic, cookie signe obligatoire (falsifie = 400, autre origine = 403), idempotente, liste admin, invitation en un clic, ecarter, purge a 90 jours')
 
+  // --- file d'attente garantie, vagues (reglages admin) et parrainage : lien /r/CODE, parraine devant la file, bonus d'inscription puis du parrain
+  const waitStatus = async (cookie) => fetch(B + '/api/auth/wait-status', { headers: cookie ? { cookie } : {} })
+  assert.equal((await waitStatus(null)).status, 401)
+  assert.equal((await waitStatus(waitCookie.slice(0, -3) + 'xyz')).status, 401)
+  assert.equal((await (await waitStatus(waitCookie)).json()).invited, true) // 'stranger' est invite a ce stade
+  await q(`DELETE FROM channel_invites WHERE twitch_login = 'stranger'`)
+  const ws0 = await (await waitStatus(waitCookie)).json()
+  assert.deepEqual([ws0.invited, ws0.requested, ws0.position, ws0.state], [false, false, null, 'manual'])
+  const ownerToken = sessionCookie.split('=')[1]
+  assert.equal((await call(`/api/studio/channels/${created.id}/referral`, { auth: false })).status, 401)
+  assert.equal((await call(`/api/studio/channels/${crypto.randomUUID()}/referral`, as(ownerToken))).status, 404)
+  const ref0 = (await call(`/api/studio/channels/${created.id}/referral`, as(ownerToken))).json
+  assert.match(ref0.code, /^[A-HJ-NP-Z2-9]{8}$/)
+  assert.deepEqual([ref0.clipsPerReferral, ref0.bonusCap, ref0.bonusThisMonth], [5, 25, 0])
+  const refHit = await redirect(`/r/${ref0.code}`)
+  assert.equal(refHit.headers.get('location'), '/connexion')
+  const refSet = refHit.headers.getSetCookie().find(c => c.startsWith('clippeak_ref='))
+  assert.ok(refSet && refSet.includes('HttpOnly') && refSet.includes('SameSite=Lax'))
+  const refBad = await redirect('/r/AAAAAAAA')
+  assert.equal(refBad.headers.get('location'), '/')
+  assert.equal(refBad.headers.getSetCookie().filter(c => c.startsWith('clippeak_ref=')).length, 0)
+  await q(`INSERT INTO access_requests (id, twitch_id, twitch_login, created_at) VALUES (gen_random_uuid(), '700', 'plain700', now() - interval '1 hour')`)
+  const askRef = await ask(`${waitCookie}; ${refSet.split(';')[0]}`, { 'x-real-ip': '10.9.9.9' }) // autre adresse : le limiteur est a 5 par minute
+  const askRefBody = await askRef.json()
+  assert.deepEqual([askRef.status, askRefBody.invited, askRefBody.position, askRefBody.total], [200, false, 1, 2]) // le parraine passe devant le plus ancien
+  assert.equal((await q(`SELECT referred_by_channel_id FROM access_requests WHERE twitch_id = '666'`))[0].referred_by_channel_id, created.id)
+  assert.equal((await (await waitStatus(waitCookie)).json()).position, 1)
+  // Reglages admin des vagues : protegés, valides, etat de la page d'attente
+  assert.equal((await call('/api/admin/waves', { auth: false })).status, 401)
+  assert.equal((await call('/api/admin/waves', { ...as(ownerToken), method: 'PUT', body: { wavesEnabled: true } })).status, 401)
+  const waves0 = (await call('/api/admin/waves')).json
+  assert.deepEqual([waves0.config.wavesEnabled, waves0.config.dailyCap, waves0.config.referralBonusCap, waves0.queue.total, waves0.queue.referred], [false, 20, 25, 2, 1])
+  assert.deepEqual(waves0.queue.items.map(i => [i.position, i.login, i.referred]), [[1, 'stranger', true], [2, 'plain700', false]])
+  for (const bad of [{ dailyCap: -1 }, { dailyCap: 1.5 }, { dailyCap: 501 }, { wavesEnabled: 'oui' }, { inconnu: 1 }]) assert.equal((await call('/api/admin/waves', { method: 'PUT', body: bad })).status, 400)
+  assert.equal((await call('/api/admin/waves', { method: 'PUT', body: { wavesEnabled: true, dailyCap: 0 } })).status, 200)
+  assert.equal((await (await waitStatus(waitCookie)).json()).state, 'day_full') // plafond du jour atteint : « les places du jour sont prises »
+  assert.equal((await call('/api/admin/waves', { method: 'PUT', body: { dailyCap: 20 } })).status, 200)
+  assert.equal((await (await waitStatus(waitCookie)).json()).state, 'next_wave')
+  assert.equal((await call('/api/admin/waves', { method: 'PUT', body: { wavesEnabled: false } })).status, 200)
+  // Invitation a la main du parraine : il garde son parrain, s'inscrit, recoit ses 5 clips ; le parrain gagne les siens au premier clip valide
+  const reqRows = (await call('/api/admin/access-requests')).json.requests
+  assert.equal((await call(`/api/admin/access-requests/${reqRows.find(r => r.login === 'stranger').id}/invite`, { method: 'POST' })).status, 200)
+  assert.equal((await q(`SELECT referred_by_channel_id FROM channel_invites WHERE twitch_login = 'stranger'`))[0].referred_by_channel_id, created.id)
+  const kidLogin = await redirect('/api/auth/twitch/callback?code=code-inconnu&state=abc', 'clippeak_oauth_state=abc')
+  assert.equal(kidLogin.headers.get('location'), '/studio')
+  const kidToken = kidLogin.headers.getSetCookie().find(c => c.startsWith('clippeak_session=')).split(';')[0].split('=')[1]
+  const [{ id: kidId }] = await q(`SELECT id FROM channels WHERE twitch_id = '666'`)
+  assert.equal((await q(`SELECT referred_by_id FROM channels WHERE id = $1`, [kidId]))[0].referred_by_id, created.id)
+  assert.deepEqual((await q(`SELECT kind, clips FROM referral_grants WHERE channel_id = $1`, [kidId])).map(g => [g.kind, g.clips]), [['signup', 5]])
+  const kidQuota = (await call(`/api/studio/channels/${kidId}/quota`, as(kidToken))).json
+  assert.deepEqual([kidQuota.limit, kidQuota.bonus], [25, 5]) // 20 gratuits + 5 offerts, sans offre payante
+  assert.equal((await call(`/api/studio/channels/${created.id}/quota`, as(ownerToken))).json.limit, 20) // le parrain n'a rien tant que le parraine n'a pas valide de clip
+  const [{ id: kidVod }] = await q(`INSERT INTO vods (id, channel_id, twitch_vod_id, url, status) VALUES (gen_random_uuid(), $1, 'kid-vod', 'u', 'done') RETURNING id`, [kidId])
+  const [{ id: kidMoment }] = await q(`INSERT INTO moments (id, vod_id, start_sec, end_sec, peak_sec, score, signals) VALUES (gen_random_uuid(), $1, 0, 30, 15, 7, '{}') RETURNING id`, [kidVod])
+  const [{ id: kidClip }] = await q(`INSERT INTO clip_jobs (id, moment_id, status, batch, start_sec, end_sec, updated_at) VALUES (gen_random_uuid(), $1, 'review', 1, 0, 30, now()) RETURNING id`, [kidMoment])
+  assert.equal((await call(`/api/studio/clips/${kidClip}/review`, { ...as(kidToken), method: 'POST', body: { action: 'reject' } })).status, 200)
+  assert.equal((await q(`SELECT count(*)::int AS n FROM referral_grants WHERE kind = 'referrer'`))[0].n, 0) // un clip refuse ne donne rien
+  await call(`/api/studio/clips/${kidClip}/review`, { ...as(kidToken), method: 'POST', body: { action: 'reopen' } })
+  assert.equal((await call(`/api/studio/clips/${kidClip}/review`, { ...as(kidToken), method: 'POST', body: { action: 'approve' } })).status, 200)
+  const ownerQuota = (await call(`/api/studio/channels/${created.id}/quota`, as(ownerToken))).json
+  assert.deepEqual([ownerQuota.limit, ownerQuota.bonus], [25, 5])
+  const ref1 = (await call(`/api/studio/channels/${created.id}/referral`, as(ownerToken))).json
+  assert.deepEqual([ref1.code, ref1.bonusThisMonth, ref1.referred.map(r => [r.name, r.validated])], [ref0.code, 5, [['Stranger', true]]])
+  assert.equal((await call(`/api/studio/channels/${kidId}/referral`, as(kidToken))).status, 200)
+  assert.equal((await call('/api/admin/waves')).json.referrals.channels.length, 1)
+  // Retour a l'etat d'avant : le parraine disparait avec ses bonus, 'stranger' redevient simplement invite
+  await q(`DELETE FROM channels WHERE id = $1`, [kidId])
+  await q(`DELETE FROM channel_invites WHERE twitch_login = 'stranger'`)
+  await q(`DELETE FROM access_requests`)
+  await q(`DELETE FROM invitation_settings`)
+  await q(`INSERT INTO channel_invites (id, twitch_login) VALUES (gen_random_uuid(), 'stranger')`)
+  assert.equal((await q(`SELECT count(*)::int AS n FROM referral_grants`))[0].n, 0)
+  ok('file garantie et parrainage : place affichee (parraine devant), etats « places du jour prises » / vague / manuel, lien /r/CODE (cookie HttpOnly, code inconnu ignore), reglages admin valides et proteges, 5 clips a l inscription puis 5 au parrain au premier clip valide (pas sur un refus), plafond du parrain intact avant')
+
   // --- session admin (cookie pose par /admin) et chaine de demonstration
   const adminLogin = (password) => fetch(B + '/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password }) })
   assert.equal((await adminLogin('mauvais')).status, 401)

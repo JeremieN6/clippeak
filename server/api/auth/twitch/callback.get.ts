@@ -5,6 +5,8 @@ import { cookieOptions, loginConfig } from '../../../utils/studioLogin'
 import { safeEqual } from '../../../utils/clipping/adminAuth'
 import { createTwitchApi } from '../../../utils/clipping/twitchApi'
 import { setWaitCookie } from '../../../utils/accessRequest'
+import { attachReferral, referrerFromCode } from '../../../utils/clipping/prismaReferral'
+import { REF_COOKIE } from '../../../utils/referralCookie'
 import { exchangeCode, fetchIdentity, hashToken, newToken, SESSION_COOKIE, SESSION_TTL_MS, STATE_COOKIE } from '../../../utils/clipping/twitchLogin'
 
 // Connexion reussie : le studio. Sinon : retour sur la page de connexion avec la raison.
@@ -52,6 +54,18 @@ export default defineEventHandler(async (event) => {
   })
   await prisma.channelInvite.update({ where: { id: invite.id }, data: { twitchId: identity.id, twitchLogin: identity.login, lastLoginAt: new Date() } })
   await prisma.accessRequest.deleteMany({ where: { twitchId: identity.id } })
+
+  // Parrainage : a la toute premiere connexion seulement, le parrain vient de la demande d'acces (invitation) ou du lien suivi (cookie).
+  // Un echec ici ne bloque jamais la connexion. Faux parrainages (meme compte, chaine de test) refuses par attachReferral.
+  if (firstLogin) {
+    try {
+      const referrerId = invite.referredByChannelId ?? (await referrerFromCode(prisma, getCookie(event, REF_COOKIE)))?.id
+      if (referrerId) await attachReferral(prisma, { id: channel.id, twitchId: channel.twitchId }, referrerId)
+    } catch (error) {
+      console.error('[login] parrainage impossible', error instanceof Error ? error.message : error)
+    }
+  }
+  deleteCookie(event, REF_COOKIE, { path: '/' })
 
   // Ecoute des lives de la chaine (idempotent). Un echec ne bloque pas la connexion : le rattrapage periodique comble le reste.
   const secret = readEnv('TWITCH_EVENTSUB_SECRET')

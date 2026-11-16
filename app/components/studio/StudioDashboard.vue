@@ -246,6 +246,7 @@ const selectClass = 'st-field !min-h-11 !w-full'
       <p v-else-if="studio.quota.value && studio.quota.value.limit !== null" class="m-0 -mt-4 text-[13px] st-muted lg:hidden">Clips ce mois-ci : {{ studio.quota.value.used }} / {{ studio.quota.value.limit }}</p>
 
       <StudioBilling />
+      <StudioReferral />
 
       <div v-if="progress" class="st-alert st-alert-info st-rise flex-col !gap-2.5" role="status">
         <div class="flex items-center gap-2 font-bold">

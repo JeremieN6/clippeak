@@ -77,7 +77,7 @@ export function createStudio() {
   // Offre (Starter / Creator) : absente tant que Stripe n'est pas configure sur le serveur.
   const billing = ref<StudioBilling | null>(null)
   // Plafond mensuel de clips (limit null = illimite) : affiche dans le tableau de bord.
-  const quota = ref<{ limit: number | null, used: number, remaining: number | null, reached: boolean, resetsAt: string } | null>(null)
+  const quota = ref<{ limit: number | null, used: number, remaining: number | null, reached: boolean, resetsAt: string, bonus: number } | null>(null)
   const connections = ref<StudioConnection[]>([])
   const vodAlerts = ref<VodAlert[]>([])
   // Analyses en cours (bandeau du tableau de bord) et plateforme dont la connexion vient d'echouer (alerte du tableau de bord).
