@@ -14,9 +14,9 @@ watch(connected, (list) => { if (!list.some(c => c.platform === platform.value))
 
 const publications = computed(() => props.clip.publications.filter(p => p.status !== 'cancelled'))
 const current = computed(() => publications.value.find(p => p.platform === platform.value))
-// TikTok part tout de suite (pas de programmation) : « programme » veut seulement dire que le worker ne l'a pas encore prise. Le formulaire
+// TikTok et Instagram partent tout de suite (pas de programmation) : « programme » veut seulement dire que le worker ne l'a pas encore prise. Le formulaire
 // disparait alors, pour que l'envoi ne ressemble pas a un echec, et le clip est relu jusqu'a la fin de la publication.
-const sentNow = (p: { platform: string, status: string }) => p.platform === 'tiktok' && p.status === 'scheduled'
+const sentNow = (p: { platform: string, status: string }) => (p.platform === 'tiktok' || p.platform === 'instagram') && p.status === 'scheduled'
 const busyOrDone = computed(() => current.value?.status === 'published' || current.value?.status === 'publishing' || (!!current.value && sentNow(current.value)))
 const pending = computed(() => publications.value.some(p => p.status === 'publishing' || sentNow(p)))
 let poll: ReturnType<typeof setInterval> | null = null
@@ -26,8 +26,8 @@ watch(pending, (on) => {
 }, { immediate: true })
 onBeforeUnmount(() => { if (poll) clearInterval(poll) })
 
-// Creneaux proposes : hors de ceux deja pris par d'autres clips de la chaine (les envois TikTok partent tout de suite, ils ne comptent pas).
-const taken = computed(() => studio.clips.value.flatMap(c => c.publications).filter(p => p.status === 'scheduled' && p.platform !== 'tiktok').map(p => new Date(p.scheduledAt)))
+// Creneaux proposes : hors de ceux deja pris par d'autres clips de la chaine (les envois TikTok et Instagram partent tout de suite, ils ne comptent pas).
+const taken = computed(() => studio.clips.value.flatMap(c => c.publications).filter(p => p.status === 'scheduled' && p.platform !== 'tiktok' && p.platform !== 'instagram').map(p => new Date(p.scheduledAt)))
 const slots = computed(() => suggestSlots(new Date(), DEFAULT_SLOT_TIMES, 3, taken.value))
 const picked = ref<number | null>(null)
 const custom = ref('')
@@ -47,7 +47,7 @@ async function schedule() {
     <h4 class="m-0 text-sm font-bold">Publier</h4>
 
     <p v-if="!connected.length" class="m-0 text-[13px] leading-5 st-muted">
-      Approuvé : rien n’est publié. Connecte YouTube ou TikTok à l’étape « Tes plateformes » pour publier d’ici, ou télécharge le clip pour le publier toi-même.
+      Approuvé : rien n’est publié. Connecte YouTube, TikTok ou Instagram à l’étape « Tes plateformes » pour publier d’ici, ou télécharge le clip pour le publier toi-même.
     </p>
 
     <template v-else>
@@ -68,6 +68,8 @@ async function schedule() {
       </ul>
 
       <StudioTiktokPublish v-if="platform === 'tiktok' && !busyOrDone" :key="clip.id" :clip="clip" />
+
+      <StudioInstagramPublish v-else-if="platform === 'instagram' && !busyOrDone" :key="clip.id" :clip="clip" />
 
       <template v-else-if="!busyOrDone">
         <div class="flex flex-wrap gap-2">

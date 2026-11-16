@@ -6,6 +6,9 @@ import { createPrismaPublishStore } from '../utils/clipping/prismaPublishStore'
 import { runPublishOnce } from '../utils/clipping/publishQueue'
 import { createYoutubePublisher } from '../utils/clipping/youtubePublisher'
 import { createTiktokPublisher } from '../utils/clipping/tiktokPublisher'
+import { createInstagramPublisher } from '../utils/clipping/instagramPublisher'
+import { instagramVideoUrl } from '../utils/clipping/instagramMedia'
+import { INSTAGRAM_GRAPH_BASE } from '../utils/clipping/instagramApi'
 import type { Publisher, PublishPlatform } from '../utils/clipping/publishing'
 import type { PublishStore } from '../utils/clipping/publishQueue'
 
@@ -17,6 +20,9 @@ function setup() {
   const clientSecret = readEnv('GOOGLE_CLIENT_SECRET')
   const tiktokKey = readEnv('TIKTOK_CLIENT_KEY')
   const tiktokSecret = readEnv('TIKTOK_CLIENT_SECRET')
+  const instagramId = readEnv('INSTAGRAM_APP_ID')
+  const instagramSecret = readEnv('INSTAGRAM_APP_SECRET')
+  const publicUrl = readEnv('CLIPPEAK_PUBLIC_URL').replace(/\/+$/, '')
   let key: Buffer
   try {
     key = parseKey(readEnv('CLIPPEAK_TOKEN_KEY'))
@@ -29,6 +35,10 @@ function setup() {
   else console.info('[worker] publication YouTube desactivee (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET absents)')
   if (tiktokKey && tiktokSecret) publishers.tiktok = createTiktokPublisher({ clientKey: tiktokKey, clientSecret: tiktokSecret })
   else console.info('[worker] publication TikTok desactivee (TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET absents)')
+  if (instagramId && instagramSecret && publicUrl) {
+    const tokenKey = key
+    publishers.instagram = createInstagramPublisher({ videoUrlFor: clipId => instagramVideoUrl(publicUrl, clipId, tokenKey), graphBase: readEnv('INSTAGRAM_API_BASE_URL') || INSTAGRAM_GRAPH_BASE })
+  } else console.info('[worker] publication Instagram desactivee (INSTAGRAM_APP_ID / INSTAGRAM_APP_SECRET / CLIPPEAK_PUBLIC_URL absents)')
   if (!Object.keys(publishers).length) return (ready = null)
   const inner = createPrismaPublishStore(prisma, { decrypt: stored => decryptToken(stored, key) })
   // Le jeton d'acces renouvele est chiffre avant d'etre range en base.

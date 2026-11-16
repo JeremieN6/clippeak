@@ -25,7 +25,7 @@ export interface LongProposalView { id: string, origin: 'manual' | 'streamer' | 
 export interface LongAnalysisView { vodId: string, status: 'queued' | 'running' | 'done' | 'failed' | 'impossible', progress: number, proposals: number, error: string | null, finishedAt: string | null }
 export interface LongExtractsInfo { analyses: LongAnalysisView[], allowed: boolean, enabled: boolean, maxSec: number, verified: boolean, startCommand: string, endCommand: string, modsAllowed: boolean, vods: LongExtractVod[], proposals: LongProposalView[] }
 export interface AnalysisItem { id: string, kind: 'analyzing' | 'scanning' | 'long', title: string | null, analyzedSec: number | null, durationSec: number | null, pct: number | null }
-export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null }
+export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null, needsReconnect?: boolean }
 
 // Message comprehensible pour le streamer a partir d'une erreur reseau ou serveur. Une reponse de Clippeak (message ecrit pour lui) est
 // gardee telle quelle ; un refus venu d'ailleurs (par exemple le serveur web qui coupe un envoi trop gros) est traduit.
@@ -81,7 +81,7 @@ export function createStudio() {
   const vodAlerts = ref<VodAlert[]>([])
   // Analyses en cours (bandeau du tableau de bord) et plateforme dont la connexion vient d'echouer (alerte du tableau de bord).
   const analysis = ref<AnalysisItem[]>([])
-  const connectFailure = ref<'youtube' | 'tiktok' | null>(null)
+  const connectFailure = ref<'youtube' | 'tiktok' | 'instagram' | null>(null)
 
   // 'onboarding' tant que le parcours n'est pas termine, puis 'dashboard' ; le streamer peut revenir a une etape depuis le tableau de bord.
   const view = ref<'onboarding' | 'dashboard' | 'roadmap' | 'long' | 'account'>('onboarding')
