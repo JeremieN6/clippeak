@@ -41,62 +41,77 @@ const plural = (n: number, one: string, many: string) => (n > 1 ? many : one)
         Retour
       </button>
       <h1 class="st-title m-0 text-[34px] font-extrabold leading-10">Parrainage</h1>
-      <p class="m-0 text-base leading-[26px] st-muted">Parraine un autre streamer : quand son premier clip est prêt, tu gagnes un live de plus à découper ce mois-ci, et il passe devant la liste d’attente.</p>
+      <p class="m-0 text-base leading-[26px] st-muted">Invite un autre streamer. Quand son premier clip est prêt, tu gagnes 1 live de plus à découper ce mois-ci.</p>
     </div>
 
     <div v-if="loading" class="st-card h-40 animate-pulse" aria-busy="true" aria-label="Chargement du parrainage" />
 
-    <div v-else-if="unavailable || !referral" class="st-alert st-alert-info" role="status">
-      Le parrainage n’est pas disponible pour ce compte (démonstration ou test). Il apparaît sur ton vrai compte de streamer.
-    </div>
+    <section v-else-if="unavailable || !referral" class="flex flex-col items-start gap-3.5 rounded-2xl border border-dashed border-st-borderStrong bg-st-surface p-5 sm:p-6" role="status">
+      <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-st-raised2 text-st-soft" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 018 0v3" /></svg></span>
+      <div class="st-title text-xl font-bold leading-[26px]">Le parrainage n’est pas disponible avec un compte de démonstration</div>
+      <div class="max-w-[560px] text-[15px] leading-6 text-st-soft">Avec ton compte Twitch, tu as ton lien personnel et tu gagnes des lives en invitant d’autres streamers.</div>
+    </section>
 
     <template v-else>
-      <section class="st-card flex flex-col gap-3" aria-label="Ton lien de parrainage">
-        <h2 class="m-0 text-[17px] font-bold">Ton lien personnel</h2>
-        <div class="flex flex-wrap items-center gap-2">
-          <input :value="link" readonly class="st-field min-w-0 flex-1 basis-60" aria-label="Ton lien de parrainage" @focus="($event.target as HTMLInputElement).select()">
-          <button type="button" class="st-btn" @click="copy">{{ copied ? 'Lien copié' : 'Copier le lien' }}</button>
+      <section class="flex flex-col gap-3.5 rounded-2xl border border-st-border bg-st-surface p-5 sm:p-6" aria-labelledby="pl-t">
+        <h2 id="pl-t" class="st-title m-0 text-lg font-bold leading-6">Ton lien personnel</h2>
+        <div class="flex flex-col gap-2.5 sm:flex-row">
+          <input :value="link" readonly class="st-field !h-[52px] min-w-0 flex-1 !text-base !font-semibold" aria-label="Ton lien de parrainage" @focus="($event.target as HTMLInputElement).select()">
+          <button type="button" class="inline-flex h-[52px] min-w-[170px] items-center justify-center gap-2 rounded-xl px-5 text-[15px] font-bold" :class="copied ? 'border border-st-okBorder bg-st-okBg text-st-ok' : 'border-0 bg-st-accent text-white'" @click="copy">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="copied ? 'M5 12.5l4.5 4.5L19 7.5' : 'M9 9h10v10H9zM5 15V5h10'" /></svg>{{ copied ? 'Lien copié' : 'Copier le lien' }}
+          </button>
         </div>
-        <p class="m-0 text-[13px] leading-5 st-muted">Envoie-le à un streamer Twitch (en message privé, sur Discord, sur ton live…). Il s’inscrit avec ce lien, c’est tout.</p>
+        <div class="min-h-5 text-[13px] font-bold text-st-ok" role="status">{{ copied ? 'Ton lien est copié. Tu peux le coller où tu veux.' : '' }}</div>
       </section>
 
-      <section class="grid gap-3 sm:grid-cols-3" aria-label="Ton parrainage ce mois-ci">
-        <div class="st-card flex flex-col gap-1">
-          <div class="text-xs font-extrabold uppercase tracking-widest text-st-dim">Lives gagnés ce mois-ci</div>
-          <div class="flex items-baseline gap-1.5"><span class="st-title text-3xl font-bold leading-none">{{ referral.bonusThisMonth }}</span><span class="text-sm st-muted">/ {{ referral.bonusCap }}</span></div>
-          <div class="text-[13px] leading-5 st-muted">{{ capReached ? 'Maximum atteint : il revient le mois prochain.' : `Jusqu’à ${referral.bonusCap} par mois.` }}</div>
+      <div v-if="capReached" class="flex items-start gap-3 rounded-[14px] bg-st-okBg px-4 py-3.5 text-st-ok" role="status">
+        <svg class="mt-px flex-none" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+        <div class="text-sm leading-[22px]"><strong class="font-extrabold">Maximum atteint : {{ referral.bonusCap }} lives gagnés ce mois-ci.</strong><div class="mt-0.5 opacity-90">Tu peux continuer à inviter : la personne passe quand même devant la liste d’attente. Tu pourras regagner des lives le mois prochain.</div></div>
+      </div>
+
+      <section class="grid gap-3.5 sm:grid-cols-3" aria-label="Tes compteurs">
+        <div class="flex flex-col gap-2.5 rounded-2xl border border-st-border bg-st-surface px-5 py-[18px]">
+          <div class="text-[13px] font-bold st-muted">Lives gagnés ce mois-ci</div>
+          <div class="flex items-baseline gap-1.5"><span class="st-title text-[34px] font-extrabold leading-none">{{ referral.bonusThisMonth }}</span><span class="text-base font-bold st-muted">sur {{ referral.bonusCap }}</span></div>
+          <div class="h-1.5 overflow-hidden rounded-[3px] bg-st-raised2" role="progressbar" aria-label="Lives gagnés ce mois-ci" :aria-valuenow="referral.bonusThisMonth" aria-valuemin="0" :aria-valuemax="referral.bonusCap"><div class="st-bar h-full" :style="{ width: `${Math.min(100, Math.round(referral.bonusThisMonth / Math.max(1, referral.bonusCap) * 100))}%`, ...(capReached ? { background: 'var(--st-ok)' } : {}) }" /></div>
         </div>
-        <div class="st-card flex flex-col gap-1">
-          <div class="text-xs font-extrabold uppercase tracking-widest text-st-dim">Parrainages validés</div>
-          <div class="st-title text-3xl font-bold leading-none">{{ validatedCount }}</div>
-          <div class="text-[13px] leading-5 st-muted">Premier clip prêt.</div>
+        <div class="flex flex-col gap-2.5 rounded-2xl border border-st-border bg-st-surface px-5 py-[18px]">
+          <div class="text-[13px] font-bold st-muted">Parrainages validés</div>
+          <div class="st-title text-[34px] font-extrabold leading-none">{{ validatedCount }}</div>
+          <div class="text-[13px] text-st-dim">Premier clip prêt</div>
         </div>
-        <div class="st-card flex flex-col gap-1">
-          <div class="text-xs font-extrabold uppercase tracking-widest text-st-dim">En attente</div>
-          <div class="st-title text-3xl font-bold leading-none">{{ pendingCount }}</div>
-          <div class="text-[13px] leading-5 st-muted">Inscrits, sans premier clip prêt.</div>
+        <div class="flex flex-col gap-2.5 rounded-2xl border border-st-border bg-st-surface px-5 py-[18px]">
+          <div class="text-[13px] font-bold st-muted">En attente</div>
+          <div class="st-title text-[34px] font-extrabold leading-none">{{ pendingCount }}</div>
+          <div class="text-[13px] text-st-dim">Pas encore de premier clip prêt</div>
         </div>
       </section>
 
-      <section class="st-card flex flex-col gap-4" aria-label="Comment ça marche">
-        <h2 class="m-0 text-[17px] font-bold">Comment ça marche</h2>
-        <ol class="m-0 flex list-none flex-col gap-3 p-0">
-          <li class="flex gap-3"><span class="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-st-accentSoft text-sm font-extrabold text-st-accentLight" aria-hidden="true">1</span><span class="text-sm leading-6">Tu envoies ton lien à un streamer.</span></li>
-          <li class="flex gap-3"><span class="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-st-accentSoft text-sm font-extrabold text-st-accentLight" aria-hidden="true">2</span><span class="text-sm leading-6">Il se connecte avec Twitch grâce à ce lien : il passe devant la liste d’attente.</span></li>
-          <li class="flex gap-3"><span class="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-st-accentSoft text-sm font-extrabold text-st-accentLight" aria-hidden="true">3</span><span class="text-sm leading-6">Dès que son premier clip est prêt, tu gagnes {{ referral.livesPerReferral }} {{ plural(referral.livesPerReferral, 'live', 'lives') }} de plus à découper pour le mois en cours (au maximum {{ referral.bonusCap }} par mois).</span></li>
+      <section class="flex flex-col gap-3.5" aria-labelledby="cm-t">
+        <h2 id="cm-t" class="st-title m-0 text-xl font-bold leading-[26px]">Comment ça marche</h2>
+        <ol class="m-0 grid list-none gap-3.5 p-0 sm:grid-cols-3">
+          <li class="flex flex-col gap-2 rounded-2xl border border-st-border bg-st-surface px-5 py-[18px]"><span class="flex h-7 w-7 items-center justify-center rounded-full bg-st-accentBg text-[13px] font-extrabold text-st-accentSoft" aria-hidden="true">1</span><div class="text-base font-extrabold">Partage ton lien</div><div class="text-sm leading-[22px] st-muted">Envoie-le à un autre streamer.</div></li>
+          <li class="flex flex-col gap-2 rounded-2xl border border-st-border bg-st-surface px-5 py-[18px]"><span class="flex h-7 w-7 items-center justify-center rounded-full bg-st-accentBg text-[13px] font-extrabold text-st-accentSoft" aria-hidden="true">2</span><div class="text-base font-extrabold">Il s’inscrit avec ton lien</div><div class="text-sm leading-[22px] st-muted">Il passe devant la liste d’attente.</div></li>
+          <li class="flex flex-col gap-2 rounded-2xl border border-st-border bg-st-surface px-5 py-[18px]"><span class="flex h-7 w-7 items-center justify-center rounded-full bg-st-accentBg text-[13px] font-extrabold text-st-accentSoft" aria-hidden="true">3</span><div class="text-base font-extrabold">Son premier clip est prêt</div><div class="text-sm leading-[22px] st-muted">Tu gagnes {{ referral.livesPerReferral }} {{ plural(referral.livesPerReferral, 'live', 'lives') }} de plus à découper ce mois-ci ({{ referral.bonusCap }} au maximum par mois).</div></li>
         </ol>
-        <p class="m-0 text-[13px] leading-5 st-muted">Un live offert est valable le mois où il est gagné. Il s’ajoute à tes lives gratuits, ça ne change pas ton abonnement.</p>
       </section>
 
-      <section class="st-card flex flex-col gap-3" aria-label="Les personnes que tu as amenées">
-        <h2 class="m-0 text-[17px] font-bold">Les personnes que tu as amenées</h2>
-        <p v-if="!referral.referred.length" class="m-0 text-sm leading-6 st-muted">Personne pour l’instant. Copie ton lien ci-dessus et envoie-le à un ami streamer.</p>
-        <ul v-else class="m-0 flex list-none flex-col gap-2 p-0">
-          <li v-for="r in referral.referred" :key="r.name" class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-st-border px-3.5 py-2.5">
-            <span class="min-w-0 truncate text-sm font-bold">{{ r.name }}</span>
-            <span class="st-badge" :class="r.validated ? 'st-badge-ok' : 'st-badge-violet'">{{ r.validated ? 'Premier clip prêt : live bonus reçu' : 'Inscrit, en attente d’un premier clip prêt' }}</span>
+      <section class="flex flex-col gap-3.5" aria-labelledby="pa-t">
+        <h2 id="pa-t" class="st-title m-0 text-xl font-bold leading-[26px]">Les personnes que tu as amenées</h2>
+        <ul v-if="referral.referred.length" class="m-0 flex list-none flex-col overflow-hidden rounded-2xl border border-st-border bg-st-surface p-0">
+          <li v-for="r in referral.referred" :key="r.name" class="flex min-h-16 flex-wrap items-center gap-3.5 border-t border-st-border px-[18px] py-3.5 first:border-t-0">
+            <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-st-accentBg text-[15px] font-extrabold text-st-accentSoft" aria-hidden="true">{{ r.name.charAt(0).toUpperCase() }}</span>
+            <span class="min-w-0 flex-[1_1_160px] truncate text-[15px] font-bold">{{ r.name }}</span>
+            <span class="inline-flex min-h-[30px] items-center gap-1.5 rounded-full px-3 py-1 text-[13px] font-bold leading-[18px]" :class="r.validated ? 'bg-st-okBg text-st-ok' : 'bg-st-warnBg text-st-warn'">
+              <svg class="flex-none" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="r.validated ? 'M5 12.5l4.5 4.5L19 7.5' : 'M12 7v5l3 2'" /></svg>{{ r.validated ? 'Premier clip prêt : live bonus reçu' : 'Inscrit, en attente d’un premier clip prêt' }}
+            </span>
           </li>
         </ul>
+        <div v-else class="flex flex-col gap-2.5 rounded-2xl border border-dashed border-st-borderStrong bg-st-surface p-5 sm:p-6">
+          <div class="st-title text-lg font-bold leading-6">Personne n’est encore passé par ton lien</div>
+          <div class="max-w-[560px] text-sm leading-[22px] text-st-soft">Envoie ton lien à un autre streamer, par message ou sur ton Discord. Dès que son premier clip est prêt, tu gagnes 1 live de plus.</div>
+          <button type="button" class="st-btn !min-h-12 self-start" @click="copy">{{ copied ? 'Lien copié' : 'Copier le lien' }}</button>
+        </div>
       </section>
     </template>
   </main>

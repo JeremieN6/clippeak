@@ -1,8 +1,8 @@
 <script setup lang="ts">
-// Plafond mensuel de clips : un message clair, jamais une barriere brutale.
-//  - a 80 % : message court (« il t'en reste X ») avec un lien vers l'offre ;
-//  - a 100 % : combien de clips obtenus, ce qui attend (les lives sont en pause jusqu'a la remise a zero), et le bouton Creator, annuel en premier.
-// Le bouton lance directement la page de paiement ; sans Stripe configure (offre indisponible) on garde seulement le message.
+// Plafond mensuel (maquette « Message de quota ») : jamais une barrière brutale, et jamais une grande bannière d'abonnement.
+//  - à 80 % : une simple ligne calme, avec un lien vers l'offre ;
+//  - à 100 % : un bandeau fin (ce qui attend, ce qui reste disponible) avec « Passer à Creator » (ou « Ajouter un pack ») et l'invitation à parrainer.
+// L'offre elle-même vit dans la boîte « ce mois-ci » de la colonne de gauche et dans l'écran « Mon offre ».
 import { quotaLevel } from '~~/server/utils/clipping/quota'
 
 const studio = useStudio()
@@ -10,65 +10,34 @@ const q = computed(() => studio.quota.value)
 const b = computed(() => studio.billing.value)
 const level = computed(() => q.value ? quotaLevel(q.value) : 'ok')
 const creator = computed(() => b.value?.plan === 'creator')
-const canBuy = computed(() => Boolean(b.value?.available) && !creator.value)
-
+const lives = computed(() => q.value?.unit === 'lives')
 const resetDate = computed(() => {
   if (!q.value) return ''
   const d = new Date(q.value.resetsAt)
   return `${d.getUTCDate() === 1 ? '1er' : d.getUTCDate()} ${d.toLocaleDateString('fr-FR', { month: 'long', timeZone: 'UTC' })}`
 })
-const eur = (cents: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: (b.value?.prices?.month.currency ?? 'eur').toUpperCase(), minimumFractionDigits: cents % 100 === 0 ? 0 : 2 }).format(cents / 100)
-// Annuel en premier quand son prix existe : « 12 € par mois, facturé 144 € par an ».
-const yearly = computed(() => b.value?.prices?.year ?? null)
-const interval = computed<'month' | 'year'>(() => yearly.value ? 'year' : 'month')
-const priceLine = computed(() => {
-  if (yearly.value) return `${eur(Math.round(yearly.value.amount / 12))} par mois, facturé ${eur(yearly.value.amount)} par an`
-  return b.value?.prices ? `${eur(b.value.prices.month.amount)} par mois` : ''
-})
 const left = computed(() => q.value?.remaining ?? 0)
 const waiting = computed(() => q.value?.waitingVods ?? 0)
-const isLives = computed(() => q.value?.unit === 'lives')
-
-const buy = () => studio.startCheckout({ interval: interval.value, packs: 1 })
-const seeOffers = () => document.getElementById('mon-offre')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+const act = () => { if (creator.value) studio.openPortal(); else studio.view.value = 'offer' }
 </script>
 
 <template>
-  <section v-if="q && level === 'reached'" class="st-alert st-alert-warn st-rise !flex-col !items-start !gap-3" role="status" aria-label="Plafond du mois atteint">
-    <div>
-      <div class="text-[15px] font-extrabold">
-        <template v-if="isLives">Tu as utilisé tes {{ q.limit }} lives gratuits du mois</template>
-        <template v-else>Tu as obtenu tes {{ q.used }} clips du mois</template>
-      </div>
-      <p class="m-0 mt-1 text-sm leading-[21px] opacity-90">
-        <template v-if="isLives">Tous les clips de ces lives restent disponibles ici : tu peux les valider, les télécharger et les publier.
-          <template v-if="waiting > 0">{{ waiting }} live{{ waiting > 1 ? 's attendent' : ' attend' }} : {{ waiting > 1 ? 'ils seront découpés' : 'il sera découpé' }} le {{ resetDate }}, ou tout de suite avec Creator.</template>
-          <template v-else>Ton prochain live sera découpé le {{ resetDate }}, ou tout de suite avec Creator. Rien n’est perdu.</template>
-          <template v-if="canBuy"> Creator : {{ b?.paidClips ?? 120 }} clips par mois, sans limite de lives.</template>
-          <template v-else-if="creator"> Tu as utilisé tout ton plan : ajoute un pack depuis « Gérer mon abonnement » pour reprendre tout de suite.</template>
-          <template v-else> Besoin de plus de place ? Écris à contact.clippeak@sassify.fr.</template>
-        </template>
-        <template v-else>
-          Tes clips restent disponibles ici, tu peux les valider, les télécharger et les publier.
-          <template v-if="waiting > 0">{{ waiting }} live{{ waiting > 1 ? 's attendent' : ' attend' }} le {{ resetDate }}.</template>
-          <template v-else>Tes prochains lives sont mis en pause jusqu’au {{ resetDate }} : rien n’est perdu, l’analyse reprend toute seule.</template>
-          <template v-if="canBuy"> Pour continuer tout de suite, passe à Creator : {{ b?.paidClips ?? 120 }} clips par mois, et tes lives en pause repartent aussitôt.</template>
-          <template v-else-if="creator"> Tu as utilisé tout ton plan : ajoute un pack depuis « Gérer mon abonnement » pour reprendre tout de suite.</template>
-          <template v-else> Besoin de plus de place ? Écris à contact.clippeak@sassify.fr.</template>
-        </template>
-      </p>
-    </div>
-    <div v-if="canBuy" class="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <button type="button" class="st-btn" :disabled="studio.busy.value" @click="buy">Passer à Creator<template v-if="priceLine"> : {{ priceLine }}</template></button>
-      <button type="button" class="st-btn-quiet" @click="seeOffers">Voir les offres</button>
-    </div>
-    <div v-else-if="creator && b?.canManage"><button type="button" class="st-btn" :disabled="studio.busy.value" @click="studio.openPortal()">Gérer mon abonnement</button></div>
-  </section>
+  <div v-if="q && level === 'near' && !lives" class="flex min-h-11 flex-wrap items-center gap-x-2.5 text-sm leading-[22px] st-muted" role="status" aria-label="Tu approches du plafond du mois">
+    <span class="h-2 w-2 flex-none rounded-full bg-st-warn" aria-hidden="true" />
+    <span>Plus que <strong class="font-extrabold text-st-text">{{ left }} clip{{ left > 1 ? 's' : '' }}</strong> ce mois-ci.</span>
+    <button type="button" class="inline-flex min-h-11 items-center bg-transparent p-0 font-bold text-st-accentLight underline underline-offset-[3px]" @click="studio.view.value = 'offer'">Voir mon offre</button>
+  </div>
 
-  <section v-else-if="q && level === 'near' && !isLives" class="st-alert st-alert-info st-rise flex-wrap items-center" role="status" aria-label="Tu approches du plafond du mois">
-    <div class="min-w-[220px] flex-1 text-sm leading-[21px]">
-      <strong class="font-extrabold">Plus que {{ left }} clip{{ left > 1 ? 's' : '' }} ce mois-ci</strong> ({{ q.used }} sur {{ q.limit }}). Ensuite tes lives attendent le {{ resetDate }}.
+  <section v-else-if="q && level === 'reached'" class="st-alert st-alert-warn st-rise flex-wrap items-center !gap-x-5 !gap-y-3" role="status" aria-label="Plafond du mois atteint">
+    <div class="min-w-[240px] flex-1 text-sm leading-[22px]">
+      <strong class="font-extrabold">Limite atteinte.</strong>
+      <template v-if="lives"> Plus aucun nouveau live n’est pris en charge jusqu’au {{ resetDate }}.</template>
+      <template v-else> Plus aucun nouveau clip jusqu’au {{ resetDate }}.</template>
+      Tes clips déjà faits restent disponibles.<template v-if="waiting > 0"> {{ waiting }} live{{ waiting > 1 ? 's attendent' : ' attend' }}.</template>
     </div>
-    <button v-if="canBuy" type="button" class="st-btn-ghost" @click="seeOffers">Voir Creator</button>
+    <div v-if="b?.available" class="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+      <button type="button" class="st-btn !min-h-11" :disabled="studio.busy.value" @click="act">{{ creator ? 'Ajouter un pack' : 'Passer à Creator' }}</button>
+      <button v-if="!creator" type="button" class="inline-flex min-h-11 items-center bg-transparent p-0 text-sm font-bold text-st-accentLight underline underline-offset-[3px]" @click="studio.view.value = 'referral'">Inviter un streamer pour gagner un live</button>
+    </div>
   </section>
 </template>

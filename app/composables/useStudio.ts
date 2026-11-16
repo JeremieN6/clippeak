@@ -87,7 +87,7 @@ export function createStudio() {
   const connectFailure = ref<'youtube' | 'tiktok' | 'instagram' | null>(null)
 
   // 'onboarding' tant que le parcours n'est pas termine, puis 'dashboard' ; le streamer peut revenir a une etape depuis le tableau de bord.
-  const view = ref<'onboarding' | 'dashboard' | 'roadmap' | 'long' | 'referral' | 'account'>('onboarding')
+  const view = ref<'onboarding' | 'dashboard' | 'roadmap' | 'long' | 'referral' | 'offer' | 'account'>('onboarding')
 
   // 'streamer' = connecte avec Twitch (ne voit que sa chaine) ; 'admin' = session de /admin (voit la chaine de demonstration et les autres).
   const mode = ref<'streamer' | 'admin' | null>(null)
