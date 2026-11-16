@@ -33,8 +33,9 @@ function toggle(id: string) {
               <button type="button" class="st-btn-quiet" :disabled="studio.busy.value" @click="studio.disconnectPlatform(p.id)">Déconnecter</button>
             </div>
             <div v-else><a :href="`/api/auth/${p.id}`" class="st-btn no-underline">Connecter {{ p.name }}</a></div>
+            <div v-if="conn(p.id)?.needsReconnect" class="st-alert st-alert-warn flex-wrap items-center"><div>L’accès à ce compte a expiré (Instagram le limite à 60 jours).</div><a :href="`/api/auth/${p.id}`" class="st-btn no-underline">Reconnecter {{ p.name }}</a></div>
             <div v-if="conn(p.id)?.connected && conn(p.id)?.accountName" class="text-sm st-muted">Compte : {{ conn(p.id)?.accountName }}</div>
-            <div class="text-sm leading-relaxed st-muted">Clippeak publie seulement un clip que tu as approuvé, quand tu le demandes.<template v-if="p.id === 'youtube'"> Tant que Google n’a pas validé Clippeak, YouTube garde ces vidéos en privé.</template><template v-else-if="p.id === 'tiktok'"> À chaque publication, tu choisis la visibilité et les options sur un écran dédié. Tant que TikTok n’a pas validé Clippeak, les vidéos publiées restent privées.</template></div>
+            <div class="text-sm leading-relaxed st-muted">Clippeak publie seulement un clip que tu as approuvé, quand tu le demandes.<template v-if="p.id === 'youtube'"> Tant que Google n’a pas validé Clippeak, YouTube garde ces vidéos en privé.</template><template v-else-if="p.id === 'tiktok'"> À chaque publication, tu choisis la visibilité et les options sur un écran dédié. Tant que TikTok n’a pas validé Clippeak, les vidéos publiées restent privées.</template><template v-else-if="p.id === 'instagram'"> Ton compte doit être professionnel (Pro ou Créateur, gratuit dans les réglages d’Instagram). À chaque publication, tu vérifies la légende puis tu cliques sur « Publier ». Pour retirer l’accès de Clippeak, passe aussi par Instagram (Paramètres > Applications et sites web).</template></div>
           </template>
           <template v-else>
             <div><span class="st-badge st-badge-neutral">Connexion bientôt disponible</span></div>

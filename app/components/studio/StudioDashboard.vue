@@ -226,7 +226,7 @@ const selectClass = 'st-field !min-h-11 !w-full'
       <div v-if="studio.connectFailure.value" class="st-alert st-alert-error st-rise flex-wrap items-center" role="alert">
         <div class="min-w-[220px] flex-1">
           <div class="font-bold">La connexion à {{ platformNames[studio.connectFailure.value] }} a échoué</div>
-          <div class="text-[13px] opacity-90">{{ platformNames[studio.connectFailure.value] }} n’a pas accepté la connexion. Tant que {{ studio.connectFailure.value === 'youtube' ? 'Google' : 'TikTok' }} n’a pas validé Clippeak, ça peut arriver : ça peut prendre du temps. En attendant, télécharge tes clips et publie-les à la main.</div>
+          <div class="text-[13px] opacity-90">{{ platformNames[studio.connectFailure.value] }} n’a pas accepté la connexion. Tant que {{ studio.connectFailure.value === 'youtube' ? 'Google' : studio.connectFailure.value === 'instagram' ? 'Meta' : 'TikTok' }} n’a pas validé Clippeak, ça peut arriver : ça peut prendre du temps. En attendant, télécharge tes clips et publie-les à la main.</div>
         </div>
         <div class="flex flex-wrap gap-2">
           <a :href="`/api/auth/${studio.connectFailure.value}`" class="st-btn no-underline">Réessayer</a>

@@ -1,7 +1,7 @@
 // Publication : types communs, texte envoye a la plateforme et creneaux proposes. Fichier pur (aucun import Node) : il sert aussi
 // a la page du studio pour proposer les creneaux.
 
-export const PUBLISH_PLATFORMS = ['youtube', 'tiktok'] as const
+export const PUBLISH_PLATFORMS = ['youtube', 'tiktok', 'instagram'] as const
 export type PublishPlatform = typeof PUBLISH_PLATFORMS[number]
 
 export type PublicationStatus = 'scheduled' | 'publishing' | 'published' | 'failed' | 'cancelled'
@@ -21,6 +21,9 @@ export class PublishError extends Error {
 }
 
 export interface PublishInput {
+  // Clip a publier (Instagram : sert a fabriquer le lien video signe) et identifiant du compte chez la plateforme (Instagram : compte professionnel).
+  clipId?: string
+  accountId?: string | null
   title: string
   caption: string
   hashtags: string
@@ -93,4 +96,17 @@ export interface TiktokPostOptions {
   // Divulgation de contenu commercial : « ma marque » (contenu promotionnel) et / ou « contenu de marque » (partenariat paye).
   brandOrganic: boolean
   brandContent: boolean
+}
+
+// Instagram (Reels) : seule la legende est choisie par le streamer dans l'ecran de publication.
+export const INSTAGRAM_CAPTION_MAX = 2200
+export interface InstagramPostOptions {
+  caption: string
+}
+
+// Legende d'un Reel : 2 200 caracteres, 30 hashtags au plus (limites de Meta). Les hashtags au-dela du 30e sont retires.
+export function instagramCaption(raw: string): string {
+  let tags = 0
+  const text = raw.replace(/[<>]/g, '').replace(/#[\p{L}\p{N}_]+/gu, tag => (++tags > 30 ? '' : tag)).replace(/[ \t]+\n/g, '\n').trim()
+  return text.length > INSTAGRAM_CAPTION_MAX ? `${text.slice(0, INSTAGRAM_CAPTION_MAX - 1).trimEnd()}…` : text
 }

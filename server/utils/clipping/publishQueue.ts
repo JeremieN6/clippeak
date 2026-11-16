@@ -8,7 +8,7 @@ export interface DuePublication {
   platform: string
   attempts: number
   clip: { id: string, title: string, caption: string, hashtags: string, videoPath: string | null, status: string, format?: 'short' | 'long' }
-  connection: { id: string, refreshToken: string | null, accessToken: string | null, expiresAt: Date | null } | null
+  connection: { id: string, externalId?: string | null, refreshToken: string | null, accessToken: string | null, expiresAt: Date | null } | null
   options: Record<string, unknown> | null
 }
 
@@ -50,6 +50,8 @@ export async function runPublishOnce(deps: PublishStepDeps): Promise<boolean> {
   else {
     try {
       const result = await publisher.publish({
+        clipId: due.clip.id,
+        accountId: due.connection.externalId ?? null,
         title: due.clip.title,
         caption: due.clip.caption,
         hashtags: due.clip.hashtags,

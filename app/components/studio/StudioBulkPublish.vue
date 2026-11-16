@@ -10,7 +10,7 @@ const studio = useStudio()
 const mode = ref<'now' | 'slots'>('slots')
 const chosen = reactive<Record<string, boolean>>(Object.fromEntries(props.clips.map(c => [c.id, true])))
 const selected = computed(() => props.clips.filter(c => chosen[c.id]))
-const taken = computed(() => studio.clips.value.flatMap(c => c.publications).filter(p => p.status === 'scheduled' && p.platform !== 'tiktok').map(p => new Date(p.scheduledAt)))
+const taken = computed(() => studio.clips.value.flatMap(c => c.publications).filter(p => p.status === 'scheduled' && p.platform !== 'tiktok' && p.platform !== 'instagram').map(p => new Date(p.scheduledAt)))
 const slots = computed(() => suggestSlots(new Date(), DEFAULT_SLOT_TIMES, selected.value.length, taken.value))
 const fmt = (d: Date) => d.toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 const youtubeConnected = computed(() => studio.connections.value.some(c => c.platform === 'youtube' && c.connected))
@@ -79,7 +79,7 @@ onBeforeUnmount(() => {
       </fieldset>
 
       <p v-if="tooMany" class="st-alert st-alert-warn m-0">YouTube limite le nombre d’envois par jour (environ 6 pour toute l’application) : au-delà, les derniers peuvent échouer. Préfère les créneaux.</p>
-      <p class="m-0 text-[12px] leading-4 st-muted">Tant que Google n’a pas validé Clippeak, YouTube garde les vidéos en privé : tu pourras les passer en public depuis YouTube Studio. Pour publier sur TikTok, ouvre « Détails » d’un clip : TikTok demande des réglages clip par clip.</p>
+      <p class="m-0 text-[12px] leading-4 st-muted">Tant que Google n’a pas validé Clippeak, YouTube garde les vidéos en privé : tu pourras les passer en public depuis YouTube Studio. Pour publier sur TikTok ou Instagram, ouvre « Détails » d’un clip : chacun demande une validation clip par clip.</p>
 
       <div class="flex flex-wrap gap-2">
         <button type="button" class="st-btn min-w-[220px] flex-1" :disabled="!youtubeConnected || !selected.length || studio.busy.value" @click="confirm">{{ mode === 'now' ? `Publier ${selected.length} clip${selected.length > 1 ? 's' : ''} maintenant` : `Programmer ${selected.length} clip${selected.length > 1 ? 's' : ''}` }}</button>
