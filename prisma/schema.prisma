@@ -65,7 +65,14 @@ model Channel {
   displayName String   @map("display_name") @db.VarChar(80)
   autoClip    Boolean  @default(true) @map("auto_clip")
   createdAt   DateTime @default(now()) @map("created_at")
+  // Parrainage : code personnel du lien (cree a la premiere demande) et chaine qui l'a parraine (null = aucune).
+  referralCode String? @unique @map("referral_code") @db.VarChar(12)
+  referredById String? @map("referred_by_id") @db.Uuid
 
+  referredBy     Channel?  @relation("Referral", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals      Channel[] @relation("Referral")
+  grantsReceived ReferralGrant[] @relation("GrantBeneficiary")
+  grantsCaused   ReferralGrant[] @relation("GrantOther")
   settings       StreamerSettings?
   style          StreamerStyle?
   vods           Vod[]
@@ -302,6 +309,9 @@ model ChannelInvite {
   note        String?   @db.VarChar(200)
   createdAt   DateTime  @default(now()) @map("created_at")
   lastLoginAt DateTime? @map("last_login_at")
+  // Origine : manual (admin) | wave (vague automatique). Parrain gardé jusqu'a la premiere connexion.
+  source      String    @default("manual") @db.VarChar(10)
+  referredByChannelId String? @map("referred_by_channel_id") @db.Uuid
 
   @@map("channel_invites")
 }
@@ -314,7 +324,10 @@ model AccessRequest {
   twitchLogin String   @map("twitch_login") @db.VarChar(25)
   displayName String?  @map("display_name") @db.VarChar(60)
   createdAt   DateTime @default(now()) @map("created_at")
+  // Chaine qui l'a parraine : il passe devant la file d'attente.
+  referredByChannelId String? @map("referred_by_channel_id") @db.Uuid
 
+  @@index([createdAt])
   @@map("access_requests")
 }
 
@@ -579,4 +592,34 @@ model VodTranscript {
 
   @@index([channelId, createdAt])
   @@map("vod_transcripts")
+}
+
+// Reglages des vagues d'invitations (une seule ligne, id = 1) : vagues automatiques du worker, plafond d'invitations par jour,
+// plafond mensuel de clips bonus de parrainage par chaine.
+model InvitationSettings {
+  id               Int      @id @default(1)
+  wavesEnabled     Boolean  @default(false) @map("waves_enabled")
+  dailyCap         Int      @default(20) @map("daily_cap")
+  referralBonusCap Int      @default(25) @map("referral_bonus_cap")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("invitation_settings")
+}
+
+// Clips gratuits gagnes par parrainage. kind : signup (le parraine, a son inscription) | referrer (le parrain, quand le parraine valide
+// son premier clip). Valables pour le mois de la creation ; jamais comptes comme une offre payante.
+model ReferralGrant {
+  id             String   @id @default(uuid()) @db.Uuid
+  channelId      String   @map("channel_id") @db.Uuid
+  otherChannelId String   @map("other_channel_id") @db.Uuid
+  kind           String   @db.VarChar(10)
+  clips          Int
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  channel Channel @relation("GrantBeneficiary", fields: [channelId], references: [id], onDelete: Cascade)
+  other   Channel @relation("GrantOther", fields: [otherChannelId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, otherChannelId, kind])
+  @@index([channelId, createdAt])
+  @@map("referral_grants")
 }
