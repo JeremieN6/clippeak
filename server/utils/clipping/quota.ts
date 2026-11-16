@@ -1,7 +1,7 @@
 // Plafond mensuel de clips par chaine (beta gratuite avec plafond, decision du porteur du 2026-10-31) : regles pures, testables.
 // On compte les clips PRODUITS dans le mois (hors echecs de rendu), pas les VODs : c'est ce que le streamer voit et comprend.
 
-import { FREE_CLIPS } from './pricing.ts'
+import { FREE_CLIPS, FREE_LIVES } from './pricing.ts'
 
 // Plafond par defaut = le quota gratuit (une seule source : ./pricing.ts).
 export const DEFAULT_MONTHLY_CLIPS = FREE_CLIPS
@@ -29,11 +29,34 @@ export function clipRoom(quota: number | null, used: number): number {
   return Math.max(0, quota - Math.max(0, used))
 }
 
-export interface QuotaView { limit: number | null, used: number, remaining: number | null, reached: boolean, resetsAt: string, bonus: number }
+// Comment le plafond se compte :
+//  - « unlimited » : chaine de test/demo, ou plafond retire par l'admin ;
+//  - « lives »     : gratuit sans reglage particulier : 2 lives par mois, decoupes en entier (aucune limite de clips par live) ;
+//  - « clips »     : offre Creator (packs de clips) ou plafond de clips regle a la main par l'admin.
+export type QuotaMode = 'unlimited' | 'lives' | 'clips'
+export function quotaMode(input: { twitchId: string, setting: number | null | undefined, planClips?: number }): QuotaMode {
+  if (isQuotaExempt(input.twitchId) || input.setting === null) return 'unlimited'
+  if ((input.planClips ?? 0) > 0) return 'clips'
+  return input.setting === undefined || input.setting === DEFAULT_MONTHLY_CLIPS ? 'lives' : 'clips'
+}
+
+// Lives gratuits du mois : 2, plus 1 par parrainage active (voir waves.ts).
+export const liveLimit = (bonusLives = 0): number => FREE_LIVES + Math.max(0, Math.floor(bonusLives))
+
+// Une VOD deja admise ce mois-ci (ou avant) continue toujours ; une nouvelle VOD n'est admise que s'il reste un live.
+export const liveRoom = (limit: number, used: number): number => Math.max(0, limit - Math.max(0, used))
+
+// `unit` dit ce que `limit` et `used` comptent : des clips, ou des lives (dans ce cas `clipsUsed` garde le nombre de clips du mois).
+export interface QuotaView { limit: number | null, used: number, remaining: number | null, reached: boolean, resetsAt: string, bonus: number, unit: 'clips' | 'lives', clipsUsed: number }
 
 export function quotaView(quota: number | null, used: number, now: Date = new Date(), bonus = 0): QuotaView {
   const room = clipRoom(quota, used)
-  return { limit: quota, used, remaining: Number.isFinite(room) ? room : null, reached: room === 0, resetsAt: nextMonthStart(now).toISOString(), bonus }
+  return { limit: quota, used, remaining: Number.isFinite(room) ? room : null, reached: room === 0, resetsAt: nextMonthStart(now).toISOString(), bonus, unit: 'clips', clipsUsed: used }
+}
+
+export function liveQuotaView(limit: number, livesUsed: number, clipsUsed: number, now: Date = new Date(), bonus = 0): QuotaView {
+  const room = liveRoom(limit, livesUsed)
+  return { limit, used: livesUsed, remaining: room, reached: room === 0, resetsAt: nextMonthStart(now).toISOString(), bonus, unit: 'lives', clipsUsed }
 }
 
 // Plafond saisi par l'admin : entier de 0 a 1000, ou null pour retirer le plafond.

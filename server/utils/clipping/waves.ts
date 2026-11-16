@@ -5,9 +5,11 @@
 import { verdictOf, type Sample } from './capacity.ts'
 
 export const DEFAULT_DAILY_CAP = 20
-export const DEFAULT_REFERRAL_BONUS_CAP = 25
-// Clips gratuits donnes a chaque bout du parrainage.
-export const REFERRAL_CLIPS = 5
+// Parrainage (2026-11-16) : le parrain gagne 1 LIVE gratuit de plus pour le mois par personne amenee dont le premier clip est pret ; au plus 5 par mois
+// (le reglage admin peut le baisser, jamais le monter). La personne amenee ne recoit rien de plus : elle a deja ses lives gratuits.
+export const MAX_BONUS_LIVES = 5
+export const DEFAULT_REFERRAL_BONUS_CAP = MAX_BONUS_LIVES
+export const REFERRAL_LIVES = 1
 // Une vague horaire invite au plus 1/8 du plafond du jour : les arrivees s'etalent au lieu de tomber toutes a la meme heure.
 export const WAVES_PER_DAY = 8
 
@@ -74,5 +76,5 @@ export function referralAllowed(input: { channelId: string, channelTwitchId: str
   return !isTestChannel(input.channelTwitchId) && !isTestChannel(input.referrerTwitchId)
 }
 
-// Bonus du mois = somme des clips gagnes ce mois-ci, au plus le plafond mensuel de bonus.
-export const bonusClips = (granted: number, cap: number): number => Math.max(0, Math.min(Math.floor(granted), Math.max(0, Math.floor(cap))))
+// Lives bonus du mois = parrainages actives ce mois-ci, au plus le plafond mensuel de bonus (et jamais plus de MAX_BONUS_LIVES).
+export const bonusLives = (granted: number, cap: number): number => Math.max(0, Math.min(Math.floor(granted), Math.max(0, Math.floor(cap)), MAX_BONUS_LIVES))

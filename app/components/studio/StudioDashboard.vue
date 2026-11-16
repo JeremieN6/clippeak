@@ -196,10 +196,10 @@ const selectClass = 'st-field !min-h-11 !w-full'
           <span v-if="s.status === 'warn' || s.status === 'skip'" class="text-xs font-bold" :class="s.status === 'warn' ? 'text-st-warn' : 'text-st-soft'">{{ s.status === 'warn' ? 'À revoir' : 'Passée' }}</span>
         </button>
       </div>
-      <div v-if="studio.quota.value && studio.quota.value.limit !== null" class="mt-auto hidden flex-col gap-2 rounded-xl border border-st-border bg-st-surface p-3.5 lg:flex" :class="collapsed ? 'lg:!hidden' : ''" aria-label="Clips utilisés ce mois-ci">
-        <div class="text-xs font-extrabold uppercase tracking-widest text-st-dim">Clips ce mois-ci</div>
+      <div v-if="studio.quota.value && studio.quota.value.limit !== null" class="mt-auto hidden flex-col gap-2 rounded-xl border border-st-border bg-st-surface p-3.5 lg:flex" :class="collapsed ? 'lg:!hidden' : ''" aria-label="Utilisation de ce mois-ci">
+        <div class="text-xs font-extrabold uppercase tracking-widest text-st-dim">{{ studio.quota.value.unit === 'lives' ? 'Lives ce mois-ci' : 'Clips ce mois-ci' }}</div>
         <div class="flex items-baseline gap-1.5"><span class="st-title text-2xl font-bold leading-none">{{ studio.quota.value.used }}</span><span class="text-sm st-muted">/ {{ studio.quota.value.limit }}</span></div>
-        <div class="h-1.5 overflow-hidden rounded-[3px] bg-st-raised2" role="progressbar" aria-label="Clips utilisés" aria-valuemin="0" :aria-valuemax="studio.quota.value.limit" :aria-valuenow="studio.quota.value.used"><div class="st-bar h-full" :style="{ width: `${Math.min(100, Math.round(studio.quota.value.used / Math.max(1, studio.quota.value.limit) * 100))}%` }" /></div>
+        <div class="h-1.5 overflow-hidden rounded-[3px] bg-st-raised2" role="progressbar" :aria-label="studio.quota.value.unit === 'lives' ? 'Lives utilisés' : 'Clips utilisés'" aria-valuemin="0" :aria-valuemax="studio.quota.value.limit" :aria-valuenow="studio.quota.value.used"><div class="st-bar h-full" :style="{ width: `${Math.min(100, Math.round(studio.quota.value.used / Math.max(1, studio.quota.value.limit) * 100))}%` }" /></div>
         <div v-if="offerLine" class="text-[13px] leading-5 st-muted">{{ offerLine }}</div>
       </div>
       <div class="hidden items-center gap-2 lg:flex px-2 text-[13px] leading-[18px] st-muted" :class="[collapsed ? 'lg:!hidden' : '', studio.quota.value && studio.quota.value.limit !== null ? '' : 'mt-auto']"><span class="h-2 w-2 flex-none rounded-full bg-st-ok" />Clippeak surveille ton prochain live</div>
@@ -239,7 +239,7 @@ const selectClass = 'st-field !min-h-11 !w-full'
       <p v-if="pubSummary" class="st-pop m-0 -mt-4 text-sm font-semibold text-st-ok">{{ pubSummary }}</p>
 
       <StudioQuotaNotice />
-      <p v-if="studio.quota.value && studio.quota.value.limit !== null && studio.quota.value.used < studio.quota.value.limit" class="m-0 -mt-4 text-[13px] st-muted lg:hidden">Clips ce mois-ci : {{ studio.quota.value.used }} / {{ studio.quota.value.limit }}</p>
+      <p v-if="studio.quota.value && studio.quota.value.limit !== null && studio.quota.value.used < studio.quota.value.limit" class="m-0 -mt-4 text-[13px] st-muted lg:hidden">{{ studio.quota.value.unit === 'lives' ? 'Lives' : 'Clips' }} ce mois-ci : {{ studio.quota.value.used }} / {{ studio.quota.value.limit }}</p>
 
       <StudioBilling />
       <StudioReferral />

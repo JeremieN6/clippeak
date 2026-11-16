@@ -156,7 +156,7 @@ const openLong = () => { try { localStorage.setItem('clippeak.longSeen', '1') } 
             <span v-if="s.status === 'warn' || s.status === 'skip'" class="text-xs font-bold" :class="s.status === 'warn' ? 'text-st-warn' : 'text-st-soft'">{{ s.status === 'warn' ? 'À revoir' : 'Passée' }}</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--st-dim)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
           </button>
-          <p v-if="studio.quota.value && studio.quota.value.limit !== null" class="m-0 px-1 pt-2 text-[13px] st-muted">Clips ce mois-ci : {{ studio.quota.value.used }} / {{ studio.quota.value.limit }}</p>
+          <p v-if="studio.quota.value && studio.quota.value.limit !== null" class="m-0 px-1 pt-2 text-[13px] st-muted">{{ studio.quota.value.unit === 'lives' ? 'Lives' : 'Clips' }} ce mois-ci : {{ studio.quota.value.used }} / {{ studio.quota.value.limit }}</p>
         </div>
         <StudioBilling />
       </template>

@@ -16,7 +16,7 @@ const faqs = [
   },
   {
     q: 'Combien de clips vais-je obtenir ?',
-    a: "Clippeak prépare jusqu'à 8 clips par live, classés par note et présentés par lots de 4. Ça dépend ensuite de l'activité de ton chat, et de ton plafond mensuel (20 clips en gratuit)."
+    a: "Clippeak découpe ton live en entier : il garde tous les bons moments, classés par note et présentés par lots de 4, sans limite de clips par live. Le nombre dépend de ton live et de ton chat. En gratuit, tu as 2 lives découpés par mois."
   },
   {
     q: 'Mes données sont-elles conservées ?',
@@ -24,7 +24,7 @@ const faqs = [
   },
   {
     q: 'C’est gratuit ?',
-    a: "Oui, pendant la bêta : jusqu'à 20 clips par mois. Une offre payante arrive ensuite, par packs de 120 clips par mois, en mensuel (19 €) ou en annuel (12 €/mois, soit 144 € par an), résiliable à tout moment."
+    a: "Oui, pendant la bêta : 2 lives découpés en entier par mois. Une offre payante arrive ensuite, par packs de 120 clips par mois, en mensuel (19 €) ou en annuel (12 €/mois, soit 144 € par an), résiliable à tout moment."
   }
 ]
 

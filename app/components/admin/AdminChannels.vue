@@ -73,7 +73,7 @@ async function removeTest(admin: Admin, id: string) {
         <div class="min-w-0 flex-1 basis-44 break-words text-[15px] font-bold">{{ c.displayName }}</div>
         <NuxtLink :to="`/studio?channel=${c.id}`" class="st-btn-ghost no-underline">Ouvrir son studio</NuxtLink>
         <div v-if="admin.quotas.value[c.id]" class="flex basis-full flex-wrap items-center gap-2 text-[13px] st-muted">
-          <span :class="admin.quotas.value[c.id]!.reached ? 'font-bold text-st-warn' : ''">Ce mois-ci : {{ admin.quotas.value[c.id]!.used }} / {{ admin.quotas.value[c.id]!.limit ?? 'illimité' }} clips</span>
+          <span :class="admin.quotas.value[c.id]!.reached ? 'font-bold text-st-warn' : ''">Ce mois-ci : {{ admin.quotas.value[c.id]!.used }} / {{ admin.quotas.value[c.id]!.limit ?? 'illimité' }} {{ admin.quotas.value[c.id]!.unit === 'lives' ? 'lives' : 'clips' }}<template v-if="admin.quotas.value[c.id]!.unit === 'lives'"> ({{ admin.quotas.value[c.id]!.clipsUsed }} clips)</template></span>
           <label class="flex items-center gap-1.5"><span class="sr-only">Plafond mensuel de {{ c.displayName }}</span>
             <input v-model="quotaInput[c.id]" class="st-field !min-h-11 !w-28" inputmode="numeric" placeholder="illimité" :aria-label="`Plafond mensuel de ${c.displayName} (vide = illimité)`">
           </label>

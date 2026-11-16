@@ -1,7 +1,7 @@
 import { prisma } from '../../utils/prisma'
 import { requireStudioAdmin } from '../../utils/studioAuth'
 import { loadInvitationConfig, invitedToday, purgeOldRequests, queueHead } from '../../utils/clipping/prismaWaves'
-import { serverAllowsWave, waveSize, REFERRAL_CLIPS } from '../../utils/clipping/waves'
+import { serverAllowsWave, waveSize, REFERRAL_LIVES } from '../../utils/clipping/waves'
 import { verdictOf } from '../../utils/clipping/capacity'
 import { monthStart } from '../../utils/clipping/quota'
 
@@ -34,8 +34,8 @@ export default defineEventHandler(async (event) => {
     waveInvitesTotal: waveTotal,
     queue: { total: queueTotal, referred: referredQueue, items: queue.map((r, i) => ({ id: r.id, position: i + 1, login: r.twitchLogin, displayName: r.displayName, createdAt: r.createdAt, referred: Boolean(r.referredByChannelId) })) },
     referrals: {
-      clipsPerReferral: REFERRAL_CLIPS,
-      grantedThisMonth: grants.reduce((sum, g) => sum + g.clips, 0),
+      livesPerReferral: REFERRAL_LIVES,
+      grantedThisMonth: grants.filter(g => g.kind === 'referrer').length,
       channels: referredChannels.map(c => ({ id: c.id, login: c.login, displayName: c.displayName, createdAt: c.createdAt, referrer: c.referredBy?.displayName || c.referredBy?.login || null, validated: validated.has(c.id) }))
     }
   }

@@ -27,6 +27,7 @@ const priceLine = computed(() => {
 })
 const left = computed(() => q.value?.remaining ?? 0)
 const waiting = computed(() => q.value?.waitingVods ?? 0)
+const isLives = computed(() => q.value?.unit === 'lives')
 
 const buy = () => studio.startCheckout({ interval: interval.value, packs: 1 })
 const seeOffers = () => document.getElementById('mon-offre')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -35,14 +36,26 @@ const seeOffers = () => document.getElementById('mon-offre')?.scrollIntoView({ b
 <template>
   <section v-if="q && level === 'reached'" class="st-alert st-alert-warn st-rise !flex-col !items-start !gap-3" role="status" aria-label="Plafond du mois atteint">
     <div>
-      <div class="text-[15px] font-extrabold">Tu as obtenu tes {{ q.used }} clips du mois</div>
+      <div class="text-[15px] font-extrabold">
+        <template v-if="isLives">Tu as utilisé tes {{ q.limit }} lives gratuits du mois</template>
+        <template v-else>Tu as obtenu tes {{ q.used }} clips du mois</template>
+      </div>
       <p class="m-0 mt-1 text-sm leading-[21px] opacity-90">
-        Tes clips restent disponibles ici, tu peux les valider, les télécharger et les publier.
-        <template v-if="waiting > 0">{{ waiting }} live{{ waiting > 1 ? 's attendent' : ' attend' }} le {{ resetDate }}.</template>
-        <template v-else>Tes prochains lives sont mis en pause jusqu’au {{ resetDate }} : rien n’est perdu, l’analyse reprend toute seule.</template>
-        <template v-if="canBuy"> Pour continuer tout de suite, passe à Creator : {{ b?.paidClips ?? 120 }} clips par mois, et tes lives en pause repartent aussitôt.</template>
-        <template v-else-if="creator"> Tu as utilisé tout ton plan : ajoute un pack depuis « Gérer mon abonnement » pour reprendre tout de suite.</template>
-        <template v-else> Besoin de plus de place ? Écris à contact.clippeak@sassify.fr.</template>
+        <template v-if="isLives">Tous les clips de ces lives restent disponibles ici : tu peux les valider, les télécharger et les publier.
+          <template v-if="waiting > 0">{{ waiting }} live{{ waiting > 1 ? 's attendent' : ' attend' }} : {{ waiting > 1 ? 'ils seront découpés' : 'il sera découpé' }} le {{ resetDate }}, ou tout de suite avec Creator.</template>
+          <template v-else>Ton prochain live sera découpé le {{ resetDate }}, ou tout de suite avec Creator. Rien n’est perdu.</template>
+          <template v-if="canBuy"> Creator : {{ b?.paidClips ?? 120 }} clips par mois, sans limite de lives.</template>
+          <template v-else-if="creator"> Tu as utilisé tout ton plan : ajoute un pack depuis « Gérer mon abonnement » pour reprendre tout de suite.</template>
+          <template v-else> Besoin de plus de place ? Écris à contact.clippeak@sassify.fr.</template>
+        </template>
+        <template v-else>
+          Tes clips restent disponibles ici, tu peux les valider, les télécharger et les publier.
+          <template v-if="waiting > 0">{{ waiting }} live{{ waiting > 1 ? 's attendent' : ' attend' }} le {{ resetDate }}.</template>
+          <template v-else>Tes prochains lives sont mis en pause jusqu’au {{ resetDate }} : rien n’est perdu, l’analyse reprend toute seule.</template>
+          <template v-if="canBuy"> Pour continuer tout de suite, passe à Creator : {{ b?.paidClips ?? 120 }} clips par mois, et tes lives en pause repartent aussitôt.</template>
+          <template v-else-if="creator"> Tu as utilisé tout ton plan : ajoute un pack depuis « Gérer mon abonnement » pour reprendre tout de suite.</template>
+          <template v-else> Besoin de plus de place ? Écris à contact.clippeak@sassify.fr.</template>
+        </template>
       </p>
     </div>
     <div v-if="canBuy" class="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -52,7 +65,7 @@ const seeOffers = () => document.getElementById('mon-offre')?.scrollIntoView({ b
     <div v-else-if="creator && b?.canManage"><button type="button" class="st-btn" :disabled="studio.busy.value" @click="studio.openPortal()">Gérer mon abonnement</button></div>
   </section>
 
-  <section v-else-if="q && level === 'near'" class="st-alert st-alert-info st-rise flex-wrap items-center" role="status" aria-label="Tu approches du plafond du mois">
+  <section v-else-if="q && level === 'near' && !isLives" class="st-alert st-alert-info st-rise flex-wrap items-center" role="status" aria-label="Tu approches du plafond du mois">
     <div class="min-w-[220px] flex-1 text-sm leading-[21px]">
       <strong class="font-extrabold">Plus que {{ left }} clip{{ left > 1 ? 's' : '' }} ce mois-ci</strong> ({{ q.used }} sur {{ q.limit }}). Ensuite tes lives attendent le {{ resetDate }}.
     </div>

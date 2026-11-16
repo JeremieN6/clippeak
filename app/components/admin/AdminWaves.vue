@@ -11,7 +11,7 @@ interface Waves {
   nextWaveSize: number
   waveInvitesTotal: number
   queue: { total: number, referred: number, items: QueueItem[] }
-  referrals: { clipsPerReferral: number, grantedThisMonth: number, channels: ReferredChannel[] }
+  referrals: { livesPerReferral: number, grantedThisMonth: number, channels: ReferredChannel[] }
 }
 
 const data = ref<Waves | null>(null)
@@ -92,7 +92,7 @@ const status = computed(() => {
         <div class="flex flex-wrap items-end gap-3">
           <button type="button" class="st-btn" :disabled="busy" @click="save({ wavesEnabled: !data.config.wavesEnabled }, data.config.wavesEnabled ? 'Vagues coupées.' : 'Vagues activées.')">{{ data.config.wavesEnabled ? 'Couper les vagues' : 'Activer les vagues' }}</button>
           <label class="flex flex-col gap-1.5"><span class="st-label">Invitations par jour (plafond)</span>
-            <input v-model.number="cap" type="number" min="0" max="500" class="st-field w-32" aria-label="Plafond d’invitations par jour">
+            <input v-model.number="cap" type="number" min="0" max="5" class="st-field w-32" aria-label="Plafond d’invitations par jour">
           </label>
           <button type="button" class="st-btn-ghost" :disabled="busy" @click="save({ dailyCap: cap }, `Plafond du jour : ${cap} invitations.`)">Enregistrer</button>
         </div>
@@ -116,12 +116,12 @@ const status = computed(() => {
 
       <section class="st-card flex flex-col gap-4">
         <h2 class="m-0 text-[17px] font-bold">Parrainage</h2>
-        <p class="m-0 text-sm st-muted">Un streamer parrainé reçoit {{ data.referrals.clipsPerReferral }} clips gratuits à son inscription ; son parrain en reçoit {{ data.referrals.clipsPerReferral }} quand il valide son premier clip. Les clips valent pour le mois en cours. {{ data.referrals.grantedThisMonth }} clip{{ data.referrals.grantedThisMonth > 1 ? 's' : '' }} offert{{ data.referrals.grantedThisMonth > 1 ? 's' : '' }} ce mois-ci.</p>
+        <p class="m-0 text-sm st-muted">Quand un streamer parrainé a son premier clip prêt, son parrain gagne {{ data.referrals.livesPerReferral }} live gratuit de plus pour le mois (5 par mois au maximum). {{ data.referrals.grantedThisMonth }} live{{ data.referrals.grantedThisMonth > 1 ? 's' : '' }} offert{{ data.referrals.grantedThisMonth > 1 ? 's' : '' }} ce mois-ci.</p>
         <div class="flex flex-wrap items-end gap-3">
           <label class="flex flex-col gap-1.5"><span class="st-label">Plafond de bonus par chaîne et par mois</span>
-            <input v-model.number="bonusCap" type="number" min="0" max="500" class="st-field w-32" aria-label="Plafond mensuel de clips bonus de parrainage">
+            <input v-model.number="bonusCap" type="number" min="0" max="5" class="st-field w-32" aria-label="Plafond mensuel de lives bonus de parrainage">
           </label>
-          <button type="button" class="st-btn-ghost" :disabled="busy" @click="save({ referralBonusCap: bonusCap }, `Plafond de bonus : ${bonusCap} clips par mois.`)">Enregistrer</button>
+          <button type="button" class="st-btn-ghost" :disabled="busy" @click="save({ referralBonusCap: bonusCap }, `Plafond de bonus : ${bonusCap} lives par mois.`)">Enregistrer</button>
         </div>
         <p v-if="!data.referrals.channels.length" class="st-muted m-0 text-sm">Aucun parrainage pour l’instant.</p>
         <div v-for="c in data.referrals.channels" :key="c.id" class="flex flex-wrap items-center gap-x-3.5 gap-y-1 border-t border-st-border py-3">

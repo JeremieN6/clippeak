@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { prisma } from '../../../../utils/prisma'
-import { grantReferrerOnApproval } from '../../../../utils/clipping/prismaReferral'
+import { grantReferrerOnFirstClip } from '../../../../utils/clipping/prismaReferral'
 import { parseId, assertChannel, requireStudioActor } from '../../../../utils/studioAuth'
 
 const bodySchema = z.discriminatedUnion('action', [
@@ -66,6 +66,6 @@ export default defineEventHandler(async (event) => {
     }
   })
   // Premier clip valide d'un streamer parraine : le parrain gagne ses clips. Ne fait jamais echouer la validation.
-  if (status === 'approved') await grantReferrerOnApproval(prisma, job.moment.vod.channelId).catch(error => console.error('[parrainage]', error instanceof Error ? error.message : error))
+  if (status === 'approved') await grantReferrerOnFirstClip(prisma, job.moment.vod.channelId).catch(error => console.error('[parrainage]', error instanceof Error ? error.message : error))
   return { status }
 })

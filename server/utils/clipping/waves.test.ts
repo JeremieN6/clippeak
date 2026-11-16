@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { bonusClips, isReferralCode, orderQueue, parisDayStart, referralAllowed, serverAllowsWave, waitState, waveSize } from './waves.ts'
+import { bonusLives, isReferralCode, orderQueue, parisDayStart, referralAllowed, serverAllowsWave, waitState, waveSize } from './waves.ts'
 import type { Sample } from './capacity.ts'
 
 const calm: Sample = { load1: 0.4, load5: 0.4, cores: 2, memTotalMb: 8000, memFreeMb: 5000, clipsQueued: 0, clipsRendering: 0, analysesQueued: 0, analysesRunning: 0, oldestWaitSec: null }
@@ -60,10 +60,12 @@ test('parrainage : faux parrainages refuses', () => {
 })
 
 test('bonus du mois plafonne, code de parrainage', () => {
-  assert.equal(bonusClips(10, 25), 10)
-  assert.equal(bonusClips(40, 25), 25)
-  assert.equal(bonusClips(-3, 25), 0)
-  assert.equal(bonusClips(10, 0), 0)
+  assert.equal(bonusLives(3, 5), 3)
+  assert.equal(bonusLives(40, 5), 5)
+  assert.equal(bonusLives(40, 25), 5) // jamais plus de 5, meme si l'ancien reglage admin etait de 25
+  assert.equal(bonusLives(4, 2), 2)
+  assert.equal(bonusLives(-3, 5), 0)
+  assert.equal(bonusLives(10, 0), 0)
   assert.equal(isReferralCode('ABCD2345'), true)
   assert.equal(isReferralCode('abcd2345'), false)
   assert.equal(isReferralCode('ABCD234O'), false) // pas de O (confusion avec 0)

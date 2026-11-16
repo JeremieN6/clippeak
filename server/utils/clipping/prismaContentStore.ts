@@ -63,16 +63,16 @@ export function createContentStore(db: Db) {
       ].filter(t => usesContent(parseDetectionMode(t.row.channel.settings?.detectionMode)))
 
       const out: ContentTarget[] = []
-      const allowed = new Map<string, { room: boolean, secLeft: number }>()
+      const secLeftByChannel = new Map<string, number>()
       for (const { row, transcribedSec, detectedSec } of all) {
-        if (!allowed.has(row.channelId)) {
+        if (!secLeftByChannel.has(row.channelId)) {
           const c = row.channel
           const cap = detectionCapSec({ paying: isPayingStatus(c.billing?.status), unlimited: isQuotaExempt(c.twitchId) || c.settings?.monthlyClipQuota === null })
-          const left = detectionSecLeft(cap, await monthlyDetectionUsageSec(db, row.channelId))
-          allowed.set(row.channelId, { room: (await channelClipRoom(db, row.channelId)) > 0, secLeft: left })
+          secLeftByChannel.set(row.channelId, detectionSecLeft(cap, await monthlyDetectionUsageSec(db, row.channelId)))
         }
-        const gate = allowed.get(row.channelId)!
-        if (!gate.room) continue
+        // La place se decide VOD par VOD (gratuit en lives : un live deja admis continue, un nouveau n'est admis que s'il reste un live).
+        if ((await channelClipRoom(db, row.channelId, undefined, row.id)) <= 0) continue
+        const gate = { secLeft: secLeftByChannel.get(row.channelId)! }
         const startedAt = row.startedAt as Date
         out.push({
           vodId: row.id,
