@@ -36,6 +36,8 @@ test('buildInstagramAuthUrl opens the Meta login dialog with the configuration a
   assert.equal(url.searchParams.get('client_id'), '123')
   assert.equal(url.searchParams.get('state'), 'abc')
   assert.equal(url.searchParams.get('scope'), null)
+  assert.equal(url.searchParams.get('override_default_response_type'), 'true')
+  assert.equal(url.searchParams.get('prompt'), 'login')
 })
 
 test('exchangeInstagramCode swaps the code for the business token, with or without an expiry', async () => {
