@@ -2,6 +2,7 @@ import { prisma } from '../../../utils/prisma'
 import { billingConfig, stripeClient } from '../../../utils/billingConfig'
 import { requireStudioActor } from '../../../utils/studioAuth'
 import { clampPacks, MAX_PACKS, normalizeInterval, packsClips, PLAN_CLIPS, PLAN_NAMES, planFor } from '../../../utils/clipping/billing'
+import { FREE_LIVES } from '../../../utils/clipping/pricing'
 import { isQuotaExempt } from '../../../utils/clipping/quota'
 
 // Offre du streamer : disponible seulement si Stripe est configure (sinon la carte « Offre » n'apparait pas), plan actuel, prix mensuel et
@@ -42,6 +43,7 @@ export default defineEventHandler(async (event) => {
     // « Gerer mon abonnement » seulement apres un vrai abonnement : un client Stripe cree au clic sur « Passer a Creator » ne compte pas.
     canManage: Boolean(channel.billing?.stripeSubscriptionId),
     freeClips: PLAN_CLIPS.free,
+    freeLives: FREE_LIVES,
     // Clips par pack ; `paidTotalClips` = ceux de l'abonnement actuel (packs x clips par pack).
     paidClips: PLAN_CLIPS.creator,
     paidTotalClips: packsClips(packs),

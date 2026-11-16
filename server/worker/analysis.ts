@@ -110,7 +110,7 @@ async function runAnalysis(vod: VodToAnalyze, live: boolean) {
   })
 
   if (result.reason === 'chat_calm') console.info(`[worker] chat calme sur la VOD ${vod.twitchVodId} : aucun nouveau clip issu du chat`)
-  const saved = await store.saveAnalysis(vod.id, result.moments, live ? 4 : 8)
+  const saved = await store.saveAnalysis(vod.id, result.moments, live ? 4 : 12)
   console.info(`[worker] VOD ${vod.twitchVodId} analysee${live ? ' pendant le live' : ''}`, { peaks: result.peaksFound, ...saved })
 }
 

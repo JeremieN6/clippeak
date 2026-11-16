@@ -141,6 +141,8 @@ model Vod {
   // Lecture des commandes d'extrait long dans le chat : secondes de VOD deja lues, et fin de la lecture.
   markerScanSec  Float?    @map("marker_scan_sec")
   markersDoneAt  DateTime? @map("markers_done_at")
+  // Gratuit en lives : moment ou cette VOD a ete admise comme l'un des lives du mois (elle est alors decoupee en entier). Vide = jamais admise.
+  admittedAt     DateTime? @map("admitted_at")
   error          String?
   createdAt      DateTime  @default(now()) @map("created_at")
 

@@ -154,7 +154,7 @@ export function createPipelineStore(db: Db) {
       // Plafond mensuel atteint : la VOD reste en attente (statut inchange) et sera analysee le mois suivant ou quand l'admin releve le plafond.
       let candidate: (typeof waiting)[number] | undefined
       for (const v of waiting) {
-        if ((await channelClipRoom(db, v.channelId)) > 0) { candidate = v; break }
+        if ((await channelClipRoom(db, v.channelId, undefined, v.id)) > 0) { candidate = v; break }
       }
       if (!candidate) return null
       const claimed = await db.vod.updateMany({ where: { id: candidate.id, status: 'ended' }, data: { status: 'analyzing' } })
@@ -179,7 +179,7 @@ export function createPipelineStore(db: Db) {
       })
       // Plafond mensuel atteint : pas d'analyse pendant le live (inutile de transcrire des clips qu'on ne produira pas).
       const withRoom = []
-      for (const row of rows) if ((await channelClipRoom(db, row.channelId)) > 0) withRoom.push(row)
+      for (const row of rows) if ((await channelClipRoom(db, row.channelId, undefined, row.id)) > 0) withRoom.push(row)
       return withRoom.map(row => ({
         id: row.id,
         twitchVodId: row.twitchVodId,
@@ -213,9 +213,10 @@ export function createPipelineStore(db: Db) {
       }))
       const open = targets.filter(t => t.live || (t.durationSec !== null && t.scanSec < t.durationSec - 10)).sort((a, b) => Number(b.live) - Number(a.live))
       // Plafond mensuel atteint : pas de balayage (il coute du temps de transcription pour des clips qu'on ne produira pas).
-      const room = new Map<string, boolean>()
-      for (const t of open) if (!room.has(t.channelId)) room.set(t.channelId, (await channelClipRoom(db, t.channelId)) > 0)
-      return open.filter(t => room.get(t.channelId))
+      // Gratuit en lives : la place se decide VOD par VOD (un live deja admis continue, un nouveau n'est admis que s'il reste un live).
+      const withRoom: ScanTarget[] = []
+      for (const t of open) if ((await channelClipRoom(db, t.channelId, undefined, t.id)) > 0) withRoom.push(t)
+      return withRoom
     },
 
     async setScanSec(vodId: string, scanSec: number) {
@@ -289,7 +290,7 @@ export function createPipelineStore(db: Db) {
     },
 
     // Enregistre les moments retenus et met en file les meilleurs, par lots de 4 (les plus notes d'abord).
-    async saveAnalysis(vodId: string, moments: AnalyzedMoment[], maxClips = 8) {
+    async saveAnalysis(vodId: string, moments: AnalyzedMoment[], maxClips = 12) {
       const created: Array<{ momentId: string, score: number }> = []
       for (const m of moments) {
         const row = await db.moment.create({
@@ -316,7 +317,7 @@ export function createPipelineStore(db: Db) {
 
       // Plafond mensuel : jamais plus de clips que la place restante (le surplus reste en « candidat », sans clip ni rendu).
       const vodRow = await db.vod.findUniqueOrThrow({ where: { id: vodId }, select: { channelId: true } })
-      const room = await channelClipRoom(db, vodRow.channelId)
+      const room = await channelClipRoom(db, vodRow.channelId, undefined, vodId)
       const top = [...created].sort((a, b) => b.score - a.score).slice(0, Math.min(maxClips, room))
       const last = await db.clipJob.aggregate({ _max: { batch: true } })
       const assignments = assignBatches(top.map(t => ({ id: t.momentId, score: t.score })), last._max.batch ?? 0)

@@ -27,6 +27,7 @@ export const REQUIRED_SCHEMA = [
   { table: 'publications', column: 'scheduled_at' },
   { table: 'platform_connections', column: 'refresh_token_enc' },
   { table: 'vods', column: 'sources_saved_at' },
+  { table: 'vods', column: 'admitted_at' },
   { table: 'streamer_settings', column: 'monthly_clip_quota' },
   { table: 'channel_billing', column: 'status' },
   { table: 'clip_jobs', column: 'render_started_at' },

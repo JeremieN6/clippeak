@@ -222,7 +222,7 @@ onBeforeUnmount(() => {
 
       <div v-if="processingPhase === 'done'" class="mt-6 rounded-xl border border-clippeak-violet/30 bg-clippeak-violet/10 p-5">
         <h3 class="font-display text-2xl font-bold">Voilà ce que Clippeak ferait pour toi</h3>
-        <p class="mt-2 text-white/85">Sur une vraie VOD, Clippeak prépare jusqu'à 8 clips par live (exemples ci-dessous, fictifs). Ils arrivent par lots de 4 dans ton espace : tu valides, tu ajustes le titre si besoin, puis tu les télécharges ou tu les publies sur YouTube Shorts.</p>
+        <p class="mt-2 text-white/85">Sur une vraie VOD, Clippeak découpe ton live en entier : autant de clips que de bons moments (exemples ci-dessous, fictifs). Ils arrivent par lots de 4 dans ton espace : tu valides, tu ajustes le titre si besoin, puis tu les télécharges ou tu les publies sur YouTube Shorts.</p>
         <ul class="mt-4 grid gap-3 sm:grid-cols-3">
           <li v-for="clip in exampleClips" :key="clip.title" class="rounded-xl border border-white/10 bg-black/30 p-4">
             <span class="text-xs font-semibold uppercase tracking-wider text-clippeak-violetLight">Exemple</span>
@@ -237,7 +237,7 @@ onBeforeUnmount(() => {
         >
           Se connecter avec Twitch
         </a>
-        <p class="mt-2 text-center text-xs text-clippeak-muted">Accès sur invitation pendant la bêta · gratuit jusqu'à 20 clips par mois</p>
+        <p class="mt-2 text-center text-xs text-clippeak-muted">Accès sur invitation pendant la bêta · gratuit : 2 lives découpés par mois</p>
       </div>
     </div>
   </section>

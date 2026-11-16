@@ -18,7 +18,7 @@ export const isPublished = (clip: { status: string, publications: Array<{ status
 
 export interface StudioPublication { id: string, platform: string, status: string, scheduledAt: string, publishedAt: string | null, url: string | null, error: string | null }
 export interface StartProgressView { phase: 'none' | 'waiting' | 'analyzing' | 'rendering' | 'ready' | 'blocked' | 'failed' | 'empty' | 'paused', etaSec: number | null, title: string, text: string, fresh: boolean, clips: number, vods: number }
-export interface StudioBilling { available: boolean, testMode?: boolean, plan?: 'free' | 'creator', planName?: string, status?: string | null, renewsAt?: string | null, canManage?: boolean, freeClips?: number, paidClips?: number, paidTotalClips?: number, packs?: number, maxPacks?: number, interval?: 'month' | 'year' | null, paidName?: string, price?: { amount: number, currency: string, interval: string | null }, prices?: { month: { amount: number, currency: string }, year: { amount: number, currency: string } | null } }
+export interface StudioBilling { available: boolean, testMode?: boolean, plan?: 'free' | 'creator', planName?: string, status?: string | null, renewsAt?: string | null, canManage?: boolean, freeClips?: number, freeLives?: number, paidClips?: number, paidTotalClips?: number, packs?: number, maxPacks?: number, interval?: 'month' | 'year' | null, paidName?: string, price?: { amount: number, currency: string, interval: string | null }, prices?: { month: { amount: number, currency: string }, year: { amount: number, currency: string } | null } }
 export interface VodAlert { id: string, title: string, state: 'blocked' | 'working' | 'restore', since: string | null }
 export interface InstagramAccounts { accounts: Array<{ id: string, username: string }>, selectedId: string | null }
 export interface TiktokCreator { nickname: string, username: string, avatarUrl: string | null, privacyOptions: string[], commentDisabled: boolean, duetDisabled: boolean, stitchDisabled: boolean, maxVideoDurationSec: number }
@@ -78,7 +78,7 @@ export function createStudio() {
   // Offre (Starter / Creator) : absente tant que Stripe n'est pas configure sur le serveur.
   const billing = ref<StudioBilling | null>(null)
   // Plafond mensuel de clips (limit null = illimite) : affiche dans le tableau de bord.
-  const quota = ref<{ limit: number | null, used: number, remaining: number | null, reached: boolean, resetsAt: string, bonus: number, waitingVods?: number } | null>(null)
+  const quota = ref<{ limit: number | null, used: number, remaining: number | null, reached: boolean, resetsAt: string, bonus: number, unit?: 'clips' | 'lives', clipsUsed?: number, waitingVods?: number } | null>(null)
   const connections = ref<StudioConnection[]>([])
   const vodAlerts = ref<VodAlert[]>([])
   // Analyses en cours (bandeau du tableau de bord) et plateforme dont la connexion vient d'echouer (alerte du tableau de bord).

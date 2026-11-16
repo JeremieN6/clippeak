@@ -29,7 +29,7 @@ async function main() {
   const store = createPipelineStore(prisma as any)
   const queue = createPrismaClipQueueStore(prisma)
 
-  const channel = await prisma.channel.create({ data: { twitchId: '198013846', login: 'yassencore', displayName: 'YassEncore', settings: { create: {} } } })
+  const channel = await prisma.channel.create({ data: { twitchId: '198013846', login: 'yassencore', displayName: 'YassEncore', settings: { create: { monthlyClipQuota: null } } } })
   const vod = await prisma.vod.create({ data: { channelId: channel.id, twitchVodId: '999001', url: 'https://twitch.tv/videos/999001', status: 'ended' } })
   const live = await prisma.vod.create({ data: { channelId: channel.id, twitchVodId: '999002', url: 'https://twitch.tv/videos/999002', status: 'live' } })
 
@@ -493,6 +493,46 @@ async function main() {
   assert.equal((await waitStatus(prisma, { id: 'w-a6', login: 'wave_a6' })).state, 'day_full')
   log('vagues : file ordonnee (parraines d abord), arret si serveur charge ou sans mesure, plafond du jour, invitations a la main hors plafond, purge a 90 jours, etat de la page d attente')
 
+  // 9b. Gratuit en lives : 2 lives par mois decoupes en entier (aucune limite de clips par live), le 3e attend, Creator n'a pas de limite de lives
+  {
+    const free = await prisma.channel.create({ data: { twitchId: '888001', login: 'gratuit_lives', displayName: 'GratuitLives', settings: { create: {} } } })
+    const lv = (n: string, status: 'ended' | 'live' | 'done' = 'ended') => prisma.vod.create({ data: { channelId: free.id, twitchVodId: `8880${n}`, url: 'u', status } })
+    const mkl = (peakSec: number, score: number) => ({ ...mk(peakSec, score) })
+    const l1 = await lv('11'); const l2 = await lv('12'); const l3 = await lv('13')
+    assert.equal((await store.claimVodToAnalyze())?.id, l1.id) // 1er live admis
+    // Un seul live : 14 moments, TOUS mis en file (plus de plafond de clips par live)
+    const many = Array.from({ length: 14 }, (_, i) => mkl(100 + i * 200, 9 - i * 0.1))
+    assert.deepEqual(await store.saveAnalysis(l1.id, many, 20), { moments: 14, queued: 14 })
+    assert.equal((await store.claimVodToAnalyze())?.id, l2.id) // 2e live admis
+    assert.equal(await store.claimVodToAnalyze(), null) // 3e live : en attente, pas en echec
+    assert.equal((await prisma.vod.findUniqueOrThrow({ where: { id: l3.id } })).status, 'ended')
+    const view = await channelQuotaView(prisma, free.id)
+    assert.deepEqual([view.unit, view.limit, view.used, view.remaining, view.reached, view.clipsUsed], ['lives', 2, 2, 0, true, 14])
+    // Un live deja admis continue meme quand les 2 lives sont pris (analyse en plusieurs passages)
+    assert.equal(await channelClipRoom(prisma, free.id, undefined, l1.id), Number.POSITIVE_INFINITY)
+    assert.equal(await channelClipRoom(prisma, free.id, undefined, l3.id), 0)
+    assert.equal(await channelClipRoom(prisma, free.id), 0)
+    assert.deepEqual(await store.saveAnalysis(l2.id, [mkl(50, 8)], 4), { moments: 1, queued: 1 })
+    assert.deepEqual(await store.saveAnalysis(l3.id, [mkl(60, 8)], 4), { moments: 1, queued: 0 }) // 3e live : aucun clip
+    // Un live du mois precedent ne compte plus
+    await prisma.vod.update({ where: { id: l1.id }, data: { admittedAt: new Date(Date.now() - 40 * 24 * 3600 * 1000) } })
+    assert.equal((await channelQuotaView(prisma, free.id)).used, 1)
+    assert.equal((await store.claimVodToAnalyze())?.id, l3.id)
+    // Parrainage : 5 clips de bonus = 1 live de plus
+    const friend = await prisma.channel.create({ data: { twitchId: '888002', login: 'filleul', displayName: 'Filleul', settings: { create: {} } } })
+    await prisma.referralGrant.create({ data: { channelId: free.id, otherChannelId: friend.id, kind: 'referee', clips: 5 } })
+    assert.equal((await channelQuotaView(prisma, free.id)).limit, 3)
+    await prisma.referralGrant.deleteMany({ where: { channelId: free.id } })
+    // Reglage admin a la main (clips) : on revient au plafond en clips ; Creator : en clips aussi, sans limite de lives
+    await prisma.streamerSettings.update({ where: { channelId: free.id }, data: { monthlyClipQuota: 60 } })
+    assert.deepEqual([(await channelQuotaView(prisma, free.id)).unit, (await channelQuotaView(prisma, free.id)).limit], ['clips', 60])
+    await prisma.streamerSettings.update({ where: { channelId: free.id }, data: { monthlyClipQuota: 20 } })
+    await prisma.channelBilling.create({ data: { channelId: free.id, plan: 'creator', status: 'active', packs: 1 } })
+    assert.deepEqual([(await channelQuotaView(prisma, free.id)).unit, (await channelQuotaView(prisma, free.id)).limit], ['clips', 120])
+    await prisma.channel.deleteMany({ where: { id: { in: [free.id, friend.id] } } })
+    log('gratuit en lives : 2 lives decoupes en entier (14 clips sur un live), 3e live en attente sans echec, live admis qui continue, mois precedent ignore, parrainage = lives, reglage admin et Creator restent en clips')
+  }
+
   // 10. Parrainage : lien personnel, bonus d'inscription, bonus du parrain au premier clip valide, plafond mensuel, faux parrainages refuses
   const code = await ensureReferralCode(prisma, waveRef.id)
   assert.match(code, /^[A-HJ-NP-Z2-9]{8}$/)
@@ -507,8 +547,8 @@ async function main() {
   const fake = await prisma.channel.create({ data: { twitchId: 'test-ami', login: 'ami', displayName: 'Ami', settings: { create: {} } } })
   assert.equal(await attachReferral(prisma, fake, waveRef.id), false) // chaine de test
   assert.equal((await prisma.channel.findUniqueOrThrow({ where: { id: kid.id } })).referredById, waveRef.id)
-  assert.deepEqual([(await channelQuotaView(prisma, kid.id)).limit, (await channelQuotaView(prisma, kid.id)).bonus], [25, 5]) // 20 gratuits + 5 d'inscription
-  assert.equal((await channelQuotaView(prisma, waveRef.id)).limit, 20) // le parrain n'a encore rien : le parraine n'a valide aucun clip
+  assert.deepEqual([(await channelQuotaView(prisma, kid.id)).limit, (await channelQuotaView(prisma, kid.id)).bonus], [3, 5]) // 2 lives gratuits + 1 pour 5 clips d'inscription
+  assert.equal((await channelQuotaView(prisma, waveRef.id)).limit, 2) // le parrain n'a encore rien : le parraine n'a valide aucun clip
   assert.equal(await grantReferrerOnApproval(prisma, kid.id), false)
   const kidVod = await prisma.vod.create({ data: { channelId: kid.id, twitchVodId: '999801', url: 'https://twitch.tv/videos/999801', status: 'done' } })
   const kidMoment = await prisma.moment.create({ data: { vodId: kidVod.id, startSec: 0, endSec: 10, peakSec: 5, score: 7, signals: {} } })
@@ -517,8 +557,8 @@ async function main() {
   await prisma.clipJob.create({ data: { momentId: kidMoment.id, status: 'approved' } })
   assert.equal(await grantReferrerOnApproval(prisma, kid.id), true)
   assert.equal(await grantReferrerOnApproval(prisma, kid.id), false) // une seule fois par parraine
-  assert.deepEqual([(await channelQuotaView(prisma, waveRef.id)).limit, (await channelQuotaView(prisma, waveRef.id)).bonus], [25, 5])
-  assert.equal(await channelClipRoom(prisma, waveRef.id), 25)
+  assert.deepEqual([(await channelQuotaView(prisma, waveRef.id)).limit, (await channelQuotaView(prisma, waveRef.id)).bonus], [3, 5])
+  assert.equal(await channelClipRoom(prisma, waveRef.id), Number.POSITIVE_INFINITY) // gratuit en lives : de la place pour un nouveau live
   // Plafond mensuel de bonus (reglable) et bonus d'un autre mois ignore
   await prisma.invitationSettings.update({ where: { id: 1 }, data: { referralBonusCap: 3 } })
   assert.equal((await channelQuotaView(prisma, waveRef.id)).bonus, 3)

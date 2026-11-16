@@ -3,6 +3,11 @@
 
 // Gratuit : 20 clips par mois (decision du porteur, 2026-11-14 : assez pour voir la valeur, assez peu pour donner envie du plan superieur).
 export const FREE_CLIPS = 20
+// Gratuit, depuis le 2026-11-16 : le plafond se compte en LIVES (2 par mois, decoupes en entier, sans limite de clips par live) et non plus en
+// clips : couper les clips d'un live faisait perdre de bons moments. `FREE_CLIPS` reste le plafond des chaines dont l'admin a regle un nombre
+// de clips a la main. Parrainage : 5 clips offerts = 1 live de plus.
+export const FREE_LIVES = 2
+export const CLIPS_PER_BONUS_LIVE = 5
 // Packs : l'offre Creator s'achete par packs de 120 clips par mois (de 1 a 5, meme prix unitaire). Le nombre de packs est la QUANTITE de
 // l'abonnement Stripe ; le plafond mensuel = 120 x packs.
 export const CLIPS_PER_PACK = 120

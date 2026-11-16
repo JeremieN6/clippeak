@@ -1,7 +1,7 @@
 <script setup lang="ts">
 // Tarifs : annuel affiche par defaut (le moins cher), mensuel en un clic. Valeurs dans server/utils/clipping/pricing.ts (a garder identiques
 // aux prix Stripe). Sans TVA (franchise en base).
-import { CLIPS_PER_PACK, CREATOR_PRICE, FREE_CLIPS, MAX_PACKS, yearlySaving } from '~~/server/utils/clipping/pricing'
+import { CLIPS_PER_PACK, CREATOR_PRICE, FREE_LIVES, MAX_PACKS, yearlySaving } from '~~/server/utils/clipping/pricing'
 
 const yearly = ref(true)
 const packs = ref(1)
@@ -39,7 +39,7 @@ const fullYear = computed(() => saving.fullYear * packs.value)
 const saved = computed(() => saving.saved * packs.value)
 const fill = computed(() => `${(packs.value - 1) / (MAX_PACKS - 1) * 100}%`)
 
-const starterItems = computed(() => [`${FREE_CLIPS} clips par mois`, 'Aucun filigrane', 'Détection par chat et montage vertical', 'Validation par lots de 4 clips', 'Téléchargement des clips validés'])
+const starterItems = computed(() => [`${FREE_LIVES} lives par mois, découpés en entier`, 'Aucun filigrane', 'Détection par chat et montage vertical', 'Validation par lots de 4 clips', 'Téléchargement des clips validés'])
 const creatorItems = ['Tout ce qui est dans Starter', 'Résiliable à tout moment']
 // Meme formule des deux cotes : incluse dans Creator, absente de Starter.
 const longLine = 'Extraits de VOD (format long 16:9, type YouTube)'
@@ -124,7 +124,7 @@ const longLine = 'Extraits de VOD (format long 16:9, type YouTube)'
         <ul class="mt-6 flex flex-col gap-3.5 text-[15px] leading-[22px] text-white/90">
           <li class="flex items-start gap-3">
             <span class="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full bg-[#3B2A6E] text-[#E4D9FF]"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
-            <span><strong class="font-extrabold">{{ clips }} clips par mois</strong> (au lieu de {{ FREE_CLIPS }})</span>
+            <span><strong class="font-extrabold">{{ clips }} clips par mois</strong> et autant de lives que tu veux (au lieu de {{ FREE_LIVES }} lives)</span>
           </li>
           <li class="flex items-start gap-3">
             <span class="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full bg-[#3B2A6E] text-[#E4D9FF]"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
