@@ -83,6 +83,7 @@ onMounted(async () => {
       <StudioAccount v-if="view === 'account'" />
       <StudioRoadmap v-else-if="view === 'roadmap'" />
       <StudioLongVideos v-else-if="view === 'long'" />
+      <StudioReferralPage v-else-if="view === 'referral'" />
       <StudioDashboard v-else-if="view === 'dashboard'" />
       <StudioOnboarding v-else />
     </template>

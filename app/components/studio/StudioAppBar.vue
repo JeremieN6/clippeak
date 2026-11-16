@@ -19,7 +19,7 @@ const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') open.value = false }
 onMounted(() => { document.addEventListener('click', away); document.addEventListener('keydown', esc) })
 onBeforeUnmount(() => { document.removeEventListener('click', away); document.removeEventListener('keydown', esc) })
 
-const go = (v: 'dashboard' | 'roadmap' | 'long' | 'account') => { view.value = v; open.value = false }
+const go = (v: 'dashboard' | 'roadmap' | 'long' | 'referral' | 'account') => { view.value = v; open.value = false }
 
 // « Mon abonnement » : avec un abonnement, on va droit au portail Stripe (changer de carte, factures, RESILIER) ; sans, a la carte « Mon offre ».
 const hasSubscription = computed(() => Boolean(studio.billing.value?.canManage))
@@ -101,6 +101,10 @@ async function logout() {
           <button v-if="view !== 'long'" type="button" role="menuitem" class="st-menu-item sm:hidden" @click="go('long')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5" /><path d="M10 9.5v5l4.5-2.5z" /></svg>
             Extraits longs
+          </button>
+          <button v-if="view !== 'referral'" type="button" role="menuitem" class="st-menu-item sm:hidden" @click="go('referral')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12v8H4v-8M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" /></svg>
+            Parrainage
           </button>
           <button v-if="view !== 'roadmap'" type="button" role="menuitem" class="st-menu-item sm:hidden" @click="go('roadmap')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.2 5.3L20 10l-4.3 3.8L17 20l-5-3-5 3 1.3-6.2L4 10l5.8-1.7z" /></svg>
