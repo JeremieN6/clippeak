@@ -8,6 +8,8 @@ test('a moment found by similarity alone is flagged as coming from the reference
   assert.equal(clipOrigin('  Detecte par ressemblance ...'), 'ref')
   assert.equal(clipOrigin('Le chat explose et le moment ressemble a un clip de reference'), 'chat')
   assert.equal(clipOrigin(null), 'chat')
+  assert.equal(clipOrigin('detecte par le contenu du live : il raconte une anecdote ; le chat a reagi (+1)'), 'content')
+  assert.equal(clipOrigin('Détecté par le contenu du live'), 'content')
 })
 
 test('onboarding progress defaults to empty and rejects unknown platforms or steps', () => {

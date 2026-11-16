@@ -9,7 +9,7 @@ export interface StudioClip {
   error: string | null, qc: { passed: boolean, issues: Array<{ severity: string, message: string }> } | null
   illustrations: Array<{ path: string, source: string }> | null, reviewNote: string | null, score: number | null
   kind: string | null, category: string | null, hook: string | null, rationale: string | null, scorer: string | null
-  channel: string, videoUrl: string | null, origin: 'chat' | 'ref', createdAt: string, durationSec: number | null
+  channel: string, videoUrl: string | null, origin: 'chat' | 'ref' | 'content', createdAt: string, durationSec: number | null
   publications: StudioPublication[]
 }
 
