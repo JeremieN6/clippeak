@@ -166,6 +166,7 @@ const longSeen = ref(true)
 onMounted(() => { try { longSeen.value = localStorage.getItem('clippeak.longSeen') === '1' } catch {} })
 const openLong = () => { try { localStorage.setItem('clippeak.longSeen', '1') } catch {} longSeen.value = true; studio.view.value = 'long' }
 // Colonne de gauche repliable sur grand ecran ; le choix est garde dans le navigateur (facultatif).
+const settingsOpen = ref(true)
 const collapsed = ref(false)
 onMounted(() => { try { collapsed.value = localStorage.getItem('clippeak.nav') === '0' } catch {} })
 watch(collapsed, (v) => { try { localStorage.setItem('clippeak.nav', v ? '0' : '1') } catch {} })
@@ -194,14 +195,20 @@ const selectClass = 'st-field !min-h-11 !w-full'
         <span v-if="todoCount" class="absolute right-2.5 top-2 h-2 w-2 rounded-full bg-st-warn" aria-hidden="true" />
       </button>
       <div id="st-settings" class="flex-col gap-0.5 lg:flex" :class="[navOpen ? 'flex' : 'hidden', collapsed ? 'lg:!hidden' : '']">
-        <div class="flex items-center justify-between gap-2 px-3 pb-2"><span class="text-xs font-extrabold uppercase tracking-widest text-st-dim">Mes réglages</span><span class="text-xs font-bold" :class="todoCount ? 'text-st-warn' : 'text-st-ok'">{{ todoCount ? `${todoCount} à revoir` : 'Tout est réglé' }}</span></div>
-        <button v-for="s in settingsNav" :key="s.n" type="button" class="st-nav-item !min-h-11 text-sm font-semibold text-st-soft" @click="studio.goToStep(s.n)">
+        <button type="button" class="flex min-h-11 w-full items-center justify-between gap-2 border-0 bg-transparent px-3 text-left" :aria-expanded="settingsOpen" aria-controls="st-settings" @click="settingsOpen = !settingsOpen"><span class="text-xs font-extrabold uppercase tracking-widest text-st-dim">Mes réglages</span><span class="flex items-center gap-2"><span class="text-xs font-bold" :class="todoCount ? 'text-st-warn' : 'text-st-ok'">{{ todoCount ? `${todoCount} à revoir` : 'Tout est réglé' }}</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="text-st-dim transition-transform" :style="{ transform: settingsOpen ? 'rotate(180deg)' : 'none' }"><path d="M6 9l6 6 6-6" /></svg></span></button>
+        <button v-for="s in settingsNav" v-show="settingsOpen" :key="s.n" type="button" class="st-nav-item !min-h-11 text-sm font-semibold text-st-soft" @click="studio.goToStep(s.n)">
           <span class="flex h-5 w-5 flex-none items-center justify-center rounded-full" :class="dot[s.status]" aria-hidden="true">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path v-if="s.status === 'ok'" d="M5 12.5l4.5 4.5L19 7.5" /><path v-else-if="s.status === 'warn'" d="M12 6v8M12 18h.01" /><path v-else d="M6 12h12" /></svg>
           </span>
           <span class="sr-only">{{ ({ ok: 'Terminée', warn: 'À revoir', skip: 'Passée', todo: 'À faire' } as const)[s.status] }}.</span>
           <span class="min-w-0 flex-1">{{ s.label }}</span>
           <span v-if="s.status === 'warn' || s.status === 'skip'" class="text-xs font-bold" :class="s.status === 'warn' ? 'text-st-warn' : 'text-st-soft'">{{ s.status === 'warn' ? 'À revoir' : 'Passée' }}</span>
+        </button>
+      </div>
+      <div class="mt-2.5 hidden w-full border-t border-st-border pt-2.5 lg:block" :class="collapsed ? 'lg:flex lg:justify-center' : ''">
+        <button type="button" class="flex min-h-12 items-center gap-3 rounded-[10px] border-0 bg-transparent px-0 text-sm font-bold text-st-soft hover:text-st-text" :class="collapsed ? '' : 'w-full'" :aria-label="collapsed ? 'Déplier le menu' : 'Replier le menu'" :aria-expanded="!collapsed" @click="collapsed = !collapsed">
+          <span class="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] border border-st-borderStrong bg-st-surface"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" :style="{ transform: collapsed ? 'rotate(180deg)' : 'none' }"><rect x="4" y="4" width="16" height="16" rx="3" /><path d="M13 9l-3 3 3 3" /></svg></span>
+          <span v-if="!collapsed">Replier le menu</span>
         </button>
       </div>
       <div v-if="studio.quota.value && studio.quota.value.limit !== null" class="mt-auto hidden lg:block" :class="collapsed ? 'lg:!hidden' : ''"><StudioQuotaBox /></div>
@@ -211,9 +218,6 @@ const selectClass = 'st-field !min-h-11 !w-full'
     <main class="flex min-w-0 flex-[999_1_620px] flex-col gap-7 px-5 py-8 sm:px-10">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2">
-          <button type="button" class="hidden h-11 w-11 items-center justify-center rounded-[10px] border border-st-border bg-st-surface text-st-soft hover:bg-st-raised lg:flex" :aria-label="collapsed ? 'Déplier le menu' : 'Replier le menu'" :aria-pressed="collapsed" @click="collapsed = !collapsed">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M9 4v16" /></svg>
-          </button>
           <div>
             <h1 class="st-title m-0 text-[28px] font-bold leading-tight sm:text-[32px]">Tableau de bord</h1>
             <div v-if="updatedText" class="mt-0.5 text-[13px] text-st-dim" aria-live="off">{{ updatedText }}</div>
@@ -265,20 +269,28 @@ const selectClass = 'st-field !min-h-11 !w-full'
         </div>
       </div>
 
-      <section class="flex flex-col justify-between gap-3.5 rounded-2xl border border-st-accentBorder bg-st-accentDeep p-6">
-        <div class="flex flex-col gap-1.5">
+      <section aria-label="Prochaine action" class="flex flex-wrap items-center gap-4 rounded-[14px] border border-st-accentBorder bg-st-accentDeep px-5 py-4">
+        <span class="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-st-accentBg text-st-accentSoft" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
+        <div class="min-w-0 flex-[1_1_260px]">
           <div class="st-eyebrow">Prochaine action</div>
-          <h2 class="st-title m-0 text-[22px] font-bold leading-7">{{ next.title }}</h2>
-          <div class="text-sm leading-relaxed text-st-accentSoft">{{ next.text }}</div>
+          <h2 class="st-title m-0 text-lg font-bold leading-[26px]">{{ next.title }}</h2>
+          <div class="text-sm leading-[21px] text-st-accentSoft">{{ next.text }}</div>
         </div>
-        <div v-if="next.cta"><button type="button" class="st-btn" @click="filters.status = next.status">{{ next.cta }}</button></div>
+        <button v-if="next.cta" type="button" class="st-btn !min-h-12 !px-5" @click="filters.status = next.status">{{ next.cta }}</button>
       </section>
 
-      <div role="group" aria-label="Filtrer par statut" class="grid grid-cols-2 gap-3 sm:grid-cols-[repeat(auto-fit,minmax(min(170px,100%),1fr))]">
-        <button v-for="c in counters" :key="c.key" type="button" :aria-pressed="c.selected" class="flex min-h-[72px] flex-col gap-1 rounded-[14px] p-3.5 sm:min-h-[84px] sm:p-4 text-left text-st-text" :class="c.selected ? 'border-[1.5px] border-st-accentLight bg-st-accentBg' : 'border border-st-border bg-st-surface hover:bg-st-raised'" @click="filters.status = c.selected ? 'all' : c.key">
-          <span class="st-title text-3xl font-bold leading-9">{{ c.n }}</span>
-          <span class="text-sm font-bold" :style="{ color: c.fg }">{{ c.label }}</span>
-        </button>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div role="group" aria-label="Filtrer par statut" class="flex flex-wrap gap-1.5">
+          <button v-for="c in counters.filter(t => t.key !== 'progress' && t.key !== 'failed')" :key="c.key" type="button" :aria-pressed="c.selected" class="inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-bold" :class="c.selected ? 'border-transparent bg-st-accent text-white' : 'border-st-borderStrong bg-st-surface text-st-soft hover:bg-st-raised'" @click="filters.status = c.selected ? 'all' : c.key">
+            {{ c.label }}<span class="inline-flex h-[22px] min-w-[22px] items-center justify-center rounded-full px-1.5 text-xs font-extrabold" :class="c.selected ? 'bg-white/20 text-white' : 'bg-st-raised2 text-st-text'">{{ c.n }}</span>
+          </button>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button v-if="count('progress') > 0" type="button" class="inline-flex h-8 items-center gap-2 rounded-full border-0 bg-st-infoBg px-3 text-[13px] font-bold text-st-info" :aria-pressed="filters.status === 'progress'" @click="filters.status = filters.status === 'progress' ? 'all' : 'progress'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 109 9"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.9s" repeatCount="indefinite" /></path></svg>{{ count('progress') }} en préparation
+          </button>
+          <button v-if="count('failed') > 0" type="button" class="inline-flex h-8 items-center rounded-full border-0 bg-st-errorBg px-3 text-[13px] font-bold text-st-error" :aria-pressed="filters.status === 'failed'" @click="filters.status = filters.status === 'failed' ? 'all' : 'failed'">{{ count('failed') }} en échec</button>
+        </div>
       </div>
 
       <section aria-label="Filtres et tri" class="flex flex-col gap-3">
