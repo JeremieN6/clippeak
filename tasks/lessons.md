@@ -227,3 +227,7 @@
 ## 2026-11-16 : un `v-else` insere dans une chaine `v-if` casse le build en production
 - **Erreur** : la PR #112 a ajoute un bloc `v-else` entre un `v-if` et un `v-else-if` de `StudioDashboard.vue`. Aucun test ne compile ce gabarit : la PR a ete fusionnee et le deploiement a echoue sur le serveur (`v-else/v-else-if has no adjacent v-if`).
 - **Regle** : apres toute modification d'un gabarit Vue qui touche une chaine `v-if` / `v-else-if` / `v-else`, lancer `npx nuxt build` avant d'ouvrir la PR ; un bloc a afficher en plus de la chaine prend son propre `v-if`, place APRES la chaine.
+
+## 2026-11-17 : analyser un dossier de travail en retard sur main
+- **Erreur** : pour enqueter sur des clips refuses (« image figee »), j'ai lu `clipQc.ts` dans le dossier principal, 57 commits derriere `main` : le correctif (PR #118) existait deja et j'ai propose de le refaire.
+- **Regle** : avant de conclure qu'un correctif ou une fonction manque, `git fetch` puis lire `origin/main` (`git show origin/main:chemin`, `git log origin/main --grep`) et la section « Notes de Session » de `CLAUDE.md` de `origin/main`. Les echecs vus en base datent peut-etre d'avant le correctif : comparer leur date a celle de la fusion.
