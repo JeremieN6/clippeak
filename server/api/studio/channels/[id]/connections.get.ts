@@ -1,5 +1,5 @@
 import { prisma } from '../../../../utils/prisma'
-import { refreshInstagramIfDue } from '../../../../utils/instagramAccess'
+import { instagramTokenExpired } from '../../../../utils/clipping/instagramApi'
 import { assertChannel, parseId, requireStudioActor } from '../../../../utils/studioAuth'
 import { instagramConfig, tiktokConfig, youtubeConfig } from '../../../../utils/publishConfig'
 
@@ -14,8 +14,8 @@ export default defineEventHandler(async (event) => {
   const youtube = youtubeConfig(event).configured
   const tiktok = tiktokConfig(event).configured
   const instagram = instagramConfig(event).configured
-  // Le jeton Instagram dure 60 jours : on le renouvelle quand le streamer ouvre son studio, avant qu'il n'expire.
-  const instagramExpired = byPlatform.has('instagram') ? !(await refreshInstagramIfDue(event, id)) : false
+  // Le jeton Instagram ne se renouvelle pas : s'il a une echeance et qu'elle est passee, le streamer doit reconnecter.
+  const instagramExpired = instagramTokenExpired(byPlatform.get('instagram')?.expiresAt ?? null, Date.now())
   return {
     connections: [
       { platform: 'youtube', available: youtube, connected: byPlatform.has('youtube'), accountName: byPlatform.get('youtube')?.accountName ?? null },

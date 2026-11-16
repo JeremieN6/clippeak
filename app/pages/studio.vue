@@ -24,7 +24,7 @@ const connectMessages: Record<string, string> = {
   youtube: 'YouTube est connecté.',
   tiktok: 'TikTok est connecté.',
   instagram: 'Instagram est connecté.',
-  'instagram-personal': 'Ce compte Instagram n’est pas professionnel. Passe-le en compte Pro ou Créateur dans les réglages d’Instagram (gratuit), puis reconnecte-le.',
+  'instagram-personal': 'Aucun compte Instagram professionnel n’a été partagé avec Clippeak. Passe ton compte en Pro ou Créateur dans les réglages d’Instagram (gratuit), puis reconnecte-le et coche-le quand Meta te le propose.',
   cancelled: 'Connexion annulée.',
   error: 'La connexion a échoué. Réessaie dans un instant.',
   unavailable: 'Cette publication n’est pas encore activée.',

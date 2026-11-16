@@ -6,6 +6,7 @@ import { instagramConfig, tiktokConfig } from '../../../../utils/publishConfig'
 import { isDemoTwitchId, isTestTwitchId } from '../../../../utils/demoChannel'
 import { tiktokAccessFor } from '../../../../utils/tiktokAccess'
 import { checkPostOptions, queryCreatorInfo } from '../../../../utils/clipping/tiktokApi'
+import { instagramTokenExpired } from '../../../../utils/clipping/instagramApi'
 
 // Reglages TikTok : la visibilite n'a pas de valeur par defaut (regle de TikTok), et `consent` doit etre vrai : le streamer a coche
 // la phrase d'accord avant de publier.
@@ -69,7 +70,7 @@ export default defineEventHandler(async (event) => {
     const channel = await prisma.channel.findUnique({ where: { id: channelId }, select: { twitchId: true } })
     if (!channel || isDemoTwitchId(channel.twitchId) || isTestTwitchId(channel.twitchId)) throw createError({ statusCode: 403, statusMessage: 'Les chaînes de test et de démonstration ne publient jamais sur Instagram.' })
     if (!instagramConfig(event).configured) throw createError({ statusCode: 409, statusMessage: 'La publication Instagram n’est pas encore activée.' })
-    if (!connection.externalId || !connection.expiresAt || connection.expiresAt.getTime() <= Date.now()) throw createError({ statusCode: 409, statusMessage: 'Accès Instagram expiré : reconnecte ton compte.' })
+    if (!connection.externalId || instagramTokenExpired(connection.expiresAt, Date.now())) throw createError({ statusCode: 409, statusMessage: 'Accès Instagram expiré : reconnecte ton compte.' })
     options = { caption: chosen.data.caption }
   }
 

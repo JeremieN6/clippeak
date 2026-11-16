@@ -4,7 +4,7 @@ import { createHmac } from 'node:crypto'
 import { PublishError, instagramCaption } from './publishing.ts'
 import { runPublishOnce } from './publishQueue.ts'
 import type { DuePublication, PublishStore } from './publishQueue.ts'
-import { buildInstagramAuthUrl, classifyInstagramError, exchangeInstagramCode, fetchInstagramProfile, instagramRefreshDue, isProfessionalAccount, parseInstagramSignedRequest, refreshInstagramToken } from './instagramApi.ts'
+import { buildInstagramAuthUrl, classifyInstagramError, exchangeInstagramCode, fetchInstagramProfile, instagramTokenExpired, parseInstagramSignedRequest } from './instagramApi.ts'
 import { instagramVideoUrl, verifyInstagramVideoToken } from './instagramMedia.ts'
 import { createInstagramPublisher } from './instagramPublisher.ts'
 
@@ -13,12 +13,11 @@ const day = 86_400_000
 const input = (over: Record<string, unknown> = {}) => ({ clipId: 'clip-1', accountId: 'ig-1', title: 'T', caption: 'Ma légende #twitch', hashtags: '', videoPath: '/clip.mp4', options: null, refreshToken: 'tok', accessToken: 'tok', expiresAt: new Date(Date.now() + 59 * day), ...over })
 
 // Faux Meta : enregistre les appels et rejoue des statuts de conteneur dans l'ordre.
-function fakeMeta(opts: { statuses?: string[], containerError?: { status: number, body: unknown }, publishError?: { status: number, body: unknown }, refreshFails?: boolean } = {}) {
+function fakeMeta(opts: { statuses?: string[], containerError?: { status: number, body: unknown }, publishError?: { status: number, body: unknown } } = {}) {
   const calls: Array<{ url: string, method: string, body: string, auth: string }> = []
   let poll = 0
   const fetchFn = (async (url: string, init: any = {}) => {
     calls.push({ url, method: init.method ?? 'GET', body: init.body ? String(init.body) : '', auth: init.headers?.authorization ?? '' })
-    if (url.includes('/refresh_access_token')) return opts.refreshFails ? json({ error: { code: 190, message: 'x' } }, 400) : json({ access_token: 'tok-new', token_type: 'bearer', expires_in: 5183944 })
     if (url.endsWith('/ig-1/media')) return opts.containerError ? json(opts.containerError.body, opts.containerError.status) : json({ id: 'cont-1' })
     if (url.includes('/cont-1?')) { const list = opts.statuses ?? ['IN_PROGRESS', 'FINISHED']; return json({ status_code: list[Math.min(poll++, list.length - 1)] }) }
     if (url.endsWith('/ig-1/media_publish')) return opts.publishError ? json(opts.publishError.body, opts.publishError.status) : json({ id: 'media-9' })
@@ -29,47 +28,49 @@ function fakeMeta(opts: { statuses?: string[], containerError?: { status: number
 }
 const publisher = (fetchFn: typeof fetch, extra: Record<string, unknown> = {}) => createInstagramPublisher({ videoUrlFor: id => `https://clippeak.test/api/media/instagram/${id}?t=x`, fetchFn, fileSize: async () => 1000, sleep: async () => {}, statusIntervalMs: 1, ...extra })
 
-test('buildInstagramAuthUrl asks only for the two scopes Clippeak needs and carries the state', () => {
-  const url = new URL(buildInstagramAuthUrl({ appId: '123', redirectUri: 'https://clippeak.sassify.fr/api/auth/instagram/callback', state: 'abc' }))
-  assert.equal(url.origin + url.pathname, 'https://www.instagram.com/oauth/authorize')
-  assert.equal(url.searchParams.get('scope'), 'instagram_business_basic,instagram_business_content_publish')
+test('buildInstagramAuthUrl opens the Meta login dialog with the configuration and carries the state', () => {
+  const url = new URL(buildInstagramAuthUrl({ appId: '123', configId: '456', redirectUri: 'https://clippeak.sassify.fr/api/auth/instagram/callback', state: 'abc' }))
+  assert.equal(url.origin + url.pathname, 'https://www.facebook.com/dialog/oauth')
+  assert.equal(url.searchParams.get('config_id'), '456')
   assert.equal(url.searchParams.get('response_type'), 'code')
   assert.equal(url.searchParams.get('client_id'), '123')
   assert.equal(url.searchParams.get('state'), 'abc')
+  assert.equal(url.searchParams.get('scope'), null)
 })
 
-test('exchangeInstagramCode swaps the code for a 60-day token and refuses a missing publish right', async () => {
+test('exchangeInstagramCode swaps the code for the business token, with or without an expiry', async () => {
   const calls: string[] = []
-  const make = (permissions: string) => (async (url: string, init: any = {}) => {
+  const make = (body: unknown) => (async (url: string, init: any = {}) => {
     calls.push(`${init.method ?? 'GET'} ${url.split('?')[0]}`)
-    if (url.endsWith('/oauth/access_token')) return json({ data: [{ access_token: 'short', user_id: 1020, permissions }] })
-    return json({ access_token: 'long', token_type: 'bearer', expires_in: 5183944 })
+    return json(body)
   }) as unknown as typeof fetch
-  const tokens = await exchangeInstagramCode(make('instagram_business_basic,instagram_business_content_publish'), { appId: 'a', appSecret: 's', code: 'c', redirectUri: 'r', now: () => 0 })
-  assert.deepEqual([tokens.accessToken, tokens.userId, tokens.expiresAt.getTime()], ['long', '1020', 5183944 * 1000])
-  assert.deepEqual(calls, ['POST https://api.instagram.com/oauth/access_token', 'GET https://graph.instagram.com/access_token'])
-  await assert.rejects(exchangeInstagramCode(make('instagram_business_basic'), { appId: 'a', appSecret: 's', code: 'c', redirectUri: 'r' }), /droit de publier/)
+  const never = await exchangeInstagramCode(make({ access_token: 'suat' }), { appId: 'a', appSecret: 's', code: 'c', redirectUri: 'r' })
+  assert.deepEqual([never.accessToken, never.expiresAt], ['suat', null])
+  const dated = await exchangeInstagramCode(make({ access_token: 'suat', expires_in: 3600 }), { appId: 'a', appSecret: 's', code: 'c', redirectUri: 'r', now: () => 0 })
+  assert.equal(dated.expiresAt?.getTime(), 3600 * 1000)
+  assert.deepEqual(calls, ['GET https://graph.facebook.com/v27.0/oauth/access_token', 'GET https://graph.facebook.com/v27.0/oauth/access_token'])
+  await assert.rejects(exchangeInstagramCode(make({}), { appId: 'a', appSecret: 's', code: 'c', redirectUri: 'r' }), /pas renvoyé de jeton/)
 })
 
 test('errors never leak the app secret or a token', async () => {
   const fail = (async () => json({ error_type: 'OAuthException', code: 400, error_message: 'Matching code was not found or was already used' }, 400)) as unknown as typeof fetch
   await assert.rejects(exchangeInstagramCode(fail, { appId: 'a', appSecret: 'SUPERSECRET', code: 'c', redirectUri: 'r' }), (e: Error) => !e.message.includes('SUPERSECRET') && /already used/.test(e.message))
-  await assert.rejects(refreshInstagramToken((async () => { throw new Error('boom SECRETTOKEN') }) as unknown as typeof fetch, { token: 'SECRETTOKEN' }), (e: Error) => !e.message.includes('SECRETTOKEN'))
+  await assert.rejects(exchangeInstagramCode((async () => { throw new Error('boom SUPERSECRET') }) as unknown as typeof fetch, { appId: 'a', appSecret: 'SUPERSECRET', code: 'c', redirectUri: 'r' }), (e: Error) => !e.message.includes('SUPERSECRET'))
 })
 
-test('fetchInstagramProfile reads the account and isProfessionalAccount rejects a personal one', async () => {
-  const profile = await fetchInstagramProfile((async () => json({ data: [{ user_id: '77', username: 'streamer', account_type: 'Media_Creator' }] })) as unknown as typeof fetch, 'tok')
-  assert.deepEqual(profile, { userId: '77', username: 'streamer', accountType: 'MEDIA_CREATOR' })
-  assert.ok(isProfessionalAccount('BUSINESS') && isProfessionalAccount('MEDIA_CREATOR') && isProfessionalAccount(null))
-  assert.ok(!isProfessionalAccount('PERSONAL'))
+test('fetchInstagramProfile takes the first shared Instagram account, or null when none was shared', async () => {
+  const urls: string[] = []
+  const make = (body: unknown) => (async (url: string) => { urls.push(url); return json(body) }) as unknown as typeof fetch
+  assert.deepEqual(await fetchInstagramProfile(make({ data: [{ id: '77', username: 'streamer' }, { id: '78', username: 'autre' }] }), 'tok'), { userId: '77', username: 'streamer' })
+  assert.ok(urls[0]!.startsWith('https://graph.facebook.com/v27.0/me/assigned_instagram_accounts?'))
+  assert.equal(await fetchInstagramProfile(make({ data: [] }), 'tok'), null)
 })
 
-test('instagramRefreshDue: expired, due before 50 days, fresh after a renewal', () => {
+test('instagramTokenExpired: a token without expiry never expires, a past date does', () => {
   const now = 1_000_000_000_000
-  assert.equal(instagramRefreshDue(null, now), 'expired')
-  assert.equal(instagramRefreshDue(new Date(now - 1), now), 'expired')
-  assert.equal(instagramRefreshDue(new Date(now + 20 * day), now), 'due')
-  assert.equal(instagramRefreshDue(new Date(now + 59 * day), now), 'fresh')
+  assert.equal(instagramTokenExpired(null, now), false)
+  assert.equal(instagramTokenExpired(new Date(now - 1), now), true)
+  assert.equal(instagramTokenExpired(new Date(now + day), now), false)
 })
 
 test('classifyInstagramError sorts Meta errors into the four useful families', () => {
@@ -120,20 +121,15 @@ test('publisher: container with the signed video URL, waits for processing, publ
   assert.equal(result.accessToken, undefined)
 })
 
-test('publisher: falls back to the clip caption and renews a token that is due, returning the new one', async () => {
+test('publisher: falls back to the clip caption, never renews, and an expired token asks to reconnect', async () => {
   const meta = fakeMeta()
   const result = await publisher(meta.fetchFn).publish(input({ expiresAt: new Date(Date.now() + 20 * day) }) as any)
   assert.equal(new URLSearchParams(meta.calls.find(c => c.url.endsWith('/ig-1/media'))!.body).get('caption'), 'Ma légende #twitch')
-  assert.equal(result.accessToken?.value, 'tok-new')
-  assert.equal(result.accessToken?.refreshToken, 'tok-new')
-  assert.equal(meta.calls.find(c => c.url.endsWith('/ig-1/media'))!.auth, 'Bearer tok-new')
-})
-
-test('publisher: a failed renewal does not block a token that is still valid; an expired one asks to reconnect', async () => {
-  const meta = fakeMeta({ refreshFails: true })
-  const ok = await publisher(meta.fetchFn).publish(input({ expiresAt: new Date(Date.now() + 20 * day) }) as any)
-  assert.equal(ok.externalId, 'media-9')
-  assert.equal(ok.accessToken, undefined)
+  assert.equal(result.accessToken, undefined)
+  assert.equal(meta.calls.find(c => c.url.endsWith('/ig-1/media'))!.auth, 'Bearer tok')
+  assert.ok(!meta.calls.some(c => c.url.includes('refresh')))
+  const never = await publisher(meta.fetchFn).publish(input({ expiresAt: null }) as any)
+  assert.equal(never.externalId, 'media-9')
   await assert.rejects(publisher(meta.fetchFn).publish(input({ expiresAt: new Date(Date.now() - 1000) }) as any), (e: PublishError) => e.kind === 'auth' && /Reconnecte/.test(e.message))
   await assert.rejects(publisher(meta.fetchFn).publish(input({ accountId: null }) as any), (e: PublishError) => e.kind === 'auth')
 })
@@ -156,7 +152,7 @@ test('publisher: never retries once publish was requested without a clear answer
   await assert.rejects(createInstagramPublisher({ videoUrlFor: () => 'u', fetchFn: fakeMeta().fetchFn, fileSize: async () => 301 * 1024 * 1024 }).publish(input() as any), /trop lourd/)
 })
 
-test('runPublishOnce passes the clip and the Instagram account id to the publisher and stores the renewed token', async () => {
+test('runPublishOnce passes the clip and the Instagram account id to the publisher', async () => {
   const saved: unknown[] = []
   const done: unknown[] = []
   const due: DuePublication = { id: 'p1', platform: 'instagram', attempts: 0, options: { caption: 'x' }, clip: { id: 'clip-1', title: 'T', caption: 'C', hashtags: '', videoPath: '/c.mp4', status: 'approved' }, connection: { id: 'conn-1', externalId: 'ig-1', refreshToken: 'tok', accessToken: 'tok', expiresAt: new Date(Date.now() + 20 * day) } }
@@ -172,6 +168,6 @@ test('runPublishOnce passes the clip and the Instagram account id to the publish
   assert.equal(await runPublishOnce({ store, publishers: { instagram: publisher(meta.fetchFn) } }), true)
   assert.equal(done.length, 1)
   assert.deepEqual([(done[0] as { externalId: string }).externalId, (done[0] as { url: string }).url], ['media-9', 'https://www.instagram.com/reel/abc/'])
-  assert.equal((saved[0] as { value: string }).value, 'tok-new')
+  assert.equal(saved.length, 0)
   assert.ok(meta.calls.some(c => c.url.endsWith('/ig-1/media')))
 })
