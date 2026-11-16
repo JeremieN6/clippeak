@@ -223,3 +223,7 @@
 ## 2026-11-14 : une valeur « gratuite » affichee doit etre verifiee a trois endroits, et une croix sur la landing doit etre vraie dans le code
 - **Erreur evitee de justesse** : (1) passer le gratuit de 40 a 20 clips ne changeait que le code : chaque chaine avait deja « 40 » ecrit en base (colonne `streamer_settings.monthly_clip_quota`, defaut 40), il a fallu une migration qui modifie des donnees ; (2) la landing allait afficher « extraits longs : non inclus en gratuit » alors que rien ne l'empechait dans le code.
 - **Regle** : un chiffre de l'offre vit dans `pricing.ts` (source unique), dans la regle de plafond et dans la valeur par defaut de la base : les verifier ensemble, et prevoir les lignes existantes. Avant d'ecrire « non inclus » sur la page publique, verifier que le serveur le refuse reellement (test d'integration : 403 en gratuit). Quand le dossier principal porte des modifications non commitees d'une autre session, travailler dans un `git worktree` separe.
+
+## 2026-11-16 : un `v-else` insere dans une chaine `v-if` casse le build en production
+- **Erreur** : la PR #112 a ajoute un bloc `v-else` entre un `v-if` et un `v-else-if` de `StudioDashboard.vue`. Aucun test ne compile ce gabarit : la PR a ete fusionnee et le deploiement a echoue sur le serveur (`v-else/v-else-if has no adjacent v-if`).
+- **Regle** : apres toute modification d'un gabarit Vue qui touche une chaine `v-if` / `v-else-if` / `v-else`, lancer `npx nuxt build` avant d'ouvrir la PR ; un bloc a afficher en plus de la chaine prend son propre `v-if`, place APRES la chaine.

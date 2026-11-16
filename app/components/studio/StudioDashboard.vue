@@ -326,14 +326,15 @@ const selectClass = 'st-field !min-h-11 !w-full'
         <StudioAnalyzeVod />
         <button type="button" class="st-btn-quiet" @click="studio.goToStep(1)">Revoir mes clips de référence</button>
       </div>
-      <div v-else class="flex flex-col items-center gap-2 border-t border-st-border pt-6">
-        <p class="m-0 text-sm st-muted">Tu veux des clips d’un ancien live ? Colle le lien de sa rediffusion.</p>
-        <StudioAnalyzeVod />
-      </div>
       <div v-else-if="!lots.length" class="st-card flex flex-col items-center gap-2.5 !py-8 text-center">
         <h2 class="st-title m-0 text-lg font-bold">Aucun clip ne correspond</h2>
         <p class="m-0 text-sm st-muted">Change ou efface les filtres pour revoir tes clips.</p>
         <button type="button" class="st-btn-ghost" @click="clearFilters">Effacer les filtres</button>
+      </div>
+      <!-- Chaine qui a deja des clips : le bouton d'analyse d'une VOD reste accessible (sans clip, il est dans le bloc vide ci-dessus). -->
+      <div v-if="clips.length" class="flex flex-col items-center gap-2 border-t border-st-border pt-6">
+        <p class="m-0 text-sm st-muted">Tu veux des clips d’un ancien live ? Colle le lien de sa rediffusion.</p>
+        <StudioAnalyzeVod />
       </div>
     </main>
 
