@@ -51,6 +51,7 @@ watch(open, (on) => { document.body.style.overflow = on ? 'hidden' : '' })
             v-for="link in props.links"
             :key="link.href"
             :href="link.href"
+            @click="link.href === '/try-now' && trackEvent('demo_clicked', { location: 'navbar' })"
             class="inline-flex h-11 items-center rounded-[10px] px-3.5 text-sm font-semibold text-white/80 transition hover:bg-white/5 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clippeak-violetLight"
           >
             {{ link.label }}
@@ -60,6 +61,7 @@ watch(open, (on) => { document.body.style.overflow = on ? 'hidden' : '' })
         <div class="flex items-center gap-2">
           <a
             :href="props.primaryHref"
+            @click="trackEvent('login_clicked', { location: 'navbar' })"
             class="inline-flex h-11 items-center whitespace-nowrap rounded-[10px] bg-clippeak-violet px-3.5 text-sm font-bold transition sm:px-4 hover:bg-clippeak-violetLight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-clippeak-violetLight"
           >
             Se connecter
@@ -101,7 +103,7 @@ watch(open, (on) => { document.body.style.overflow = on ? 'hidden' : '' })
           :key="link.href"
           :href="link.href"
           class="flex min-h-12 items-center justify-between rounded-xl px-4 text-[15px] font-semibold text-white/90 transition hover:bg-white/5 active:bg-white/10"
-          @click="close()"
+          @click="link.href === '/try-now' && trackEvent('demo_clicked', { location: 'navbar' }); close()"
         >
           {{ link.label }}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="text-white/40" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>

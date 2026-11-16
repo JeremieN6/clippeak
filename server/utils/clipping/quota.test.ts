@@ -60,3 +60,16 @@ test('bonus de parrainage : s’ajoute au plafond, sans offre payante, jamais au
   assert.equal(effectiveQuota({ twitchId: '1', setting: 20, bonusClips: -4 }), 20)
   assert.equal(quotaView(25, 25, new Date('2026-10-05T00:00:00Z'), 5).bonus, 5)
 })
+
+import { quotaLevel } from './quota.ts'
+
+test('niveau du plafond : message court a 80 %, complet a 100 %, rien en illimite', () => {
+  assert.equal(quotaLevel({ limit: 20, used: 15 }), 'ok')
+  assert.equal(quotaLevel({ limit: 20, used: 16 }), 'near')
+  assert.equal(quotaLevel({ limit: 20, used: 19 }), 'near')
+  assert.equal(quotaLevel({ limit: 20, used: 20 }), 'reached')
+  assert.equal(quotaLevel({ limit: 20, used: 25 }), 'reached')
+  assert.equal(quotaLevel({ limit: null, used: 999 }), 'ok')
+  assert.equal(quotaLevel({ limit: 120, used: 96 }), 'near')
+  assert.equal(quotaLevel({ limit: 0, used: 0 }), 'reached')
+})

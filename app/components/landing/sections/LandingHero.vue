@@ -31,6 +31,7 @@ const props = defineProps<{
           <a
             :href="props.primaryHref"
             class="inline-flex rounded-xl bg-clippeak-violet px-7 py-3 text-sm font-semibold transition hover:bg-clippeak-violetLight"
+            @click="trackEvent('login_clicked', { location: 'hero' })"
           >
             Se connecter avec Twitch
           </a>
@@ -38,6 +39,7 @@ const props = defineProps<{
             v-if="props.secondaryHref"
             :href="props.secondaryHref"
             class="inline-flex rounded-xl border border-white/20 px-7 py-3 text-sm font-semibold text-white/90 transition hover:border-clippeak-violet/50 hover:text-white"
+            @click="trackEvent('demo_clicked', { location: 'hero' })"
           >
             Voir la démo
           </a>

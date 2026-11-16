@@ -17,6 +17,7 @@ export interface StudioClip {
 export const isPublished = (clip: { status: string, publications: Array<{ status: string }> }) => clip.status === 'approved' && clip.publications.some(p => p.status === 'published')
 
 export interface StudioPublication { id: string, platform: string, status: string, scheduledAt: string, publishedAt: string | null, url: string | null, error: string | null }
+export interface StartProgressView { phase: 'none' | 'waiting' | 'analyzing' | 'rendering' | 'ready' | 'blocked' | 'failed' | 'empty' | 'paused', etaSec: number | null, title: string, text: string, fresh: boolean, clips: number, vods: number }
 export interface StudioBilling { available: boolean, testMode?: boolean, plan?: 'free' | 'creator', planName?: string, status?: string | null, renewsAt?: string | null, canManage?: boolean, freeClips?: number, paidClips?: number, paidTotalClips?: number, packs?: number, maxPacks?: number, interval?: 'month' | 'year' | null, paidName?: string, price?: { amount: number, currency: string, interval: string | null }, prices?: { month: { amount: number, currency: string }, year: { amount: number, currency: string } | null } }
 export interface VodAlert { id: string, title: string, state: 'blocked' | 'working' | 'restore', since: string | null }
 export interface InstagramAccounts { accounts: Array<{ id: string, username: string }>, selectedId: string | null }
@@ -77,11 +78,12 @@ export function createStudio() {
   // Offre (Starter / Creator) : absente tant que Stripe n'est pas configure sur le serveur.
   const billing = ref<StudioBilling | null>(null)
   // Plafond mensuel de clips (limit null = illimite) : affiche dans le tableau de bord.
-  const quota = ref<{ limit: number | null, used: number, remaining: number | null, reached: boolean, resetsAt: string, bonus: number } | null>(null)
+  const quota = ref<{ limit: number | null, used: number, remaining: number | null, reached: boolean, resetsAt: string, bonus: number, waitingVods?: number } | null>(null)
   const connections = ref<StudioConnection[]>([])
   const vodAlerts = ref<VodAlert[]>([])
   // Analyses en cours (bandeau du tableau de bord) et plateforme dont la connexion vient d'echouer (alerte du tableau de bord).
   const analysis = ref<AnalysisItem[]>([])
+  const startProgress = ref<StartProgressView | null>(null)
   const connectFailure = ref<'youtube' | 'tiktok' | 'instagram' | null>(null)
 
   // 'onboarding' tant que le parcours n'est pas termine, puis 'dashboard' ; le streamer peut revenir a une etape depuis le tableau de bord.
@@ -140,6 +142,16 @@ export function createStudio() {
       analysis.value = (await api<{ items: AnalysisItem[] }>(`/api/studio/channels/${channelId.value}/analysis-progress`)).items
     } catch {
       analysis.value = []
+    }
+  }
+
+  // Demarrage rapide d'un nouveau streamer : avancement de l'analyse de ses derniers lives (bandeau du studio).
+  async function loadStartProgress() {
+    if (!channelId.value || mode.value !== 'streamer') return
+    try {
+      startProgress.value = await api<StartProgressView>(`/api/studio/channels/${channelId.value}/start-progress`)
+    } catch {
+      startProgress.value = null
     }
   }
 
@@ -538,7 +550,7 @@ export function createStudio() {
   }, 'Publication annulée.')
 
   return {
-    connected, error, notice, busy, clipsLoadedAt, analysis, connectFailure, loadAnalysis, channels, channelId, detail, bank, clips, quota, billing, loadBilling, startCheckout, openPortal, connections, vodAlerts, view, step, onboarding, mode,
+    connected, error, notice, busy, clipsLoadedAt, analysis, connectFailure, loadAnalysis, startProgress, loadStartProgress, channels, channelId, detail, bank, clips, quota, billing, loadBilling, startCheckout, openPortal, connections, vodAlerts, view, step, onboarding, mode,
     disconnectPlatform, publishClip, publishMany, loadTiktokCreator, loadInstagramAccounts, chooseInstagramAccount, loadLongExtracts, saveLongExtractSettings, startLongAnalysis, addVod, addLongProposal, updateLongProposal, prepareLongProposal, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
     api, run, track, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, setCaptionTags, advance, finishOnboarding, goToStep, stepStatus,

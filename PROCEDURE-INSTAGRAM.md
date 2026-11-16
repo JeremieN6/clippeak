@@ -68,7 +68,25 @@ Pour **chaque permission**, Meta demande : une description (« chaque permission
 > After a streamer has approved a clip in Clippeak and explicitly clicks "Publish on Instagram" (with an editable caption), we use instagram_content_publish to publish that single approved video as a Reel on the streamer's own Instagram professional account: we create a Reel container with a short-lived signed video URL, wait for processing, then call media_publish. Clippeak never publishes anything automatically or without that click, never publishes on accounts the streamer did not connect, and adds no watermark. The streamer can disconnect at any time from the "Your platforms" step.
 
 ### Accès pour les relecteurs
-Clippeak n'ouvre le studio que sur invitation. Prévois pour Meta une **invitation Twitch de démonstration** : demande au développeur de te créer une chaîne de démonstration (l'admin a des « chaînes de test et de démo ») et décris dans les instructions comment se connecter. **À décider avec moi** : Meta doit pouvoir se connecter sans compte Twitch perso ; une page de connexion de démonstration est peut-être nécessaire **(non confirmé : à vérifier avant de déposer ; sinon la revue sera refusée pour « impossible de tester »)**.
+Clippeak n'ouvre le studio que sur invitation et Meta n'a pas de compte Twitch. **Solution codée (2026-11-16)** : une page `https://clippeak.sassify.fr/relecteur` où l'on entre un **code** (variable `REVIEWER_CODE`) et qui ouvre le studio sur une chaîne d'exemple « Relecture Meta » : une vraie chaîne (Instagram s'y connecte et on peut y publier, contrairement aux chaînes de test et de démo) avec **un seul clip d'exemple déjà approuvé** (une vidéo générée, aucune donnée d'ami) ; aucun live n'est écouté ; cette session ne voit aucune autre chaîne. Sans `REVIEWER_CODE`, la page répond 404.
+
+**Ouvrir l'accès** (sur le VPS, après la fusion et le déploiement ; le code est saisi masqué, choisis-en un long et jamais utilisé ailleurs) :
+```bash
+cd /srv/saas/clippeak && bash scripts/ops/vps-relecteur.sh
+```
+**Le fermer** après la revue : `bash scripts/ops/vps-relecteur.sh off`.
+
+**Texte à coller dans « Instructions pour l'examen »** (remplace `<CODE>` par ton code, c'est toi qui le saisis dans Meta) :
+> Clippeak is invitation-only (Twitch login), so we provide a reviewer entry that needs no Twitch account.
+> 1. Open https://clippeak.sassify.fr/relecteur and enter the access code: <CODE>
+> 2. The studio opens on an example channel ("Relecture Meta") with one approved sample clip. The interface is in French. If an onboarding appears, you can skip its steps.
+> 3. Open the "Tes plateformes" (platforms) step and click "Connecter Instagram Reels". Log in with your Instagram professional account (Business or Creator), choose the business portfolio and the Instagram account to share, then finish.
+> 4. Back in the studio, the Instagram username is shown (instagram_basic).
+> 5. Open the sample clip ("Clip d'exemple pour la relecture"), edit the caption if you wish and click "Publier sur Instagram". The Reel appears on the connected account within 1 to 5 minutes (instagram_content_publish); the "Voir" link opens it.
+> 6. "Déconnecter" disconnects Instagram and the token is deleted; you can reconnect at any time.
+> Nothing is published without the click on "Publier sur Instagram". The sample clip is a generated test video.
+
+**À vérifier au dépôt (non confirmé)** : si le compte Instagram de test de Meta doit avoir un rôle sur ton application (en mode Développement) : Meta indique généralement qu'il ajoute lui-même ses relecteurs ; si la revue échoue pour « impossible de se connecter », ajoute le compte de test dans Rôles de l'application.
 
 ### Traitement des données (questions de Meta après la vérification)
 - Données reçues : identifiant et nom d'utilisateur du compte Instagram partagé, jeton d'accès de l'entreprise. Rien d'autre.

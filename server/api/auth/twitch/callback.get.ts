@@ -4,6 +4,8 @@ import { readEnv } from '../../../utils/env'
 import { cookieOptions, loginConfig } from '../../../utils/studioLogin'
 import { safeEqual } from '../../../utils/clipping/adminAuth'
 import { createTwitchApi } from '../../../utils/clipping/twitchApi'
+import { registerWelcomeVods } from '../../../utils/clipping/welcomeVods'
+import { prismaVodStore, countChannelVods } from '../../../utils/clipping/prismaVodStore'
 import { setWaitCookie } from '../../../utils/accessRequest'
 import { attachReferral, referrerFromCode } from '../../../utils/clipping/prismaReferral'
 import { REF_COOKIE } from '../../../utils/referralCookie'
@@ -77,6 +79,22 @@ export default defineEventHandler(async (event) => {
       await api.subscribe('stream.offline', identity.id, callback, secret)
     } catch (error) {
       console.error('[login] abonnement EventSub impossible', error instanceof Error ? error.message : error)
+    }
+  }
+
+  // Demarrage rapide : les derniers lives passes sont enregistres tout de suite (analyse sans attendre le prochain direct, reglages par defaut).
+  // Borne a 6 s et sans effet sur la connexion en cas d'echec : le rattrapage periodique reessaie (voir vodCatchup.ts).
+  if (config.clientId && config.clientSecret) {
+    try {
+      const api = createTwitchApi({ clientId: config.clientId, clientSecret: config.clientSecret, apiBase: readEnv('TWITCH_API_BASE_URL') || undefined, idBase: readEnv('TWITCH_ID_BASE_URL') || undefined })
+      const store = { upsertVod: prismaVodStore.upsertVod, countVods: countChannelVods }
+      const registered = await Promise.race([
+        registerWelcomeVods({ id: channel.id, twitchId: identity.id }, { api, store }),
+        new Promise<number>((resolve) => { setTimeout(() => resolve(0), 6000) })
+      ])
+      if (registered) console.info(`[login] ${registered} live${registered > 1 ? 's' : ''} recent${registered > 1 ? 's' : ''} enregistre${registered > 1 ? 's' : ''} pour l'analyse`)
+    } catch (error) {
+      console.error('[login] reprise des derniers lives impossible', error instanceof Error ? error.message : error)
     }
   }
 

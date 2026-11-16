@@ -35,7 +35,9 @@ onBeforeUnmount(stopPolling)
 // Reserver sa place : enregistre la demande seulement au clic (l'identite vient du cookie signe pose au retour de Twitch).
 const sending = ref(false)
 const problem = ref('')
+onMounted(() => trackEvent('waiting_page_opened'))
 async function ask() {
+  trackEvent('access_request_clicked')
   sending.value = true
   problem.value = ''
   try {

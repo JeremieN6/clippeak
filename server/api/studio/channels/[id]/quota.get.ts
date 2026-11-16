@@ -7,5 +7,7 @@ export default defineEventHandler(async (event) => {
   const actor = await requireStudioActor(event)
   const id = parseId(getRouterParam(event, 'id'))
   assertChannel(actor, id)
-  return channelQuotaView(prisma, id)
+  // Lives qui attendent la remise a zero du plafond (analyse pas encore commencee) : montres dans le message de limite.
+  const [view, waitingVods] = await Promise.all([channelQuotaView(prisma, id), prisma.vod.count({ where: { channelId: id, status: 'ended' } })])
+  return { ...view, waitingVods }
 })

@@ -138,7 +138,7 @@ const fakeTwitch = createServer((req, res) => {
 await new Promise(r => fakeTwitch.listen(3397, '127.0.0.1', r))
 
 // --- serveur
-const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_GQL_URL: 'http://127.0.0.1:3397/gql', TIKTOK_CLIENT_KEY: 'tkey', TIKTOK_CLIENT_SECRET: 'tsec', TIKTOK_API_BASE_URL: 'http://127.0.0.1:3397', INSTAGRAM_APP_ID: 'iid', INSTAGRAM_APP_SECRET: 'isec', INSTAGRAM_CONFIG_ID: 'cfg1', INSTAGRAM_API_BASE_URL: 'http://127.0.0.1:3397', CLIPPEAK_PUBLIC_URL: `http://127.0.0.1:${PORT}`, TWITCH_USHER_URL: 'http://127.0.0.1:3397/usher/vod', CLIPPEAK_RECHECK_COOLDOWN_MS: '0', GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsec', GOOGLE_TOKEN_URL: 'http://127.0.0.1:3397/token', CLIPPEAK_TOKEN_KEY: randomBytes(32).toString('base64'), STRIPE_SECRET_KEY: 'sk_test_fake', STRIPE_PRICE_CREATOR: 'price_test_creator', STRIPE_PRICE_CREATOR_YEARLY: 'price_test_creator_yearly', STRIPE_WEBHOOK_SECRET: 'whsec_test', STRIPE_API_BASE_URL: 'http://127.0.0.1:3397' }
+const env = { ...process.env, ADMIN_PASSWORD: PW, DATABASE_URL: `postgresql://postgres:postgres@127.0.0.1:${DBPORT}/postgres?connection_limit=1&sslmode=disable&pgbouncer=true`, CLIPPEAK_DATA_DIR: DATA, PORT: String(PORT), NITRO_PORT: String(PORT), TWITCH_CLIENT_ID: 'cid-test', TWITCH_CLIENT_SECRET: 'secret-test', TWITCH_ID_BASE_URL: 'http://127.0.0.1:3397', TWITCH_API_BASE_URL: 'http://127.0.0.1:3397', TWITCH_GQL_URL: 'http://127.0.0.1:3397/gql', TIKTOK_CLIENT_KEY: 'tkey', TIKTOK_CLIENT_SECRET: 'tsec', TIKTOK_API_BASE_URL: 'http://127.0.0.1:3397', REVIEWER_CODE: 'code-de-relecture-test', INSTAGRAM_APP_ID: 'iid', INSTAGRAM_APP_SECRET: 'isec', INSTAGRAM_CONFIG_ID: 'cfg1', INSTAGRAM_API_BASE_URL: 'http://127.0.0.1:3397', CLIPPEAK_PUBLIC_URL: `http://127.0.0.1:${PORT}`, TWITCH_USHER_URL: 'http://127.0.0.1:3397/usher/vod', CLIPPEAK_RECHECK_COOLDOWN_MS: '0', GOOGLE_CLIENT_ID: 'gid', GOOGLE_CLIENT_SECRET: 'gsec', GOOGLE_TOKEN_URL: 'http://127.0.0.1:3397/token', CLIPPEAK_TOKEN_KEY: randomBytes(32).toString('base64'), STRIPE_SECRET_KEY: 'sk_test_fake', STRIPE_PRICE_CREATOR: 'price_test_creator', STRIPE_PRICE_CREATOR_YEARLY: 'price_test_creator_yearly', STRIPE_WEBHOOK_SECRET: 'whsec_test', STRIPE_API_BASE_URL: 'http://127.0.0.1:3397' }
 const cwd = join(DATA, 'cwd'); mkdirSync(cwd, { recursive: true })
 const logFd = openSync(join(DATA, 'server.log'), 'w')
 const server = spawn('node', [join(ROOT, '.output', 'server', 'index.mjs')], { env, cwd, stdio: ['ignore', logFd, logFd] })
@@ -1064,6 +1064,41 @@ try {
   assert.equal((await q(`SELECT status FROM publications WHERE id = $1`, [igPub2.json.id]))[0].status, 'cancelled')
   ok('deconnexion Instagram : jeton efface chez nous, publication programmee annulee')
 
+  // --- acces relecteur Meta : code, chaine d'exemple (ni test ni demo), Instagram et publication possibles, rien d'autre visible
+  const rv = (code) => fetch(B + '/api/auth/relecteur', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) })
+  assert.equal((await rv('mauvais-code-de-relecture')).status, 401)
+  assert.equal((await fetch(B + '/api/auth/relecteur', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status, 400)
+  const rvOk = await rv('code-de-relecture-test')
+  assert.equal(rvOk.status, 200)
+  const rvSet = rvOk.headers.getSetCookie().find(c => c.startsWith('clippeak_session='))
+  assert.ok(rvSet.includes('HttpOnly'))
+  const rvCookie = rvSet.split(';')[0]
+  const rvAs = as(rvCookie.split('=')[1])
+  const rvMe = await call('/api/auth/me', rvAs)
+  assert.equal(rvMe.json.channel.login, 'meta-review')
+  const rvClips = (await call('/api/studio/clips?status=all', rvAs)).json.clips
+  assert.equal(rvClips.length, 1)
+  assert.equal(rvClips[0].status, 'approved')
+  assert.ok(rvClips[0].videoUrl)
+  assert.equal((await call(rvClips[0].videoUrl, { ...rvAs, raw: true })).status, 200)
+  assert.equal((await rv('code-de-relecture-test')).status, 200) // idempotent : toujours un seul clip d'exemple
+  assert.equal((await call('/api/studio/clips?status=all', rvAs)).json.clips.length, 1)
+  const rvChannelId = rvMe.json.channel.id
+  assert.equal((await call(`/api/studio/channels/${channelId}/connections`, rvAs)).status, 404) // jamais la chaine d'un streamer
+  ok('acces relecteur : mauvais code 401, code valide = session HttpOnly sur la chaine « meta-review », un clip d exemple approuve avec sa video, relancer ne duplique rien, aucune autre chaine visible')
+
+  const rvGo = await fetch(B + '/api/auth/instagram', { redirect: 'manual', headers: { cookie: rvCookie } })
+  assert.ok(rvGo.headers.get('location').startsWith('https://www.facebook.com/dialog/oauth'))
+  const rvState = new URL(rvGo.headers.get('location')).searchParams.get('state')
+  const rvIgCookie = rvGo.headers.getSetCookie().find(c => c.startsWith('clippeak_oauth_ig=')).split(';')[0]
+  assert.equal((await igCb('i-code', rvState, `${rvCookie}; ${rvIgCookie}`)).headers.get('location'), '/studio?connect=instagram')
+  const rvPub = await call(`/api/studio/clips/${rvClips[0].id}/publish`, { ...rvAs, method: 'POST', body: { platform: 'instagram', options: { caption: 'Relecture Meta', consent: true } } })
+  assert.equal(rvPub.status, 200)
+  assert.equal((await q(`SELECT status FROM publications WHERE id = $1`, [rvPub.json.id]))[0].status, 'scheduled')
+  assert.equal((await call(`/api/studio/channels/${rvChannelId}/connections/instagram`, { ...rvAs, method: 'DELETE' })).status, 200)
+  ok('relecteur : Instagram se connecte et le clip d exemple se publie (chaine reelle, pas test ni demo) ; deconnexion annule la publication')
+  await q(`DELETE FROM channels WHERE twitch_id = 'meta-review'`) // le reste du harnais ne compte pas cette chaine
+
   // --- ajout manuel de VOD (admin) avec un faux Helix
   const addVod = (body, who = {}) => call('/api/admin/vods', { method: 'POST', body, ...who })
   const pubSession = as('jeton-pub')
@@ -1428,6 +1463,23 @@ try {
   assert.equal((await hook(subEvt('evt_forge', 'customer.subscription.created', 'active', t0 + 70))).status, 400)
   assert.equal((await q(`SELECT status FROM channel_billing WHERE channel_id = $1`, [cid]))[0].status, 'canceled')
   ok('facturation Stripe (faux Stripe) : offre visible au streamer seulement, paiement et portail, webhook signe (falsifie, ancien ou corps modifie refuses), idempotent, plan et plafond suivent l etat Stripe, evenement ancien ou sans chaine ignore, reabonnement avec le meme client')
+
+  // --- entonnoir d'acquisition (admin) : lecture seule, agrege, sans donnee personnelle, chaines de test exclues
+  assert.equal((await call('/api/admin/funnel', streamerAs)).status, 401)
+  const f0 = (await call('/api/admin/funnel')).json
+  assert.equal(f0.steps.length, 8)
+  const count = (f, id) => f.steps.find(x => x.id === id).count
+  await q(`INSERT INTO access_requests (id, twitch_id, twitch_login) VALUES (gen_random_uuid(), 'f-1', 'entonnoir_a'), (gen_random_uuid(), 'f-2', 'entonnoir_b')`)
+  await q(`INSERT INTO channel_invites (id, twitch_login, twitch_id) VALUES (gen_random_uuid(), 'entonnoir_a', 'f-1')`)
+  await q(`INSERT INTO channels (id, twitch_id, login, display_name) VALUES (gen_random_uuid(), 'f-1', 'entonnoir_a', 'EntonnoirA'), (gen_random_uuid(), 'test-entonnoir', 'testfun', 'TestFun')`)
+  const f1 = (await call('/api/admin/funnel')).json
+  assert.equal(count(f1, 'requests'), count(f0, 'requests') + 2)
+  assert.equal(count(f1, 'invites'), count(f0, 'invites') + 1)
+  assert.equal(count(f1, 'connected'), count(f0, 'connected') + 1, 'la chaine de test n est pas comptee')
+  assert.equal(f1.weeks.length, 12)
+  assert.ok(f1.steps.every(x => x.rateFromParent === null || (x.rateFromParent >= 0 && x.rateFromParent <= 100)))
+  assert.ok(!JSON.stringify(f1).match(/entonnoir_a|EntonnoirA|yassencore|f-1/), 'aucun pseudo ni identifiant dans la reponse')
+  ok('entonnoir admin : 401 hors admin, 8 etapes + 12 semaines, demandes / invitations / premieres connexions comptees, chaines de test exclues, taux jamais au-dessus de 100 %, aucun pseudo ni identifiant renvoye')
 
   console.log('API_IT_OK')
 } catch (error) {

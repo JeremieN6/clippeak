@@ -232,6 +232,7 @@ onBeforeUnmount(() => {
         </ul>
         <a
           href="/connexion"
+          @click="trackEvent('login_clicked', { location: 'flow' })"
           class="mt-5 block w-full rounded-xl bg-clippeak-violet px-6 py-3 text-center font-semibold text-white transition hover:bg-clippeak-violetLight"
         >
           Se connecter avec Twitch
