@@ -1,12 +1,11 @@
 import { randomInt } from 'node:crypto'
 import type { PrismaClient } from '@prisma/client'
-import { isReferralCode, referralAllowed, REFERRAL_ALPHABET, REFERRAL_CLIPS } from './waves'
+import { isReferralCode, referralAllowed, REFERRAL_ALPHABET, REFERRAL_LIVES } from './waves'
 import { monthlyReferralBonus } from './prismaQuota'
 import { DEFAULT_REFERRAL_BONUS_CAP } from './waves'
-import { monthStart, nextMonthStart } from './quota'
 
-// Acces base du parrainage (regles pures : ./waves.ts). Un parrainage = 5 clips gratuits pour le parraine a l'inscription, puis 5 pour le
-// parrain quand le parraine valide son premier clip. Les clips valent pour le mois ou ils sont gagnes, plafonnes par mois.
+// Acces base du parrainage (regles pures : ./waves.ts). Un parrainage = +1 LIVE gratuit pour le parrain (pour le mois) quand la personne amenee a
+// son premier clip pret a valider. La personne amenee ne recoit rien de plus. Plafonne par mois.
 type Db = Pick<PrismaClient, 'channel' | 'clipJob' | 'referralGrant' | 'invitationSettings'>
 
 const newCode = () => Array.from({ length: 8 }, () => REFERRAL_ALPHABET[randomInt(REFERRAL_ALPHABET.length)]).join('')
@@ -33,27 +32,25 @@ export async function referrerFromCode(db: Pick<Db, 'channel'>, code: unknown): 
   return db.channel.findUnique({ where: { referralCode: code }, select: { id: true, twitchId: true } })
 }
 
-// Rattache une chaine a son parrain (une seule fois) et lui donne ses 5 clips d'inscription. Faux parrainage (meme compte, chaine de test)
-// ou deja parraine : rien. Renvoie true si le parrainage a ete enregistre.
+// Rattache une chaine a son parrain (une seule fois), sans rien donner encore : le bonus du parrain vient avec le premier clip de la personne
+// amenee. Faux parrainage (meme compte, chaine de test) ou deja parraine : rien. Renvoie true si le parrainage a ete enregistre.
 export async function attachReferral(db: Db, channel: { id: string, twitchId: string }, referrerId: string): Promise<boolean> {
   const referrer = await db.channel.findUnique({ where: { id: referrerId }, select: { id: true, twitchId: true } })
   if (!referrer || !referralAllowed({ channelId: channel.id, channelTwitchId: channel.twitchId, referrerId: referrer.id, referrerTwitchId: referrer.twitchId })) return false
   const { count } = await db.channel.updateMany({ where: { id: channel.id, referredById: null }, data: { referredById: referrer.id } })
-  if (!count) return false
-  await db.referralGrant.createMany({ data: [{ channelId: channel.id, otherChannelId: referrer.id, kind: 'signup', clips: REFERRAL_CLIPS }], skipDuplicates: true })
-  return true
+  return count > 0
 }
 
-// Appele quand un clip vient d'etre VALIDE (approuve) : si la chaine a ete parrainee et que c'est son premier clip valide, le parrain
-// gagne 5 clips (une seule fois par parraine). Un clip refuse ou un compte sans clip valide ne donne rien.
-export async function grantReferrerOnApproval(db: Db, channelId: string): Promise<boolean> {
+// Appele quand un clip devient PRET a valider (fin du rendu) ou est valide : si la chaine a ete parrainee et qu'elle a au moins un clip pret, le
+// parrain gagne 1 live (une seule fois par personne amenee). Un clip en echec ou refuse ne donne rien.
+export async function grantReferrerOnFirstClip(db: Db, channelId: string): Promise<boolean> {
   const channel = await db.channel.findUnique({ where: { id: channelId }, select: { id: true, twitchId: true, referredById: true } })
   if (!channel?.referredById) return false
   const referrer = await db.channel.findUnique({ where: { id: channel.referredById }, select: { id: true, twitchId: true } })
   if (!referrer || !referralAllowed({ channelId: channel.id, channelTwitchId: channel.twitchId, referrerId: referrer.id, referrerTwitchId: referrer.twitchId })) return false
-  const validated = await db.clipJob.count({ where: { status: 'approved', format: 'short', moment: { vod: { channelId } } } })
+  const validated = await db.clipJob.count({ where: { status: { in: ['review', 'approved'] }, format: 'short', moment: { vod: { channelId } } } })
   if (validated < 1) return false
-  const { count } = await db.referralGrant.createMany({ data: [{ channelId: referrer.id, otherChannelId: channel.id, kind: 'referrer', clips: REFERRAL_CLIPS }], skipDuplicates: true })
+  const { count } = await db.referralGrant.createMany({ data: [{ channelId: referrer.id, otherChannelId: channel.id, kind: 'referrer', clips: REFERRAL_LIVES }], skipDuplicates: true })
   return count > 0
 }
 
@@ -62,9 +59,7 @@ export interface ReferralSummary {
   referred: Array<{ name: string, validated: boolean, grantedAt: string | null }>
   bonusThisMonth: number
   bonusCap: number
-  clipsPerReferral: number
-  // Bonus d'inscription recu par ce streamer lui-meme ce mois-ci (s'il a ete parraine).
-  signupBonus: number
+  livesPerReferral: number
 }
 
 export async function referralSummary(db: Db, channelId: string, now: Date = new Date()): Promise<ReferralSummary> {
@@ -75,14 +70,12 @@ export async function referralSummary(db: Db, channelId: string, now: Date = new
     db.invitationSettings.findUnique({ where: { id: 1 }, select: { referralBonusCap: true } }),
     monthlyReferralBonus(db, channelId, now)
   ])
-  const signup = await db.referralGrant.aggregate({ _sum: { clips: true }, where: { channelId, kind: 'signup', createdAt: { gte: monthStart(now), lt: nextMonthStart(now) } } })
   const granted = new Map(grants.map(g => [g.otherChannelId, g.createdAt]))
   return {
     code,
     referred: referred.map(r => ({ name: r.displayName, validated: granted.has(r.id), grantedAt: granted.get(r.id)?.toISOString() ?? null })),
     bonusThisMonth: bonus,
     bonusCap: settings?.referralBonusCap ?? DEFAULT_REFERRAL_BONUS_CAP,
-    clipsPerReferral: REFERRAL_CLIPS,
-    signupBonus: signup._sum.clips ?? 0
+    livesPerReferral: REFERRAL_LIVES
   }
 }

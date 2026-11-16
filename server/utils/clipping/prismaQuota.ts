@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client'
 import { clipRoom, effectiveQuota, isQuotaExempt, liveLimit, liveQuotaView, liveRoom, monthStart, nextMonthStart, quotaMode, quotaView, type QuotaMode, type QuotaView } from './quota'
-import { bonusClips, DEFAULT_REFERRAL_BONUS_CAP } from './waves'
+import { bonusLives, DEFAULT_REFERRAL_BONUS_CAP } from './waves'
 import { packsClips, planFor } from './billing'
 
 // Acces base du plafond mensuel (regles pures : ./quota.ts). Partage par le worker et par les routes du site.
@@ -17,13 +17,14 @@ export async function monthlyLiveUsage(db: Db, channelId: string, now: Date = ne
   return db.vod.count({ where: { channelId, admittedAt: { gte: monthStart(now) } } })
 }
 
-// Clips bonus de parrainage du mois (valables ce mois-ci seulement), au plus le plafond mensuel regle par l'admin.
+// Lives bonus de parrainage du mois (valables ce mois-ci seulement) : un par personne amenee dont le premier clip est pret, au plus le plafond mensuel
+// (reglage admin, 5 au maximum). Les anciens dons de clips (kind « signup », ou « referrer » de 5 clips) ne comptent que pour un parrainage.
 export async function monthlyReferralBonus(db: Db, channelId: string, now: Date = new Date()): Promise<number> {
-  const [sum, settings] = await Promise.all([
-    db.referralGrant.aggregate({ _sum: { clips: true }, where: { channelId, createdAt: { gte: monthStart(now), lt: nextMonthStart(now) } } }),
+  const [count, settings] = await Promise.all([
+    db.referralGrant.count({ where: { channelId, kind: 'referrer', createdAt: { gte: monthStart(now), lt: nextMonthStart(now) } } }),
     db.invitationSettings.findUnique({ where: { id: 1 }, select: { referralBonusCap: true } })
   ])
-  return bonusClips(sum._sum.clips ?? 0, settings?.referralBonusCap ?? DEFAULT_REFERRAL_BONUS_CAP)
+  return bonusLives(count, settings?.referralBonusCap ?? DEFAULT_REFERRAL_BONUS_CAP)
 }
 
 interface ChannelQuota { mode: QuotaMode, quota: number | null, bonus: number }
@@ -35,8 +36,8 @@ async function quotaOf(db: Db, channelId: string, now: Date): Promise<ChannelQuo
   const setting = channel.settings ? channel.settings.monthlyClipQuota : undefined
   const planClips = channel.billing && planFor(channel.billing.status) === 'creator' ? packsClips(channel.billing.packs) : 0
   const mode = quotaMode({ twitchId: channel.twitchId, setting, planClips })
-  // En mode « lives », le bonus de parrainage donne des lives en plus (il n'ajoute pas de clips).
-  return { mode, bonus, quota: effectiveQuota({ twitchId: channel.twitchId, setting, planClips, bonusClips: mode === 'lives' ? 0 : bonus }) }
+  // Le bonus de parrainage donne des lives en plus (jamais des clips).
+  return { mode, bonus, quota: effectiveQuota({ twitchId: channel.twitchId, setting, planClips }) }
 }
 
 // Place restante pour produire des clips (Infinity si illimite). Gratuit en lives : une VOD deja admise a toujours de la place (elle est decoupee

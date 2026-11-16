@@ -6,6 +6,7 @@ import { clipsDir, dataDir, safeResolve } from './dataDir'
 import { parseStyle, referencedSoundAssets } from './streamerStyle'
 import { assignBatches } from './batching'
 import { channelClipRoom } from './prismaQuota'
+import { grantReferrerOnFirstClip } from './prismaReferral'
 import { tagsFromFilename } from './illustrations'
 import type { JobContext, JobResult } from './clipJobPipeline'
 import type { AnalyzedMoment } from './vodAnalysis'
@@ -134,6 +135,11 @@ export function createPipelineStore(db: Db) {
           illustrations: result.illustrations as any
         }
       })
+      // Parrainage : le premier clip pret d'une personne amenee donne 1 live au parrain. Ne bloque jamais le rendu.
+      try {
+        const row = await db.clipJob.findUnique({ where: { id: jobId }, select: { moment: { select: { vod: { select: { channelId: true } } } } } })
+        if (row) await grantReferrerOnFirstClip(db as any, row.moment.vod.channelId)
+      } catch (error) { console.error('[parrainage]', error instanceof Error ? error.message : error) }
     },
 
     // Un clip refuse par le controle qualite garde son rapport pour que le relecteur voie pourquoi.

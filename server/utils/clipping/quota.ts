@@ -1,7 +1,7 @@
 // Plafond mensuel de clips par chaine (beta gratuite avec plafond, decision du porteur du 2026-10-31) : regles pures, testables.
 // On compte les clips PRODUITS dans le mois (hors echecs de rendu), pas les VODs : c'est ce que le streamer voit et comprend.
 
-import { CLIPS_PER_BONUS_LIVE, FREE_CLIPS, FREE_LIVES } from './pricing.ts'
+import { FREE_CLIPS, FREE_LIVES } from './pricing.ts'
 
 // Plafond par defaut = le quota gratuit (une seule source : ./pricing.ts).
 export const DEFAULT_MONTHLY_CLIPS = FREE_CLIPS
@@ -40,8 +40,8 @@ export function quotaMode(input: { twitchId: string, setting: number | null | un
   return input.setting === undefined || input.setting === DEFAULT_MONTHLY_CLIPS ? 'lives' : 'clips'
 }
 
-// Lives gratuits du mois : 2, plus 1 par tranche de 5 clips de parrainage (le bonus de parrainage est compte en clips, voir waves.ts).
-export const liveLimit = (bonusClips = 0): number => FREE_LIVES + Math.floor(Math.max(0, bonusClips) / CLIPS_PER_BONUS_LIVE)
+// Lives gratuits du mois : 2, plus 1 par parrainage active (voir waves.ts).
+export const liveLimit = (bonusLives = 0): number => FREE_LIVES + Math.max(0, Math.floor(bonusLives))
 
 // Une VOD deja admise ce mois-ci (ou avant) continue toujours ; une nouvelle VOD n'est admise que s'il reste un live.
 export const liveRoom = (limit: number, used: number): number => Math.max(0, limit - Math.max(0, used))

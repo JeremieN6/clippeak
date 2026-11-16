@@ -85,12 +85,11 @@ test('mode du plafond : gratuit en lives, Creator ou reglage admin en clips, tes
   assert.equal(quotaMode({ twitchId: 'demo-clippeak', setting: undefined }), 'unlimited')
 })
 
-test('lives gratuits : 2 par mois, +1 par tranche de 5 clips de parrainage, jamais negatif', () => {
+test('lives gratuits : 2 par mois, +1 par parrainage active, jamais negatif', () => {
   assert.equal(liveLimit(), 2)
   assert.equal(liveLimit(0), 2)
-  assert.equal(liveLimit(4), 2)
-  assert.equal(liveLimit(5), 3)
-  assert.equal(liveLimit(25), 7)
+  assert.equal(liveLimit(1), 3)
+  assert.equal(liveLimit(5), 7)
   assert.equal(liveLimit(-3), 2)
   assert.equal(liveRoom(2, 0), 2)
   assert.equal(liveRoom(2, 2), 0)
