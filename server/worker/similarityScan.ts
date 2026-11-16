@@ -14,7 +14,7 @@ import { rateBySimilarity } from '../utils/clipping/referenceSimilarity'
 import { findSimilarWindows, nextSlice, windowToCandidate } from '../utils/clipping/similarityScan'
 import type { AnalyzedMoment } from '../utils/clipping/vodAnalysis'
 import { createScorer, loadReferenceBank } from './analysis'
-import { contentDetectionEnabled } from './contentDetection'
+import { contentDetectionEnabled } from './detectionConfig'
 
 const store = retrying(createPipelineStore(prisma), { onRetry: (error, attempt) => console.warn(`[worker] base injoignable (tentative ${attempt}), nouvel essai`) })
 

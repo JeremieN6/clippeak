@@ -7,8 +7,8 @@ import {
 import type { ContentCandidate } from './contentDetection.ts'
 import { createContentFinder } from './contentDetectionLlm.ts'
 import { LongLlmError } from './longAnalysisLlm.ts'
-import { GROQ_URL, parseGroqResponse, transcribeRemote } from './remoteTranscribe.ts'
-import { transcribeAuto } from './transcribeAuto.ts'
+import { GROQ_URL, RemoteTranscribeError, parseGroqResponse, parseRetryAfter, transcribeRemote } from './remoteTranscribe.ts'
+import { createAlertThrottle, groqAlertMessage, groqWaitMs, groqWaitNote, isGroqWaitNote, transcribeAuto } from './transcribeAuto.ts'
 import type { TranscriptSegment } from './whisperTranscribe.ts'
 import type { ChatPeak } from './chatPeaks.ts'
 
@@ -166,17 +166,96 @@ test('transcribeRemote sends the audio to Groq with the secret in the header onl
   assert.equal(call.init.body.get('language'), 'fr')
   assert.ok(!String(call.url).includes('SECRET'))
   const failing = (status: number) => transcribeRemote('x.wav', { apiKey: 'k', readFileFn: async () => Buffer.from('x'), fetchFn: (async () => new Response('', { status })) as any })
-  await assert.rejects(() => failing(401), (e: any) => !e.retryable && !e.message.includes('k'))
-  await assert.rejects(() => failing(429), (e: any) => e.retryable)
+  await assert.rejects(() => failing(401), (e: any) => !e.retryable && e.kind === 'key' && !e.message.includes('k'))
+  await assert.rejects(() => failing(429), (e: any) => e.retryable && e.kind === 'rate')
+  await assert.rejects(() => failing(503), (e: any) => e.retryable && e.kind === 'outage')
+  await assert.rejects(() => failing(400), (e: any) => !e.retryable && e.kind === 'other')
+  const network = transcribeRemote('x.wav', { apiKey: 'k', readFileFn: async () => Buffer.from('x'), fetchFn: (async () => { throw new Error('reseau') }) as any })
+  await assert.rejects(() => network, (e: any) => e.retryable && e.kind === 'outage')
 })
 
-test('transcribeAuto uses the external service first and falls back to the local Whisper for that slice', async () => {
+test('the 429 answer carries the Retry-After wait of the service', async () => {
+  const limited = transcribeRemote('x.wav', { apiKey: 'k', readFileFn: async () => Buffer.from('x'), fetchFn: (async () => new Response('', { status: 429, headers: { 'retry-after': '90' } })) as any })
+  await assert.rejects(() => limited, (e: any) => e.kind === 'rate' && e.retryAfterMs === 90_000)
+  assert.equal(parseRetryAfter('30'), 30_000)
+  assert.equal(parseRetryAfter(new Date(Date.now() + 60_000).toUTCString(), Date.now()) !== null, true)
+  assert.equal(parseRetryAfter('n’importe quoi'), null)
+  assert.equal(parseRetryAfter(null), null)
+})
+
+test('transcribeAuto uses the external service first', async () => {
   const result = { segments: [], audioSec: 1, transcribeSec: 1 }
-  const local = async () => result
+  let localCalls = 0
+  const local = async () => { localCalls++; return result }
   assert.equal((await transcribeAuto('a.wav', { remote: async () => result, local })).provider, 'groq')
-  assert.equal((await transcribeAuto('a.wav', { remote: null, local })).provider, 'local')
-  let fallback = 0
-  const out = await transcribeAuto('a.wav', { remote: async () => { throw new Error('panne') }, local, onFallback: () => { fallback++ } })
+  assert.equal(localCalls, 0)
+})
+
+test('transcribeAuto never falls back to the local Whisper unless it is allowed', async () => {
+  const result = { segments: [], audioSec: 1, transcribeSec: 1 }
+  let localCalls = 0
+  const local = async () => { localCalls++; return result }
+  const errors: unknown[] = []
+  // Groq en panne, cle refusee, limite de debit : l'erreur remonte, le serveur ne transcrit pas.
+  for (const kind of ['outage', 'key', 'rate'] as const) {
+    await assert.rejects(() => transcribeAuto('a.wav', { remote: async () => { throw new RemoteTranscribeError('x', kind !== 'key', kind) }, local, onRemoteError: e => errors.push(e) }), (e: any) => e.kind === kind)
+  }
+  assert.equal(localCalls, 0)
+  assert.equal(errors.length, 3)
+  // Sans service externe ni repli autorise : rien n'est transcrit en local non plus.
+  await assert.rejects(() => transcribeAuto('a.wav', { remote: null, local }), /Aucun service/)
+  assert.equal(localCalls, 0)
+})
+
+test('transcribeAuto falls back to the local Whisper only with the explicit setting, and still reports the failure', async () => {
+  const result = { segments: [], audioSec: 1, transcribeSec: 1 }
+  let localCalls = 0
+  const local = async () => { localCalls++; return result }
+  let reported = 0
+  const out = await transcribeAuto('a.wav', { remote: async () => { throw new RemoteTranscribeError('limite', true, 'rate') }, local, localFallback: true, onRemoteError: () => { reported++ } })
   assert.equal(out.provider, 'local')
-  assert.equal(fallback, 1)
+  assert.equal(localCalls, 1)
+  assert.equal(reported, 1)
+  // Pas de cle Groq mais repli autorise : Whisper local seul.
+  assert.equal((await transcribeAuto('a.wav', { remote: null, local, localFallback: true })).provider, 'local')
+})
+
+test('the wait after a Groq problem grows 5, 10, 20 minutes, honours Retry-After and stays under an hour', () => {
+  assert.equal(groqWaitMs(1, null), 5 * 60_000)
+  assert.equal(groqWaitMs(2, null), 10 * 60_000)
+  assert.equal(groqWaitMs(3, null), 20 * 60_000)
+  assert.equal(groqWaitMs(9, null), 20 * 60_000)
+  assert.equal(groqWaitMs(1, 15 * 60_000), 15 * 60_000)
+  assert.equal(groqWaitMs(3, 60_000), 20 * 60_000)
+  assert.equal(groqWaitMs(1, 3 * 3600_000), 3600_000)
+  assert.equal(groqWaitMs(0, null), 5 * 60_000)
+})
+
+test('the admin is alerted once per hour and per cause, in French, without any key', () => {
+  const throttle = createAlertThrottle()
+  const t0 = 1_000_000
+  assert.equal(throttle.shouldAlert('rate', t0), true)
+  assert.equal(throttle.shouldAlert('rate', t0 + 59 * 60_000), false)
+  assert.equal(throttle.shouldAlert('key', t0 + 60_000), true)
+  assert.equal(throttle.shouldAlert('rate', t0 + 61 * 60_000), true)
+  for (const cause of ['key', 'rate', 'outage'] as const) {
+    for (const fallback of [true, false]) {
+      const text = groqAlertMessage(cause, fallback)
+      assert.match(text, /Groq/)
+      // Le nom de la variable peut apparaitre, jamais une valeur de cle.
+      assert.ok(!/gsk_|Bearer|https?:/i.test(text))
+    }
+  }
+  assert.match(groqAlertMessage('rate', false), /repli local désactivé/)
+  assert.match(groqAlertMessage('rate', true), /Whisper local/)
+})
+
+test('a waiting live is marked in the database with a clear message that the capacity tab can count', () => {
+  for (const cause of ['key', 'rate', 'outage'] as const) {
+    const note = groqWaitNote(cause)
+    assert.equal(isGroqWaitNote(note), true)
+    assert.ok(note.length < 500)
+  }
+  assert.equal(isGroqWaitNote(null), false)
+  assert.equal(isGroqWaitNote('Claude est injoignable'), false)
 })

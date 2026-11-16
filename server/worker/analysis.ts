@@ -22,6 +22,7 @@ import { transcribeWav } from '../utils/clipping/whisperTranscribe'
 import { transcribePeak } from '../utils/clipping/peakTranscript'
 import { createClaudeScorer, heuristicScorer } from '../utils/clipping/momentScoring'
 import { usesChat } from '../utils/clipping/contentDetection'
+import { contentDetectionEnabled } from './detectionConfig'
 import { buildReferenceProfile, rateAgainstReference } from '../utils/clipping/referenceClips'
 import { buildCorpus, rateBySimilarity } from '../utils/clipping/referenceSimilarity'
 import { performanceWeights } from '../utils/clipping/referenceProfile'
@@ -59,8 +60,9 @@ export async function loadReferenceBank(channelId: string) {
 }
 
 async function runAnalysis(vod: VodToAnalyze, live: boolean) {
-  // « Contenu seul » : le chat ne sert pas a trouver des moments (la detection par le contenu s'en charge, voir contentDetection.ts).
-  if (!usesChat(vod.detectionMode)) return
+  // « Contenu seul » : le chat ne sert pas a trouver des moments (la detection par le contenu s'en charge, voir contentDetection.ts). Sans moyen de
+  // transcrire (ni cle Groq ni repli local), la detection par le contenu ne tourne pas : le chat reprend son role d'avant.
+  if (!usesChat(vod.detectionMode) && contentDetectionEnabled()) return
   const audioUrl = await getVodAudioPlaylistUrl(vod.twitchVodId)
   const profile = buildReferenceProfile(await store.referenceClips(vod.channelId))
   const scorer = createScorer()

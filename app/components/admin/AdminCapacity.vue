@@ -3,7 +3,7 @@
 // d'analyse, courbe des dernieres 24 h et un conseil en clair. Les mesures viennent du worker (une par minute) ; la page se rafraichit seule.
 interface Latest { at: string, load1: number, load5: number, cores: number, memTotalMb: number, memFreeMb: number, clipsQueued: number, clipsRendering: number, analysesQueued: number, analysesRunning: number, oldestWaitSec: number | null, verdict: 'ok' | 'attention' | 'sature' | null }
 interface Stat { n: number, medianSec: number | null, p90Sec: number | null, maxSec: number | null }
-interface Capacity { latest: Latest | null, silent: boolean, series: Array<{ at: string, load1: number, cores: number }>, render: Stat & { perDay: number }, wait: Stat, analysis: { n: number, audioSec: number, workSec: number, speed: number | null }, detection: { lives: number, running: number, audioSec: number, workSec: number, localLives: number, speed: number | null }, samples7d: number, saturatedShare: number | null, recommendation: string, upgradeRule: string }
+interface Capacity { latest: Latest | null, silent: boolean, series: Array<{ at: string, load1: number, cores: number }>, render: Stat & { perDay: number }, wait: Stat, analysis: { n: number, audioSec: number, workSec: number, speed: number | null }, detection: { lives: number, running: number, audioSec: number, workSec: number, localLives: number, waitingForGroq: number, groqConfigured: boolean, localFallback: boolean, speed: number | null }, samples7d: number, saturatedShare: number | null, recommendation: string, upgradeRule: string }
 
 const data = ref<Capacity | null>(null)
 const failed = ref(false)
@@ -95,6 +95,9 @@ const chart = computed(() => {
           <div><dt class="st-muted">Vitesse d’analyse d’un live</dt><dd class="m-0 font-bold">{{ data.analysis.speed ? `${num(data.analysis.speed, 2)} × le temps réel (${data.analysis.n} analyse${data.analysis.n > 1 ? 's' : ''}, 30 jours)` : 'pas encore d’analyse terminée' }}</dd></div>
           <div><dt class="st-muted">Détection par le contenu (30 jours)</dt><dd class="m-0 font-bold">{{ data.detection.lives ? `${data.detection.lives} live${data.detection.lives > 1 ? 's' : ''}, ${num(data.detection.audioSec / 3600)} h d’audio lues, ${data.detection.speed ? `${num(data.detection.speed, 0)} × le temps réel` : '—'}` : 'pas encore de live lu' }}</dd></div>
           <div><dt class="st-muted">Lives en cours de lecture</dt><dd class="m-0 font-bold">{{ data.detection.running }}{{ data.detection.localLives ? ` (dont ${data.detection.localLives} lu${data.detection.localLives > 1 ? 's' : ''} par le serveur lui-même, sans service externe)` : '' }}</dd></div>
+          <div><dt class="st-muted">Transcription externe (Groq)</dt><dd class="m-0 font-bold">{{ data.detection.groqConfigured ? 'clé posée' : 'pas de clé' }}</dd></div>
+          <div><dt class="st-muted">Repli sur le serveur (Whisper local)</dt><dd class="m-0 font-bold">{{ data.detection.localFallback ? 'activé : si Groq échoue, le serveur transcrit lui-même et le rendu peut ralentir' : 'désactivé : si Groq échoue, les tranches attendent' }}</dd></div>
+          <div><dt class="st-muted">Lives en attente de Groq</dt><dd class="m-0 font-bold">{{ data.detection.waitingForGroq }}{{ data.detection.waitingForGroq ? ' (limite de débit, panne ou clé refusée)' : '' }}</dd></div>
           <div><dt class="st-muted">Temps passé saturé</dt><dd class="m-0 font-bold">{{ data.saturatedShare === null ? '—' : `${num(data.saturatedShare * 100, 1)} % des mesures (${data.samples7d})` }}</dd></div>
         </dl>
         <p class="m-0 text-[13px] leading-5 st-muted">Une vitesse d’analyse de 1 veut dire qu’un live de 4 heures demande 4 heures de calcul ; en dessous de 1, c’est plus long que le live lui-même.</p>

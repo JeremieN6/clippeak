@@ -122,8 +122,12 @@ export function createContentStore(db: Db) {
       await db.vodTranscript.update({ where: { vodId }, data: { doneAt: new Date(), error: null } })
     },
 
-    async fail(vodId: string, error: string) {
-      await db.vodTranscript.updateMany({ where: { vodId }, data: { error: error.slice(0, 500) } })
+    // Garde le message d'erreur pour le live. Avec channelId, la ligne est creee si la premiere tranche n'a pas encore pu etre ecrite (sinon le
+    // message serait perdu).
+    async fail(vodId: string, error: string, channelId?: string) {
+      const message = error.slice(0, 500)
+      if (channelId) await db.vodTranscript.upsert({ where: { vodId }, update: { error: message }, create: { vodId, channelId, error: message } })
+      else await db.vodTranscript.updateMany({ where: { vodId }, data: { error: message } })
     }
   }
 }

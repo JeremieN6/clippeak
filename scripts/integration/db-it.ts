@@ -11,6 +11,7 @@ import { scanMarkers } from '../../server/utils/clipping/markerScan'
 import { createPrismaLongAnalysisStore } from '../../server/utils/clipping/prismaLongAnalysisStore'
 import { toAnalyzedMoment } from '../../server/utils/clipping/contentDetection'
 import { createContentStore, monthlyDetectionUsageSec } from '../../server/utils/clipping/prismaContentStore'
+import { groqWaitNote, isGroqWaitNote } from '../../server/utils/clipping/transcribeAuto'
 
 // Meme requete que server/worker/index.ts (missingSchema).
 async function missingSchemaCheck(db: any): Promise<string[]> {
@@ -370,6 +371,13 @@ async function main() {
   assert.equal(Math.round(cFirst.durationSec!), 3 * 3600)
   assert.equal(await prisma.vodTranscript.count({ where: { vodId: cVod.id } }), 0)
 
+  // Groq refuse la premiere tranche (limite de debit) : le message est garde en base meme sans transcription, le live reste a lire (pas d'echec definitif).
+  await cStore.fail(cVod.id, groqWaitNote('rate'), cChannel.id)
+  const waitingRow = await prisma.vodTranscript.findUniqueOrThrow({ where: { vodId: cVod.id } })
+  assert.deepEqual([isGroqWaitNote(waitingRow.error), waitingRow.transcribedSec, waitingRow.doneAt], [true, 0, null])
+  assert.equal((await mine())!.transcribedSec, 0)
+  assert.equal((await prisma.$queryRaw<Array<{ n: number }>>`SELECT count(*)::int AS n FROM "public"."vod_transcripts" WHERE "done_at" IS NULL AND "error" LIKE 'groq:%'`)[0]!.n, 1)
+
   await cStore.appendSlice(cFirst, { startSec: 0, endSec: 300, audioSec: 300, workSec: 4, provider: 'groq' }, [{ start: 10, end: 20, text: 'bonjour', words: [{ start: 10, end: 11, text: 'bonjour' }] }, { start: 280, end: 295, text: 'coupee' }])
   // La tranche suivante recule de 30 s : la phrase coupee a la jonction est remplacee par sa version complete.
   await cStore.appendSlice(cFirst, { startSec: 270, endSec: 570, audioSec: 300, workSec: 5, provider: 'local' }, [{ start: 280, end: 300, text: 'phrase complete', words: [{ start: 280, end: 281, text: 'phrase' }] }, { start: 400, end: 410, text: 'la suite' }])
@@ -377,6 +385,7 @@ async function main() {
   assert.equal((await cStore.segments(cVod.id))[1]!.words![0]!.text, 'phrase')
   const row = await prisma.vodTranscript.findUniqueOrThrow({ where: { vodId: cVod.id } })
   assert.deepEqual([row.transcribedSec, row.audioSec, row.workSec, row.provider], [570, 600, 9, 'local'])
+  assert.equal(row.error, null) // la tranche reussie efface la marque d'attente
   assert.equal((await mine())!.transcribedSec, 570)
   assert.equal(await monthlyDetectionUsageSec(prisma as any, cChannel.id), 600)
   assert.equal((await mine())!.secLeft, 36000 - 600)

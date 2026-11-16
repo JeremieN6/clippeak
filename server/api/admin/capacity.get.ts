@@ -1,4 +1,5 @@
 import { prisma } from '../../utils/prisma'
+import { readEnv } from '../../utils/env'
 import { requireStudioAdmin } from '../../utils/studioAuth'
 import { UPGRADE_RULE, recommendation, summarize, verdictOf } from '../../utils/clipping/capacity'
 
@@ -22,8 +23,9 @@ export default defineEventHandler(async (event) => {
     prisma.$queryRaw<Array<{ n: number, hot: number }>>`
       SELECT count(*)::int AS n, count(*) FILTER (WHERE "load1" > 1.5 * "cores")::int AS hot FROM "public"."ops_samples" WHERE "at" > now() - interval '7 days'`,
     // Detection des clips par le contenu : audio transcrit, temps de calcul (Groq ou Whisper local), lives en cours de lecture.
-    prisma.$queryRaw<Array<{ n: number, running: number, audio_sec: number, work_sec: number, local_n: number }>>`
+    prisma.$queryRaw<Array<{ n: number, running: number, audio_sec: number, work_sec: number, local_n: number, waiting: number }>>`
       SELECT count(*)::int AS n, count(*) FILTER (WHERE "done_at" IS NULL)::int AS running,
+             count(*) FILTER (WHERE "done_at" IS NULL AND "error" LIKE 'groq:%')::int AS waiting,
              coalesce(sum("audio_sec"), 0)::float AS audio_sec, coalesce(sum("work_sec"), 0)::float AS work_sec,
              count(*) FILTER (WHERE "provider" = 'local')::int AS local_n
       FROM "public"."vod_transcripts" WHERE "created_at" > now() - interval '30 days'`
@@ -52,7 +54,7 @@ export default defineEventHandler(async (event) => {
     render: { n: render.n, medianSec: render.median, p90Sec: render.p90, maxSec: render.max, perDay: Math.round(render.n / 7 * 10) / 10 },
     wait: { n: wait.n, medianSec: wait.median, p90Sec: wait.p90, maxSec: wait.max },
     analysis: { n: a?.n ?? 0, audioSec: a?.audio_sec ?? 0, workSec: a?.work_sec ?? 0, speed: a && a.work_sec > 0 ? Math.round(a.audio_sec / a.work_sec * 100) / 100 : null },
-    detection: { lives: detection[0]?.n ?? 0, running: detection[0]?.running ?? 0, audioSec: detection[0]?.audio_sec ?? 0, workSec: detection[0]?.work_sec ?? 0, localLives: detection[0]?.local_n ?? 0, speed: detection[0] && detection[0].work_sec > 0 ? Math.round(detection[0].audio_sec / detection[0].work_sec * 10) / 10 : null },
+    detection: { lives: detection[0]?.n ?? 0, running: detection[0]?.running ?? 0, audioSec: detection[0]?.audio_sec ?? 0, workSec: detection[0]?.work_sec ?? 0, localLives: detection[0]?.local_n ?? 0, waitingForGroq: detection[0]?.waiting ?? 0, groqConfigured: Boolean(readEnv('GROQ_API_KEY')), localFallback: readEnv('WORKER_LOCAL_FALLBACK') === '1', speed: detection[0] && detection[0].work_sec > 0 ? Math.round(detection[0].audio_sec / detection[0].work_sec * 10) / 10 : null },
     samples7d,
     saturatedShare,
     recommendation: recommendation({ verdict, saturatedShare, waitP90Sec: wait.p90, samples: samples7d }),

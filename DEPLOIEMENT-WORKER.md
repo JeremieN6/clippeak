@@ -39,9 +39,18 @@ mkdir -p /srv/saas/clippeak-data
 ```
 # Clips de reference (liens YouTube / TikTok / Instagram) : yt-dlp dans le meme venv, mis a jour regulierement (les sites changent)
 # .venv/bin/pip install -U yt-dlp   puis YTDLP_BIN=/srv/saas/clippeak/.venv/bin/yt-dlp
-GROQ_API_KEY=               # transcription externe (Groq, whisper-large-v3-turbo) pour la detection par le contenu ; absente = Whisper local (4x le temps reel : tres lourd)
+GROQ_API_KEY=               # transcription externe (Groq, whisper-large-v3-turbo) pour la detection par le contenu
+WORKER_LOCAL_FALLBACK=0     # 1 = si Groq echoue (ou sans cle), le serveur transcrit lui-meme avec Whisper local. Defaut : 0 (voir ci-dessous)
 WORKER_CONTENT_DETECTION=1  # 0 = couper la detection par le contenu (reprend alors le balayage par ressemblance ci-dessous)
 WORKER_SIMILARITY_SCAN=1     # 0 = ne pas balayer la parole des lives/VODs a la recherche de clips ressemblant aux references dans .env.local
+
+**Detection par le contenu : Groq d'abord, le serveur jamais par surprise.** Le serveur n'a que 2 coeurs : une tranche transcrite en local dure jusqu'a 20 min et, pendant ce temps, le worker ne rend aucun clip. Donc :
+- Sans `GROQ_API_KEY` ET sans `WORKER_LOCAL_FALLBACK=1`, la detection par le contenu ne tourne pas (detection par le chat seul, comme avant) ; le worker le dit une seule fois dans son journal.
+- Groq en limite de debit (429), en panne ou injoignable : la tranche n'est PAS transcrite en local, elle attend 5, 10 puis 20 minutes (plus si Groq envoie `Retry-After`, jamais plus d'une heure). Le live n'est pas marque en echec.
+- Cle Groq refusee (401/403) : la lecture s'arrete avec un message clair dans la base, nouvel essai toutes les 30 minutes (le temps de corriger la cle).
+- L'admin recoit un message Telegram / Discord au premier echec de Groq, un par heure et par cause (cle refusee, limite de debit, panne), sans jamais afficher la cle.
+- `WORKER_LOCAL_FALLBACK=1` : seul reglage qui autorise Whisper local (4x le temps reel) quand Groq echoue ou n'a pas de cle. A n'activer que sciemment, serveur au repos.
+- L'onglet « Capacite » de l'administration montre si la cle est posee, si le repli est actif, et combien de lives attendent Groq.
 Si le site est derriere nginx, autoriser les depots jusqu'a 60 Mo (`client_max_body_size 64m;`) pour les videos d'illustration.
 
 ## 4. Variables (dans `.env.local` du VPS, jamais dans le depot)

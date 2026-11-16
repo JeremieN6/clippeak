@@ -12,8 +12,9 @@ import { getVodAudioPlaylistUrl, VodPlaylistError } from '../utils/clipping/vodP
 import { extractAudioWindow } from '../utils/clipping/audioWindow'
 import { transcribeWav } from '../utils/clipping/whisperTranscribe'
 import type { TranscriptSegment } from '../utils/clipping/whisperTranscribe'
-import { transcribeRemote } from '../utils/clipping/remoteTranscribe'
-import { transcribeAuto } from '../utils/clipping/transcribeAuto'
+import { RemoteTranscribeError, transcribeRemote } from '../utils/clipping/remoteTranscribe'
+import { GROQ_KEY_WAIT_MS, createAlertThrottle, groqAlertMessage, groqWaitMs, groqWaitNote, transcribeAuto } from '../utils/clipping/transcribeAuto'
+import type { GroqCause } from '../utils/clipping/transcribeAuto'
 import { nextSlice } from '../utils/clipping/similarityScan'
 import { WINDOW_OVERLAP_SEC, buildWindows, selectContentMoments, shouldDetect, toAnalyzedMoment, usesChat } from '../utils/clipping/contentDetection'
 import type { ContentCandidate } from '../utils/clipping/contentDetection'
@@ -26,6 +27,8 @@ import { buildReferenceProfile, rateAgainstReference } from '../utils/clipping/r
 import { rateBySimilarity } from '../utils/clipping/referenceSimilarity'
 import { describeVodError } from '../utils/clipping/vodAccess'
 import { loadReferenceBank, saveSources } from './analysis'
+import { sendAdminMessage } from './notify'
+import { contentDetectionEnabled, groqKey, localFallbackEnabled, transcriptionConfigured } from './detectionConfig'
 
 // Detection des clips par le CONTENU du live : on transcrit le live par tranches de 5 minutes (Groq si GROQ_API_KEY, sinon Whisper local), la
 // transcription est gardee en base (une seule fois par live), puis Claude la lit par passages de 30 minutes et propose des moments de 20 a 60 s.
@@ -45,7 +48,23 @@ let nextCheckMs = 0
 const retryAfter = new Map<string, number>()
 const failures = new Map<string, number>()
 
-export const contentDetectionEnabled = () => readEnv('WORKER_CONTENT_DETECTION') !== '0'
+// Service externe en difficulte (limite de debit, panne, cle refusee) : on ne bascule PAS sur le serveur, on attend. Une seule attente pour tous les
+// lives (la limite de Groq est celle de la cle, pas du live). Remise a zero par une tranche reussie.
+let groqPausedUntil = 0
+let groqAttempts = 0
+let groqPauseCause: GroqCause = 'rate'
+const waitingMarked = new Set<string>()
+const alertThrottle = createAlertThrottle()
+let warnedNotConfigured = false
+
+const groqPaused = (nowMs: number) => groqPausedUntil > nowMs
+
+// Alerte a l'admin au premier echec de Groq, une par heure et par cause. Jamais de cle dans le message.
+function alertGroq(error: unknown) {
+  if (!(error instanceof RemoteTranscribeError) || error.kind === 'other') return
+  if (!alertThrottle.shouldAlert(error.kind)) return
+  void sendAdminMessage(groqAlertMessage(error.kind, localFallbackEnabled())).catch(() => {})
+}
 
 async function transcribeSlice(target: ContentTarget, slice: { startSec: number, durationSec: number }) {
   const audioUrl = await getVodAudioPlaylistUrl(target.twitchVodId)
@@ -53,11 +72,15 @@ async function transcribeSlice(target: ContentTarget, slice: { startSec: number,
   const started = Date.now()
   try {
     await extractAudioWindow(audioUrl, slice.startSec, slice.durationSec, wav, { timeoutMs: 10 * 60_000 })
-    const apiKey = readEnv('GROQ_API_KEY')
+    const apiKey = groqKey()
     const { result, provider } = await transcribeAuto(wav, {
       remote: apiKey ? path => transcribeRemote(path, { apiKey }) : null,
       local: path => transcribeWav(path, { timeoutMs: 20 * 60_000 }),
-      onFallback: error => console.warn('[worker] transcription externe en echec, Whisper local pour cette tranche :', error instanceof Error ? error.message : error)
+      localFallback: localFallbackEnabled(),
+      onRemoteError: (error) => {
+        console.warn(`[worker] transcription externe en echec (${error instanceof RemoteTranscribeError ? error.kind : 'erreur'}) :`, error instanceof Error ? error.message : error, localFallbackEnabled() ? '; Whisper local pour cette tranche' : '; tranche remise a plus tard')
+        alertGroq(error)
+      }
     })
     const segments: TranscriptSegment[] = result.segments
       .filter(s => s.text.trim())
@@ -135,7 +158,24 @@ async function detect(target: ContentTarget, upToSec: number) {
   }
 }
 
+// Cle refusee, limite de debit ou panne du service externe : le live n'est PAS en echec definitif. On le marque « en attente » en base (message clair,
+// compte dans l'onglet Capacite) et on retente plus tard : 5, 10 puis 20 minutes (ou le Retry-After de Groq) ; cle refusee : toutes les 30 minutes.
+async function handleGroqProblem(target: ContentTarget, error: RemoteTranscribeError & { kind: GroqCause }) {
+  groqAttempts++
+  const waitMs = error.kind === 'key' ? GROQ_KEY_WAIT_MS : groqWaitMs(groqAttempts, error.retryAfterMs)
+  groqPausedUntil = Date.now() + waitMs
+  groqPauseCause = error.kind
+  waitingMarked.clear()
+  console.warn(`[worker] transcription externe : ${error.kind}, nouvel essai dans ${Math.round(waitMs / 60_000)} min (tentative ${groqAttempts})`)
+  await store.fail(target.vodId, groqWaitNote(error.kind), target.channelId).catch(() => {})
+  waitingMarked.add(target.vodId)
+}
+
 async function handleFailure(target: ContentTarget, error: unknown) {
+  if (error instanceof RemoteTranscribeError && error.kind !== 'other') {
+    await handleGroqProblem(target, error as RemoteTranscribeError & { kind: GroqCause })
+    return
+  }
   // VOD privee ou supprimee : inutile de reessayer.
   if (error instanceof VodPlaylistError && (error.kind === 'restricted' || error.kind === 'token')) {
     await store.fail(target.vodId, describeVodError(error)).catch(() => {})
@@ -158,7 +198,14 @@ async function handleFailure(target: ContentTarget, error: unknown) {
 
 // Renvoie true si le worker a travaille (une tranche transcrite, ou une lecture par Claude).
 export async function contentDetectionStep(): Promise<boolean> {
-  if (!contentDetectionEnabled()) return false
+  if (!contentDetectionEnabled()) {
+    // Ni cle Groq ni repli local autorise : on ne transcrit pas, le chat seul fait le travail comme avant. Dit une seule fois.
+    if (readEnv('WORKER_CONTENT_DETECTION') !== '0' && !transcriptionConfigured() && !warnedNotConfigured) {
+      warnedNotConfigured = true
+      console.warn('[worker] detection par le contenu desactivee : ni GROQ_API_KEY ni WORKER_LOCAL_FALLBACK=1 ; detection par le chat seul comme avant')
+    }
+    return false
+  }
   const nowMs = Date.now()
   if (nowMs < nextCheckMs) return false
 
@@ -181,10 +228,20 @@ export async function contentDetectionStep(): Promise<boolean> {
         continue
       }
       if (!slice) continue
+      // Service externe en attente : cette tranche est remise a plus tard (on ne la lit pas en local). Les autres lives ont aussi leur marque.
+      if (groqPaused(nowMs)) {
+        if (!waitingMarked.has(target.vodId)) {
+          waitingMarked.add(target.vodId)
+          await store.fail(target.vodId, groqWaitNote(groqPauseCause), target.channelId).catch(() => {})
+        }
+        continue
+      }
       const audioSec = slice.durationSec
       const { segments, provider, workSec } = await transcribeSlice(target, slice)
       await store.appendSlice(target, { startSec: slice.startSec, endSec: slice.startSec + slice.durationSec, audioSec, workSec, provider }, segments)
       failures.delete(target.vodId)
+      waitingMarked.delete(target.vodId)
+      if (provider === 'groq') groqAttempts = 0
     } catch (error) {
       await handleFailure(target, error)
     }

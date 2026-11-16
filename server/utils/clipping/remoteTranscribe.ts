@@ -7,13 +7,30 @@ import type { TranscriptResult, TranscriptSegment, TranscriptWord } from './whis
 export const GROQ_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
 export const GROQ_MODEL = 'whisper-large-v3-turbo'
 
+// Cause d'un echec : cle refusee (key), limite de debit (rate), panne ou reseau (outage), autre refus du service (other, ex. fichier trop gros).
+export type RemoteProblem = 'key' | 'rate' | 'outage' | 'other'
+
 export class RemoteTranscribeError extends Error {
   readonly retryable: boolean
-  constructor(message: string, retryable: boolean) {
+  readonly kind: RemoteProblem
+  // Attente demandee par le service (en-tete Retry-After), en millisecondes.
+  readonly retryAfterMs: number | null
+  constructor(message: string, retryable: boolean, kind?: RemoteProblem, retryAfterMs: number | null = null) {
     super(message)
     this.name = 'RemoteTranscribeError'
     this.retryable = retryable
+    this.kind = kind ?? (retryable ? 'outage' : 'other')
+    this.retryAfterMs = retryAfterMs
   }
+}
+
+// Retry-After : un nombre de secondes ou une date HTTP.
+export function parseRetryAfter(header: string | null | undefined, nowMs: number = Date.now()): number | null {
+  if (!header) return null
+  const value = header.trim()
+  if (/^\d+(\.\d+)?$/.test(value)) return Math.round(Number(value) * 1000)
+  const at = Date.parse(value)
+  return Number.isNaN(at) ? null : Math.max(0, at - nowMs)
 }
 
 // Whisper invente parfois du texte sur du silence : on ecarte les phrases qu'il juge lui-meme sans parole.
@@ -61,11 +78,14 @@ export async function transcribeRemote(wavPath: string, options: RemoteOptions):
   try {
     response = await doFetch(GROQ_URL, { method: 'POST', headers: { authorization: `Bearer ${options.apiKey}` }, body: form, signal: AbortSignal.timeout(options.timeoutMs ?? 120_000) })
   } catch {
-    throw new RemoteTranscribeError('Le service de transcription est injoignable', true)
+    throw new RemoteTranscribeError('Le service de transcription est injoignable', true, 'outage')
   }
   if (!response.ok) {
-    const auth = response.status === 401 || response.status === 403
-    throw new RemoteTranscribeError(auth ? 'La clé du service de transcription est refusée' : `Le service de transcription a répondu HTTP ${response.status}`, !auth && (response.status === 429 || response.status >= 500))
+    const status = response.status
+    if (status === 401 || status === 403) throw new RemoteTranscribeError('La clé du service de transcription est refusée', false, 'key')
+    if (status === 429) throw new RemoteTranscribeError('Le service de transcription limite le débit (HTTP 429)', true, 'rate', parseRetryAfter(response.headers.get('retry-after')))
+    if (status >= 500) throw new RemoteTranscribeError(`Le service de transcription est en panne (HTTP ${status})`, true, 'outage', parseRetryAfter(response.headers.get('retry-after')))
+    throw new RemoteTranscribeError(`Le service de transcription a répondu HTTP ${status}`, false, 'other')
   }
   const result = parseGroqResponse(await response.json())
   return { ...result, transcribeSec: (Date.now() - started) / 1000 }

@@ -1097,6 +1097,11 @@ try {
   await q(`INSERT INTO vod_transcripts (vod_id, channel_id, transcribed_sec, audio_sec, work_sec, provider, updated_at) VALUES ($1, $2, 3600, 3600, 36, 'groq', now())`, [capVod, capChannel])
   const detCap = (await call('/api/admin/capacity')).json.detection
   assert.deepEqual([detCap.lives, detCap.running, detCap.audioSec, detCap.workSec, detCap.localLives, detCap.speed], [1, 1, 3600, 36, 0, 100]) // 1 h d'audio en 36 s (service externe)
+  // Groq : repli local desactive par defaut ; un live en attente de Groq est compte (message ecrit par le worker, marque « groq: »).
+  assert.deepEqual([detCap.waitingForGroq, detCap.localFallback, typeof detCap.groqConfigured], [0, false, 'boolean'])
+  await q(`UPDATE vod_transcripts SET error = 'groq:rate:Le service de transcription (Groq) limite le débit' WHERE vod_id = $1`, [capVod])
+  assert.equal((await call('/api/admin/capacity')).json.detection.waitingForGroq, 1)
+  await q(`UPDATE vod_transcripts SET error = NULL WHERE vod_id = $1`, [capVod])
   assert.match(okCap.recommendation, /Rien à faire/)
   await q(`INSERT INTO ops_samples (at, load1, load5, cores, mem_total_mb, mem_free_mb, clips_queued, oldest_wait_sec) VALUES (now() + interval '1 second', 5.0, 4.0, 2, 8000, 5000, 3, 1500)`)
   const hotCap = (await call('/api/admin/capacity')).json
