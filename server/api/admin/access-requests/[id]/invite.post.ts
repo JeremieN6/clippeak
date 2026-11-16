@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
   const request = await prisma.accessRequest.findUnique({ where: { id } })
   if (!request) throw createError({ statusCode: 404, statusMessage: 'Demande introuvable' })
   await prisma.$transaction([
-    prisma.channelInvite.upsert({ where: { twitchLogin: request.twitchLogin }, update: {}, create: { twitchLogin: request.twitchLogin, note: 'Demande d\u2019accès' } }),
+    prisma.channelInvite.upsert({ where: { twitchLogin: request.twitchLogin }, update: {}, create: { twitchLogin: request.twitchLogin, referredByChannelId: request.referredByChannelId, note: 'Demande d\u2019accès' } }),
     prisma.accessRequest.delete({ where: { id } })
   ])
   return { ok: true, login: request.twitchLogin }

@@ -12,6 +12,9 @@ import { createPrismaLongAnalysisStore } from '../../server/utils/clipping/prism
 import { toAnalyzedMoment } from '../../server/utils/clipping/contentDetection'
 import { createContentStore, monthlyDetectionUsageSec } from '../../server/utils/clipping/prismaContentStore'
 import { groqWaitNote, isGroqWaitNote } from '../../server/utils/clipping/transcribeAuto'
+import { invitedToday, queuePosition, runWave, waitStatus } from '../../server/utils/clipping/prismaWaves'
+import { attachReferral, ensureReferralCode, grantReferrerOnApproval, referralSummary, referrerFromCode } from '../../server/utils/clipping/prismaReferral'
+import { channelClipRoom, channelQuotaView } from '../../server/utils/clipping/prismaQuota'
 
 // Meme requete que server/worker/index.ts (missingSchema).
 async function missingSchemaCheck(db: any): Promise<string[]> {
@@ -442,6 +445,96 @@ async function main() {
   await prisma.channel.deleteMany({ where: { id: { in: [cChannel.id, modeChannel.id] } } })
   assert.equal(await prisma.vodTranscript.count(), 0)
   log('detection par le contenu : lives a lire, transcription partagee (jonction remplacee), heures par mois, plafonds, reglage de detection, reprise par l analyse longue')
+
+  // 9. Vagues d'invitations : file ordonnee (parraines d'abord), vague seulement si le serveur est calme et sous le plafond du jour
+  await prisma.accessRequest.deleteMany({})
+  await prisma.channelInvite.deleteMany({})
+  await prisma.opsSample.deleteMany({})
+  await prisma.invitationSettings.deleteMany({})
+  const waveRef = await prisma.channel.create({ data: { twitchId: 'w-ref', login: 'parrain', displayName: 'Parrain', settings: { create: {} } } })
+  const t0 = Date.now()
+  const req = (n: string, minutesAgo: number, referredBy?: string) => prisma.accessRequest.create({ data: { twitchId: `w-${n}`, twitchLogin: `wave_${n}`, createdAt: new Date(t0 - minutesAgo * 60_000), referredByChannelId: referredBy ?? null } })
+  await req('a1', 50); await req('a2', 40); await req('a3', 30); await req('a4', 5, waveRef.id)
+  assert.deepEqual(await queuePosition(prisma, 'w-a4'), { position: 1, total: 4 }) // le parraine passe devant
+  assert.deepEqual(await queuePosition(prisma, 'w-a1'), { position: 2, total: 4 })
+  assert.deepEqual(await queuePosition(prisma, 'w-a3'), { position: 4, total: 4 })
+  assert.equal(await queuePosition(prisma, 'w-inconnu'), null)
+  const calmSample = (secondsAgo: number, load1 = 0.3) => prisma.opsSample.create({ data: { at: new Date(Date.now() - secondsAgo * 1000), load1, load5: load1, cores: 2, memTotalMb: 8000, memFreeMb: 5000 } })
+
+  assert.equal((await runWave(prisma)).reason, 'off') // reglage absent : vagues coupees par defaut
+  await prisma.invitationSettings.create({ data: { id: 1, wavesEnabled: true, dailyCap: 4 } })
+  assert.equal((await runWave(prisma)).reason, 'server') // aucune mesure : on n'invite pas a l'aveugle
+  await calmSample(60); await calmSample(120); await calmSample(180)
+  const hot = await calmSample(30, 5)
+  assert.equal((await runWave(prisma)).reason, 'server') // serveur charge : la vague s'arrete
+  assert.equal(await prisma.channelInvite.count(), 0)
+  await prisma.opsSample.delete({ where: { id: hot.id } })
+  const w1 = await runWave(prisma)
+  assert.deepEqual([w1.reason, w1.invited], ['ok', ['wave_a4']]) // 4 / 8 arrondi au-dessus = 1 par vague, le parraine d'abord
+  const inviteA4 = await prisma.channelInvite.findUniqueOrThrow({ where: { twitchLogin: 'wave_a4' } })
+  assert.deepEqual([inviteA4.source, inviteA4.referredByChannelId], ['wave', waveRef.id])
+  assert.equal(await prisma.accessRequest.count({ where: { twitchId: 'w-a4' } }), 0)
+  assert.deepEqual((await runWave(prisma)).invited, ['wave_a1']) // puis l'ordre d'arrivee
+  await prisma.channelInvite.create({ data: { twitchLogin: 'invite_a_la_main' } }) // a la main : ne compte pas dans le plafond du jour
+  assert.equal(await invitedToday(prisma), 2)
+  assert.deepEqual((await runWave(prisma)).invited, ['wave_a2'])
+  assert.deepEqual((await runWave(prisma)).invited, ['wave_a3'])
+  assert.equal((await runWave(prisma)).reason, 'empty')
+  await req('a5', 3); await req('a6', 2)
+  await prisma.accessRequest.create({ data: { twitchId: 'w-vieille', twitchLogin: 'wave_vieille', createdAt: new Date(t0 - 91 * 24 * 3600_000) } })
+  const capped = await runWave(prisma)
+  assert.deepEqual([capped.reason, capped.invited], ['cap', [] as string[]]) // 4 invites aujourd'hui = plafond atteint
+  assert.equal(await prisma.accessRequest.count({ where: { twitchId: 'w-vieille' } }), 0) // demande de plus de 90 jours effacee
+  const status = await waitStatus(prisma, { id: 'w-a5', login: 'wave_a5' })
+  assert.deepEqual([status.invited, status.requested, status.position, status.state], [false, true, 1, 'day_full'])
+  assert.equal((await waitStatus(prisma, { id: 'w-a1', login: 'wave_a1' })).invited, true)
+  await prisma.invitationSettings.update({ where: { id: 1 }, data: { dailyCap: 5 } })
+  assert.deepEqual((await runWave(prisma)).invited, ['wave_a5'])
+  assert.equal((await waitStatus(prisma, { id: 'w-a6', login: 'wave_a6' })).state, 'day_full')
+  log('vagues : file ordonnee (parraines d abord), arret si serveur charge ou sans mesure, plafond du jour, invitations a la main hors plafond, purge a 90 jours, etat de la page d attente')
+
+  // 10. Parrainage : lien personnel, bonus d'inscription, bonus du parrain au premier clip valide, plafond mensuel, faux parrainages refuses
+  const code = await ensureReferralCode(prisma, waveRef.id)
+  assert.match(code, /^[A-HJ-NP-Z2-9]{8}$/)
+  assert.equal(await ensureReferralCode(prisma, waveRef.id), code)
+  assert.equal((await referrerFromCode(prisma, code))?.id, waveRef.id)
+  assert.equal(await referrerFromCode(prisma, 'AAAAAAAA'), null)
+  assert.equal(await referrerFromCode(prisma, 'x'), null)
+  const kid = await prisma.channel.create({ data: { twitchId: 'w-kid', login: 'parraine', displayName: 'Parraine', settings: { create: {} } } })
+  assert.equal(await attachReferral(prisma, kid, waveRef.id), true)
+  assert.equal(await attachReferral(prisma, kid, waveRef.id), false) // une seule fois
+  assert.equal(await attachReferral(prisma, { id: waveRef.id, twitchId: 'w-ref' }, waveRef.id), false) // son propre lien
+  const fake = await prisma.channel.create({ data: { twitchId: 'test-ami', login: 'ami', displayName: 'Ami', settings: { create: {} } } })
+  assert.equal(await attachReferral(prisma, fake, waveRef.id), false) // chaine de test
+  assert.equal((await prisma.channel.findUniqueOrThrow({ where: { id: kid.id } })).referredById, waveRef.id)
+  assert.deepEqual([(await channelQuotaView(prisma, kid.id)).limit, (await channelQuotaView(prisma, kid.id)).bonus], [25, 5]) // 20 gratuits + 5 d'inscription
+  assert.equal((await channelQuotaView(prisma, waveRef.id)).limit, 20) // le parrain n'a encore rien : le parraine n'a valide aucun clip
+  assert.equal(await grantReferrerOnApproval(prisma, kid.id), false)
+  const kidVod = await prisma.vod.create({ data: { channelId: kid.id, twitchVodId: '999801', url: 'https://twitch.tv/videos/999801', status: 'done' } })
+  const kidMoment = await prisma.moment.create({ data: { vodId: kidVod.id, startSec: 0, endSec: 10, peakSec: 5, score: 7, signals: {} } })
+  await prisma.clipJob.create({ data: { momentId: kidMoment.id, status: 'review' } })
+  assert.equal(await grantReferrerOnApproval(prisma, kid.id), false) // clip seulement a valider
+  await prisma.clipJob.create({ data: { momentId: kidMoment.id, status: 'approved' } })
+  assert.equal(await grantReferrerOnApproval(prisma, kid.id), true)
+  assert.equal(await grantReferrerOnApproval(prisma, kid.id), false) // une seule fois par parraine
+  assert.deepEqual([(await channelQuotaView(prisma, waveRef.id)).limit, (await channelQuotaView(prisma, waveRef.id)).bonus], [25, 5])
+  assert.equal(await channelClipRoom(prisma, waveRef.id), 25)
+  // Plafond mensuel de bonus (reglable) et bonus d'un autre mois ignore
+  await prisma.invitationSettings.update({ where: { id: 1 }, data: { referralBonusCap: 3 } })
+  assert.equal((await channelQuotaView(prisma, waveRef.id)).bonus, 3)
+  await prisma.invitationSettings.update({ where: { id: 1 }, data: { referralBonusCap: 25 } })
+  const lastMonth = new Date(); lastMonth.setUTCMonth(lastMonth.getUTCMonth() - 1)
+  await prisma.referralGrant.updateMany({ where: { channelId: waveRef.id }, data: { createdAt: lastMonth } })
+  assert.equal((await channelQuotaView(prisma, waveRef.id)).bonus, 0)
+  const summary = await referralSummary(prisma, waveRef.id)
+  assert.deepEqual([summary.code, summary.referred.map(r => [r.name, r.validated]), summary.clipsPerReferral], [code, [['Parraine', true]], 5])
+  // Un abonnement payant n'est pas touche par le bonus : le plafond reste max(reglage, offre) + bonus
+  await prisma.channelBilling.create({ data: { channelId: kid.id, plan: 'creator', status: 'active', packs: 1 } })
+  assert.deepEqual([(await channelQuotaView(prisma, kid.id)).limit, (await channelQuotaView(prisma, kid.id)).bonus], [125, 5])
+  await prisma.channel.deleteMany({ where: { id: { in: [waveRef.id, kid.id, fake.id] } } })
+  await prisma.accessRequest.deleteMany({}); await prisma.channelInvite.deleteMany({}); await prisma.opsSample.deleteMany({}); await prisma.invitationSettings.deleteMany({})
+  assert.equal(await prisma.referralGrant.count(), 0) // suppression d'une chaine : ses bonus partent avec elle
+  log('parrainage : code personnel, bonus d inscription, bonus du parrain au premier clip valide (une fois), plafond mensuel, mois precedent ignore, faux parrainages refuses, offre payante intacte')
 
   // 8. Preflight : sur une base migree, plus rien ne manque
   assert.deepEqual(await missingSchemaCheck(prisma), [])

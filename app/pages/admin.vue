@@ -6,10 +6,11 @@ useHead({ title: 'Administration Clippeak', meta: [{ name: 'robots', content: 'n
 
 const admin = createAdmin()
 const { authed, checking, password, error, notice, busy } = admin
-const tab = ref<'studio' | 'invites' | 'vods' | 'capacity' | 'roadmap' | 'funnel' | 'feedback'>('studio')
+const tab = ref<'studio' | 'invites' | 'waves' | 'vods' | 'capacity' | 'roadmap' | 'funnel' | 'feedback'>('studio')
 const tabs = [
   { id: 'studio', label: 'Studio' },
   { id: 'invites', label: 'Invitations' },
+  { id: 'waves', label: 'Vagues' },
   { id: 'vods', label: 'VODs' },
   { id: 'capacity', label: 'Capacité' },
   { id: 'roadmap', label: 'Prochainement' },
@@ -56,6 +57,7 @@ onMounted(() => admin.restore())
       </nav>
       <AdminChannels v-if="tab === 'studio'" :admin="admin" />
       <AdminInvites v-else-if="tab === 'invites'" :admin="admin" />
+      <AdminWaves v-else-if="tab === 'waves'" />
       <AdminVods v-else-if="tab === 'vods'" :admin="admin" />
       <AdminCapacity v-else-if="tab === 'capacity'" />
       <AdminRoadmap v-else-if="tab === 'roadmap'" :admin="admin" />

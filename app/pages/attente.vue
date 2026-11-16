@@ -10,22 +10,51 @@ const login = computed(() => {
   return /^[A-Za-z0-9_]{3,25}$/.test(raw) ? raw : ''
 })
 
-// « Previens-moi » : enregistre la demande seulement au clic (l'identite vient du cookie signe pose au retour de Twitch).
-const state = ref<'idle' | 'sending' | 'done' | 'invited' | 'error'>('idle')
+// File d'attente garantie : la page lit l'etat (invite ou non, place dans la file, vagues du jour) avec le cookie d'identite pose au retour de
+// Twitch (15 minutes). Elle se met a jour toute seule et ouvre la connexion des que la chaine est invitee.
+type WaitState = 'manual' | 'day_full' | 'next_wave'
+interface Status { invited: boolean, requested: boolean, position: number | null, total: number, state: WaitState }
+const status = ref<Status | null>(null)
+const expired = ref(false)
+async function refresh() {
+  try {
+    status.value = await $fetch<Status>('/api/auth/wait-status')
+    expired.value = false
+    if (status.value.invited) stopPolling()
+  } catch { expired.value = true; stopPolling() }
+}
+let timer: ReturnType<typeof setInterval> | null = null
+function stopPolling() { if (timer) { clearInterval(timer); timer = null } }
+onMounted(() => {
+  if (!login.value) return
+  void refresh()
+  timer = setInterval(refresh, 60_000)
+})
+onBeforeUnmount(stopPolling)
+
+// Reserver sa place : enregistre la demande seulement au clic (l'identite vient du cookie signe pose au retour de Twitch).
+const sending = ref(false)
 const problem = ref('')
 onMounted(() => trackEvent('waiting_page_opened'))
 async function ask() {
   trackEvent('access_request_clicked')
-  state.value = 'sending'
+  sending.value = true
   problem.value = ''
   try {
-    const res = await $fetch<{ invited: boolean }>('/api/auth/access-request', { method: 'POST' })
-    state.value = res.invited ? 'invited' : 'done'
+    await $fetch('/api/auth/access-request', { method: 'POST' })
+    await refresh()
   } catch (e: any) {
-    problem.value = e?.data?.statusMessage || 'Impossible d’envoyer la demande pour le moment.'
-    state.value = 'error'
-  }
+    problem.value = e?.data?.statusMessage || 'Impossible de réserver ta place pour le moment.'
+  } finally { sending.value = false }
 }
+
+// Message de la file : on dit ou en est la personne, jamais a quelle heure elle sera invitee.
+const queueMessage = computed(() => {
+  const state = status.value?.state
+  if (state === 'day_full') return 'Les places du jour sont prises : ta place est réservée, tu seras invité dans la prochaine vague.'
+  if (state === 'next_wave') return 'Ta place est réservée : les invitations partent par vagues au fil de la journée, dans l’ordre d’arrivée.'
+  return 'Ta place est réservée : on t’invite dès qu’une place s’ouvre.'
+})
 </script>
 
 <template>
@@ -51,18 +80,30 @@ async function ask() {
         <h2 class="m-0 text-[17px] font-bold">Et maintenant ?</h2>
         <ul class="m-0 flex list-none flex-col gap-2 p-0 text-sm leading-relaxed st-muted">
           <li>Aucun compte n’a été créé et rien n’a été enregistré sur ta chaîne.</li>
-          <li>Demande une invitation à la personne qui t’a partagé le lien : elle connaît l’équipe.</li>
-          <li>Ou clique ci-dessous : on garde ton pseudo Twitch pour t’inviter dès qu’une place s’ouvre.</li>
-          <li>Dès que ta chaîne est invitée, il suffit de te reconnecter avec Twitch.</li>
+          <li>Clique sur « Réserver ma place » : ta place dans la file est garantie, dans l’ordre d’arrivée.</li>
+          <li>Reviens sur cette page ou reconnecte-toi avec Twitch : dès que ta chaîne est invitée, tu entres directement.</li>
         </ul>
       </section>
 
-      <section v-if="login" class="flex flex-col gap-2">
-        <button v-if="state === 'idle' || state === 'sending' || state === 'error'" type="button" class="st-btn self-start" :disabled="state === 'sending'" @click="ask">Prévenez-moi quand une place s’ouvre</button>
-        <p v-if="state === 'done'" class="m-0 text-sm text-st-ok" role="status">C’est noté : on garde ton pseudo Twitch ({{ login }}) pour t’inviter. Tu peux le faire effacer en écrivant à contact.clippeak@sassify.fr.</p>
-        <p v-if="state === 'invited'" class="m-0 text-sm text-st-ok" role="status">Bonne nouvelle : ta chaîne est invitée. Reconnecte-toi avec Twitch.</p>
-        <p v-if="state === 'error'" class="m-0 text-sm text-st-error" role="alert">{{ problem }}</p>
-        <p class="m-0 text-xs st-muted">Seul ton pseudo Twitch est conservé, pour 90 jours au plus. <NuxtLink to="/confidentialite" class="underline">Politique de confidentialité</NuxtLink></p>
+      <section v-if="login" class="flex flex-col gap-3">
+        <div v-if="status?.invited" class="st-alert st-alert-ok flex-col !items-start gap-3" role="status">
+          <div class="font-bold">Bonne nouvelle : ta chaîne est invitée.</div>
+          <a href="/api/auth/twitch" class="st-btn no-underline">Me connecter avec Twitch</a>
+        </div>
+        <template v-else-if="status?.requested">
+          <div class="st-alert st-alert-ok flex-col !items-start gap-1" role="status">
+            <div class="font-bold">{{ queueMessage }}</div>
+            <div v-if="status.position" class="text-sm">Tu es n° {{ status.position }} dans la file ({{ status.total }} personne{{ status.total > 1 ? 's' : '' }} en attente).</div>
+            <div class="text-sm opacity-90">Cette page se met à jour toute seule. Tu peux aussi la fermer : ta place est gardée 90 jours au plus, il suffira de te reconnecter avec Twitch.</div>
+          </div>
+        </template>
+        <template v-else>
+          <p v-if="status?.state === 'day_full'" class="m-0 text-sm st-muted">Les places du jour sont prises. Réserve la tienne : tu seras invité dans la prochaine vague, dans l’ordre d’arrivée.</p>
+          <button type="button" class="st-btn self-start" :disabled="sending || expired" @click="ask">Réserver ma place</button>
+          <p v-if="expired" class="m-0 text-sm st-muted">Ta session de connexion a expiré. <a href="/api/auth/twitch" class="underline">Reconnecte-toi avec Twitch</a> pour réserver ta place.</p>
+        </template>
+        <p v-if="problem" class="m-0 text-sm text-st-error" role="alert">{{ problem }}</p>
+        <p class="m-0 text-xs st-muted">On garde seulement ton pseudo Twitch ({{ login }}), pour 90 jours au plus, pour t’inviter. Tu peux le faire effacer en écrivant à contact.clippeak@sassify.fr. <NuxtLink to="/confidentialite" class="underline">Politique de confidentialité</NuxtLink></p>
       </section>
 
       <div class="flex flex-wrap gap-2">

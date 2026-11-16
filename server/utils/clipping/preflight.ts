@@ -30,7 +30,9 @@ export const REQUIRED_SCHEMA = [
   { table: 'streamer_settings', column: 'monthly_clip_quota' },
   { table: 'channel_billing', column: 'status' },
   { table: 'clip_jobs', column: 'render_started_at' },
-  { table: 'ops_samples', column: 'at' }
+  { table: 'ops_samples', column: 'at' },
+  { table: 'invitation_settings', column: 'daily_cap' },
+  { table: 'referral_grants', column: 'clips' }
 ]
 
 export function commandWorks(command: string, args: string[]): boolean {
