@@ -25,11 +25,13 @@ Chiffres vérifiés par recherche le 2026-10-28 ; les limites changent, les reli
 - Plan B immédiat : envoyer le clip dans les brouillons du compte (le streamer termine la publication dans l'application).
 
 ## Instagram (Reels)
-- API : Instagram API with Instagram Login (ou Graph API), portée `instagram_business_content_publish` (`instagram_content_publish` côté Graph API).
+- API : Instagram API with Unified Login (connexion par Meta, Facebook Login for Business), permissions `instagram_basic` et `instagram_content_publish`. Depuis le 2026-11-16 : Meta n'offre plus « Instagram API with Instagram Login » aux nouvelles applications.
 - Le compte du streamer doit être **professionnel ou créateur**.
 - La vidéo doit être sur une **URL publique** au moment de la publication (Meta la télécharge) : prévoir une URL signée de courte durée.
 - Limite : 100 publications par compte et par 24 h (50 dans d'anciennes pages de la documentation).
 - Validation par Meta (App Review) nécessaire pour des utilisateurs qui n'ont pas de rôle sur l'application.
+
+> **Instagram : procédure complète et code écrits le 2026-11-15, voir `PROCEDURE-INSTAGRAM.md`** (la section ci-dessous est l'état des lieux d'origine).
 
 ## Ce que le code fait (YouTube : fait le 2026-10-28, TikTok et Instagram : à faire)
 - Table de connexions par chaîne et plateforme (jetons chiffrés, clé hors dépôt), table de publications (plateforme, créneau, statut, identifiant externe, erreur).

@@ -1,10 +1,12 @@
 import { z } from 'zod'
 import { prisma } from '../../../../utils/prisma'
 import { assertChannel, parseId, requireStudioActor } from '../../../../utils/studioAuth'
-import { MAX_SCHEDULE_DAYS, PUBLISH_PLATFORMS, TIKTOK_PRIVACY_LEVELS } from '../../../../utils/clipping/publishing'
-import { tiktokConfig } from '../../../../utils/publishConfig'
+import { INSTAGRAM_CAPTION_MAX, MAX_SCHEDULE_DAYS, PUBLISH_PLATFORMS, TIKTOK_PRIVACY_LEVELS } from '../../../../utils/clipping/publishing'
+import { instagramConfig, tiktokConfig } from '../../../../utils/publishConfig'
+import { isDemoTwitchId, isTestTwitchId } from '../../../../utils/demoChannel'
 import { tiktokAccessFor } from '../../../../utils/tiktokAccess'
 import { checkPostOptions, queryCreatorInfo } from '../../../../utils/clipping/tiktokApi'
+import { instagramTokenExpired } from '../../../../utils/clipping/instagramApi'
 
 // Reglages TikTok : la visibilite n'a pas de valeur par defaut (regle de TikTok), et `consent` doit etre vrai : le streamer a coche
 // la phrase d'accord avant de publier.
@@ -18,6 +20,8 @@ const tiktokSchema = z.object({
   brandContent: z.boolean(),
   consent: z.literal(true)
 })
+// Reglages Instagram : la legende (modifiable) et `consent`, vrai seulement si le streamer a clique sur « Publier sur Instagram ».
+const instagramSchema = z.object({ caption: z.string().trim().max(INSTAGRAM_CAPTION_MAX), consent: z.literal(true) })
 const bodySchema = z.object({ platform: z.enum(PUBLISH_PLATFORMS), at: z.string().datetime({ offset: true }).optional(), options: z.unknown().optional() })
 
 // Programme (ou lance) la publication d'un clip APPROUVE sur une plateforme connectee. C'est la seule porte d'entree de la
@@ -36,7 +40,7 @@ export default defineEventHandler(async (event) => {
   if (job.status !== 'approved') throw createError({ statusCode: 409, statusMessage: 'Approuve d’abord le clip pour pouvoir le publier' })
   if (!job.outputPath) throw createError({ statusCode: 409, statusMessage: 'Ce clip n’a pas de vidéo à publier' })
   if (job.format === 'long' && platform !== 'youtube') throw createError({ statusCode: 400, statusMessage: 'Les extraits longs se publient seulement sur YouTube.' })
-  const connection = await prisma.platformConnection.findUnique({ where: { channelId_platform: { channelId, platform } }, select: { id: true } })
+  const connection = await prisma.platformConnection.findUnique({ where: { channelId_platform: { channelId, platform } }, select: { id: true, externalId: true, expiresAt: true } })
   if (!connection) throw createError({ statusCode: 409, statusMessage: 'Connecte d’abord ton compte à cette plateforme' })
 
   // TikTok : pas de programmation (le streamer valide chaque publication sur l'ecran de TikTok) ; ses choix sont controles contre ce que
@@ -55,6 +59,19 @@ export default defineEventHandler(async (event) => {
     const problem = checkPostOptions(tiktokOptions, creator, null)
     if (problem) throw createError({ statusCode: 400, statusMessage: problem })
     options = tiktokOptions
+  }
+
+  // Instagram : pas de programmation (la publication part sur clic), jamais pour une chaine de test ou de demonstration, compte et acces
+  // valides. Seule la legende est choisie ; elle part avec la publication.
+  if (platform === 'instagram') {
+    if (parsed.data.at) throw createError({ statusCode: 400, statusMessage: 'Instagram : la publication part tout de suite, sans programmation.' })
+    const chosen = instagramSchema.safeParse(parsed.data.options)
+    if (!chosen.success) throw createError({ statusCode: 400, statusMessage: 'Vérifie la légende (2 200 caractères au plus) et clique sur « Publier sur Instagram ».' })
+    const channel = await prisma.channel.findUnique({ where: { id: channelId }, select: { twitchId: true } })
+    if (!channel || isDemoTwitchId(channel.twitchId) || isTestTwitchId(channel.twitchId)) throw createError({ statusCode: 403, statusMessage: 'Les chaînes de test et de démonstration ne publient jamais sur Instagram.' })
+    if (!instagramConfig(event).configured) throw createError({ statusCode: 409, statusMessage: 'La publication Instagram n’est pas encore activée.' })
+    if (!connection.externalId || instagramTokenExpired(connection.expiresAt, Date.now())) throw createError({ statusCode: 409, statusMessage: 'Accès Instagram expiré : reconnecte ton compte.' })
+    options = { caption: chosen.data.caption }
   }
 
   const now = Date.now()

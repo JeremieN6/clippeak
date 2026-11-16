@@ -23,6 +23,8 @@ onBeforeUnmount(() => { if (noticeTimer) clearTimeout(noticeTimer) })
 const connectMessages: Record<string, string> = {
   youtube: 'YouTube est connecté.',
   tiktok: 'TikTok est connecté.',
+  instagram: 'Instagram est connecté.',
+  'instagram-personal': 'Aucun compte Instagram professionnel n’a été partagé avec Clippeak. Passe ton compte en Pro ou Créateur dans les réglages d’Instagram (gratuit), puis reconnecte-le et coche-le quand Meta te le propose.',
   cancelled: 'Connexion annulée.',
   error: 'La connexion a échoué. Réessaie dans un instant.',
   unavailable: 'Cette publication n’est pas encore activée.',
@@ -35,11 +37,11 @@ onMounted(async () => {
   checking.value = false
   const result = String(route.query.connect ?? '')
   if (result) {
-    if (result === 'youtube' || result === 'tiktok') studio.notice.value = connectMessages[result]
+    if (result === 'youtube' || result === 'tiktok' || result === 'instagram') studio.notice.value = connectMessages[result]
     else studio.error.value = connectMessages[result] ?? ''
     // Connexion refusee : l'alerte du tableau de bord dit quelle plateforme et quoi faire en attendant.
     const platform = String(route.query.platform ?? '')
-    if (result === 'error' && (platform === 'youtube' || platform === 'tiktok')) studio.connectFailure.value = platform
+    if (result === 'error' && (platform === 'youtube' || platform === 'tiktok' || platform === 'instagram')) studio.connectFailure.value = platform
     studio.goToStep(7)
     await navigateTo({ query: {} }, { replace: true })
   }

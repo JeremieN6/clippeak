@@ -61,7 +61,7 @@ export function createPrismaPublishStore(db: PrismaClient, vault: TokenVault): P
           format: job?.format === 'long' ? 'long' as const : 'short' as const
         },
         connection: connection
-          ? { id: connection.id, refreshToken: safeDecrypt(connection.refreshTokenEnc), accessToken: safeDecrypt(connection.accessTokenEnc), expiresAt: connection.expiresAt }
+          ? { id: connection.id, externalId: connection.externalId, refreshToken: safeDecrypt(connection.refreshTokenEnc), accessToken: safeDecrypt(connection.accessTokenEnc), expiresAt: connection.expiresAt }
           : null
       }
       return due

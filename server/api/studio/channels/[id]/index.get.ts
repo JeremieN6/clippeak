@@ -4,6 +4,7 @@ import { signMediaToken } from '../../../../utils/clipping/adminAuth'
 import { parseStyle } from '../../../../utils/clipping/streamerStyle'
 import { availableFonts } from '../../../../utils/clipping/fonts'
 import { BUILTIN_SOUNDS, SOUND_SITUATIONS } from '../../../../utils/clipping/sounds'
+import { parseDetectionMode } from '../../../../utils/clipping/contentDetection'
 import { buildReferenceProfile } from '../../../../utils/clipping/referenceClips'
 
 // Reglages, DA, fichiers (sans chemins serveur) et resume de la banque de reference d'un streamer.
@@ -30,6 +31,7 @@ export default defineEventHandler(async (event) => {
       subtitles: channel.settings.subtitles,
       accentColor: channel.settings.accentColor,
       highlightColor: channel.settings.highlightColor,
+      detectionMode: parseDetectionMode(channel.settings.detectionMode),
       longExtracts: channel.settings.longExtracts,
       longExtractMaxSec: channel.settings.longExtractMaxSec
     },

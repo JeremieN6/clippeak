@@ -19,13 +19,14 @@ export const isPublished = (clip: { status: string, publications: Array<{ status
 export interface StudioPublication { id: string, platform: string, status: string, scheduledAt: string, publishedAt: string | null, url: string | null, error: string | null }
 export interface StudioBilling { available: boolean, testMode?: boolean, plan?: 'free' | 'creator', planName?: string, status?: string | null, renewsAt?: string | null, canManage?: boolean, freeClips?: number, paidClips?: number, paidTotalClips?: number, packs?: number, maxPacks?: number, interval?: 'month' | 'year' | null, paidName?: string, price?: { amount: number, currency: string, interval: string | null }, prices?: { month: { amount: number, currency: string }, year: { amount: number, currency: string } | null } }
 export interface VodAlert { id: string, title: string, state: 'blocked' | 'working' | 'restore', since: string | null }
+export interface InstagramAccounts { accounts: Array<{ id: string, username: string }>, selectedId: string | null }
 export interface TiktokCreator { nickname: string, username: string, avatarUrl: string | null, privacyOptions: string[], commentDisabled: boolean, duetDisabled: boolean, stitchDisabled: boolean, maxVideoDurationSec: number }
 export interface LongExtractVod { id: string, title: string | null, startedAt: string, durationSec: number | null }
 export interface LongProposalView { id: string, origin: 'manual' | 'streamer' | 'analysis', state: 'proposed' | 'ignored' | 'preparing' | 'validate', title: string, theme: string | null, why: string | null, score: number | null, progress: number | null, startSec: number, endSec: number, durationSec: number, createdAt: string, vod: { id: string, twitchVodId: string, title: string | null, startedAt: string } }
 export interface LongAnalysisView { vodId: string, status: 'queued' | 'running' | 'done' | 'failed' | 'impossible', progress: number, proposals: number, error: string | null, finishedAt: string | null }
-export interface LongExtractsInfo { analyses: LongAnalysisView[], enabled: boolean, maxSec: number, verified: boolean, startCommand: string, endCommand: string, modsAllowed: boolean, vods: LongExtractVod[], proposals: LongProposalView[] }
+export interface LongExtractsInfo { analyses: LongAnalysisView[], allowed: boolean, enabled: boolean, maxSec: number, verified: boolean, startCommand: string, endCommand: string, modsAllowed: boolean, vods: LongExtractVod[], proposals: LongProposalView[] }
 export interface AnalysisItem { id: string, kind: 'analyzing' | 'scanning' | 'long', title: string | null, analyzedSec: number | null, durationSec: number | null, pct: number | null }
-export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null }
+export interface StudioConnection { platform: string, available: boolean, connected: boolean, accountName: string | null, needsReconnect?: boolean }
 
 // Message comprehensible pour le streamer a partir d'une erreur reseau ou serveur. Une reponse de Clippeak (message ecrit pour lui) est
 // gardee telle quelle ; un refus venu d'ailleurs (par exemple le serveur web qui coupe un envoi trop gros) est traduit.
@@ -81,7 +82,7 @@ export function createStudio() {
   const vodAlerts = ref<VodAlert[]>([])
   // Analyses en cours (bandeau du tableau de bord) et plateforme dont la connexion vient d'echouer (alerte du tableau de bord).
   const analysis = ref<AnalysisItem[]>([])
-  const connectFailure = ref<'youtube' | 'tiktok' | null>(null)
+  const connectFailure = ref<'youtube' | 'tiktok' | 'instagram' | null>(null)
 
   // 'onboarding' tant que le parcours n'est pas termine, puis 'dashboard' ; le streamer peut revenir a une etape depuis le tableau de bord.
   const view = ref<'onboarding' | 'dashboard' | 'roadmap' | 'long' | 'account'>('onboarding')
@@ -255,7 +256,7 @@ export function createStudio() {
     const r = detail.value.settings
     await api(`/api/studio/channels/${channelId.value}/settings`, {
       method: 'PUT',
-      body: { keywords: r.keywords, clipMinSec: r.clipMinSec, clipMaxSec: r.clipMaxSec, subtitles: detail.value.style.subtitles.enabled, accentColor: r.accentColor, highlightColor: r.highlightColor }
+      body: { keywords: r.keywords, clipMinSec: r.clipMinSec, clipMaxSec: r.clipMaxSec, subtitles: detail.value.style.subtitles.enabled, accentColor: r.accentColor, highlightColor: r.highlightColor, detectionMode: r.detectionMode ?? 'both' }
     })
   }
 
@@ -512,6 +513,12 @@ export function createStudio() {
 
   // Informations du compte TikTok (pseudo, visibilites permises...), lues a chaque ouverture de l'ecran de publication.
   const loadTiktokCreator = () => api<TiktokCreator>(`/api/studio/channels/${channelId.value}/tiktok-creator`)
+  const loadInstagramAccounts = () => api<InstagramAccounts>(`/api/studio/channels/${channelId.value}/instagram-accounts`)
+  // Choix du compte Instagram : puis on relit les connexions pour que le nom affiche partout soit le bon.
+  async function chooseInstagramAccount(accountId: string) {
+    await api(`/api/studio/channels/${channelId.value}/instagram-accounts`, { method: 'PUT', body: { accountId } })
+    await loadConnections()
+  }
 
   // VOD reservee aux abonnes : « c'est fait, verifier maintenant » puis « je l'ai remise comme avant ».
   const recheckVod = (id: string) => run(async () => {
@@ -532,7 +539,7 @@ export function createStudio() {
 
   return {
     connected, error, notice, busy, clipsLoadedAt, analysis, connectFailure, loadAnalysis, channels, channelId, detail, bank, clips, quota, billing, loadBilling, startCheckout, openPortal, connections, vodAlerts, view, step, onboarding, mode,
-    disconnectPlatform, publishClip, publishMany, loadTiktokCreator, loadLongExtracts, saveLongExtractSettings, startLongAnalysis, addVod, addLongProposal, updateLongProposal, prepareLongProposal, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
+    disconnectPlatform, publishClip, publishMany, loadTiktokCreator, loadInstagramAccounts, chooseInstagramAccount, loadLongExtracts, saveLongExtractSettings, startLongAnalysis, addVod, addLongProposal, updateLongProposal, prepareLongProposal, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
     api, run, track, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, setCaptionTags, advance, finishOnboarding, goToStep, stepStatus,
     addAssets, saveAsset, removeAsset, addReferences, saveStat, removeReference, reviewClip, approveMany

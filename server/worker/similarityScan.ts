@@ -14,6 +14,7 @@ import { rateBySimilarity } from '../utils/clipping/referenceSimilarity'
 import { findSimilarWindows, nextSlice, windowToCandidate } from '../utils/clipping/similarityScan'
 import type { AnalyzedMoment } from '../utils/clipping/vodAnalysis'
 import { createScorer, loadReferenceBank } from './analysis'
+import { contentDetectionEnabled } from './detectionConfig'
 
 const store = retrying(createPipelineStore(prisma), { onRetry: (error, attempt) => console.warn(`[worker] base injoignable (tentative ${attempt}), nouvel essai`) })
 
@@ -76,6 +77,9 @@ async function scanSlice(target: ScanTarget, slice: { startSec: number, duration
 // Renvoie true si une tranche a ete traitee.
 export async function similarityScanStep(): Promise<boolean> {
   if (readEnv('WORKER_SIMILARITY_SCAN') === '0') return false
+  // La detection par le contenu (contentDetection.ts) lit deja tout le live et compare avec les clips de reference : on ne transcrit pas deux fois.
+  // Ce balayage ne sert plus que si elle est coupee (WORKER_CONTENT_DETECTION=0).
+  if (contentDetectionEnabled()) return false
   const nowMs = Date.now()
   if (nowMs < nextCheckMs) return false
 

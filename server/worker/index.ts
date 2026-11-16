@@ -13,9 +13,11 @@ import { bellStep } from './bell'
 import { retentionStep } from './retention'
 import { referenceStep } from './reference'
 import { similarityScanStep } from './similarityScan'
+import { contentDetectionStep } from './contentDetection'
 import { markersStep } from './markers'
 import { longAnalysisStep } from './longAnalysis'
 import { renderClip } from './render'
+import { startMetrics } from './metrics'
 
 // Process pm2 separe du serveur Nuxt : un rendu video ne doit jamais bloquer le site.
 let stopping = false
@@ -61,15 +63,18 @@ async function main() {
   console.info('[worker] demarrage')
   await waitUntilReady(process.env.WHISPER_PYTHON || (process.platform === 'win32' ? 'python' : 'python3'))
   if (stopping) return
+  // Mesure de capacite (charge, memoire, files) toutes les minutes, meme pendant un rendu.
+  const stopMetrics = startMetrics()
   const summary = await runClipWorker({
     store: retrying(createPrismaClipQueueStore(prisma), { onRetry: (error, attempt) => console.warn(`[worker] base injoignable (tentative ${attempt}), nouvel essai`) }),
     render: renderClip,
     // Quand la file de rendu est vide : publication echue, VOD terminee, puis tranche de live, puis notification de lot.
-    idleTask: async () => (await publishStep()) || (await vodAccessStep()) || (await referenceStep()) || (await analysisStep()) || (await liveAnalysisStep()) || (await bellStep()) || (await notifyStep()) || (await markersStep()) || (await longAnalysisStep()) || (await similarityScanStep()) || (await purgeSourcesStep()) || (await retentionStep()),
+    idleTask: async () => (await publishStep()) || (await vodAccessStep()) || (await referenceStep()) || (await analysisStep()) || (await liveAnalysisStep()) || (await bellStep()) || (await notifyStep()) || (await markersStep()) || (await longAnalysisStep()) || (await contentDetectionStep()) || (await similarityScanStep()) || (await purgeSourcesStep()) || (await retentionStep()),
     pollMs,
     shouldStop: () => stopping,
     log: (message, detail) => (detail === undefined ? console.info('[worker]', message) : console.error('[worker]', message, detail))
   })
+  stopMetrics()
   console.info('[worker] arret propre', summary)
 }
 
