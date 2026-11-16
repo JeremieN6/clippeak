@@ -17,6 +17,11 @@ export function buildInstagramAuthUrl(params: { appId: string, configId: string,
   url.searchParams.set('redirect_uri', params.redirectUri)
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('state', params.state)
+  // Les deux parametres ci-dessous sont dans l'URL de connexion que Meta donne dans le tableau de bord (verifie le 2026-11-16) :
+  // `override_default_response_type` pour recevoir un code (et non un jeton) ; `prompt=login` affiche le choix Instagram OU Facebook,
+  // un streamer sans compte Facebook peut ainsi se connecter avec son compte Instagram (non confirme : pas essaye sans compte Facebook).
+  url.searchParams.set('override_default_response_type', 'true')
+  url.searchParams.set('prompt', 'login')
   return url.toString()
 }
 
