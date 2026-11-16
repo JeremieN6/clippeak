@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildEvent, isPrivatePath, safeProps } from './analytics.ts'
+import { buildEvent, buildPublicEvent, isPrivatePath, PUBLIC_EVENTS, safeProps } from './analytics.ts'
 
 test('espaces prives : studio, admin, connexion, attente', () => {
   for (const p of ['/studio', '/studio?channel=x', '/admin', '/attente', '/connexion', '/inscription']) assert.equal(isPrivatePath(p), true, p)
@@ -33,4 +33,13 @@ test('scrubEvent : /admin ne part jamais ; espaces prives sans parametres d adre
   const pub = { event: '$pageview', properties: { $current_url: 'https://clippeak.sassify.fr/?utm_source=x' } }
   assert.deepEqual(scrubEvent(pub), pub)
   assert.equal(scrubEvent(null), null)
+})
+
+test('evenements du site public : liste fermee, emplacement et rythme gardes, jamais de texte libre', () => {
+  assert.equal(buildPublicEvent('mon_evenement'), null)
+  assert.equal(buildPublicEvent('clip_published'), null) // evenement du studio : pas dans la liste publique
+  assert.deepEqual(buildPublicEvent('login_clicked', { location: 'hero', login: 'Jeremfut7', note: 'Salut tout le monde' }), { name: 'login_clicked', props: { location: 'hero' } })
+  assert.deepEqual(buildPublicEvent('pricing_interval_changed', { interval: 'year' }), { name: 'pricing_interval_changed', props: { interval: 'year' } })
+  assert.deepEqual(buildPublicEvent('pricing_packs_changed', { packs: 3 }), { name: 'pricing_packs_changed', props: { packs: 3 } })
+  for (const name of PUBLIC_EVENTS) assert.ok(buildPublicEvent(name))
 })

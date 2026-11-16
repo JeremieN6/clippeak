@@ -5,6 +5,29 @@ import { CLIPS_PER_PACK, CREATOR_PRICE, FREE_CLIPS, MAX_PACKS, yearlySaving } fr
 
 const yearly = ref(true)
 const packs = ref(1)
+
+// Mesure (apres accord seulement, voir analytics.client.ts) : la section a ete lue, le rythme de facturation change, le curseur de packs deplace.
+const section = ref<HTMLElement | null>(null)
+let seen: IntersectionObserver | null = null
+let visible = false
+let sent = false
+// « Vue » = la section est a l'ecran ET la mesure est autorisee (si le visiteur accepte pendant qu'il la lit, c'est compte a ce moment-la).
+const reportView = () => { if (visible && !sent && trackEvent('pricing_viewed')) { sent = true; seen?.disconnect() } }
+onMounted(() => {
+  if (!section.value || typeof IntersectionObserver === 'undefined') return
+  seen = new IntersectionObserver((entries) => {
+    visible = entries.some(e => e.isIntersecting)
+    reportView()
+  }, { threshold: 0.15 })
+  seen.observe(section.value)
+})
+watch(() => getAnalytics(), reportView)
+onBeforeUnmount(() => seen?.disconnect())
+function setBilling(isYearly: boolean) {
+  if (yearly.value === isYearly) return
+  yearly.value = isYearly
+  trackEvent('pricing_interval_changed', { interval: isYearly ? 'year' : 'month' })
+}
 const saving = yearlySaving(CREATOR_PRICE.monthly, CREATOR_PRICE.yearly)
 const eur = (n: number) => `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 }).format(n)} €`
 
@@ -21,7 +44,7 @@ const creatorItems = ['Tout ce qui est dans Starter', 'Extraits de VOD (format l
 </script>
 
 <template>
-  <section class="rounded-3xl px-6 py-10 sm:px-10">
+  <section ref="section" class="rounded-3xl px-6 py-10 sm:px-10">
     <p class="text-center text-xs uppercase tracking-[0.26em] text-clippeak-violetLight/80">Tarifs</p>
     <h2 class="mt-4 text-center font-display text-4xl font-extrabold sm:text-5xl">
       Tu paies des clips,
@@ -31,10 +54,10 @@ const creatorItems = ['Tout ce qui est dans Starter', 'Extraits de VOD (format l
 
     <div class="mt-8 flex justify-center">
       <div class="inline-flex rounded-2xl border border-white/10 bg-black/30 p-1" role="radiogroup" aria-label="Rythme de facturation">
-        <button type="button" role="radio" :aria-checked="yearly" class="inline-flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-semibold transition" :class="yearly ? 'bg-clippeak-violet text-white' : 'text-white/70 hover:text-white'" @click="yearly = true">
+        <button type="button" role="radio" :aria-checked="yearly" class="inline-flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-semibold transition" :class="yearly ? 'bg-clippeak-violet text-white' : 'text-white/70 hover:text-white'" @click="setBilling(true)">
           Annuel <span class="rounded-full bg-white/15 px-2 py-0.5 text-xs font-bold">−{{ saving.percent }} %</span>
         </button>
-        <button type="button" role="radio" :aria-checked="!yearly" class="inline-flex h-11 items-center rounded-xl px-5 text-sm font-semibold transition" :class="!yearly ? 'bg-clippeak-violet text-white' : 'text-white/70 hover:text-white'" @click="yearly = false">
+        <button type="button" role="radio" :aria-checked="!yearly" class="inline-flex h-11 items-center rounded-xl px-5 text-sm font-semibold transition" :class="!yearly ? 'bg-clippeak-violet text-white' : 'text-white/70 hover:text-white'" @click="setBilling(false)">
           Mensuel
         </button>
       </div>
@@ -61,7 +84,7 @@ const creatorItems = ['Tout ce qui est dans Starter', 'Extraits de VOD (format l
           </li>
         </ul>
 
-        <a href="/connexion" class="mt-8 block w-full rounded-2xl bg-clippeak-violet px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-clippeak-violetLight">
+        <a href="/connexion" @click="trackEvent('login_clicked', { location: 'pricing' })" class="mt-8 block w-full rounded-2xl bg-clippeak-violet px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-clippeak-violetLight">
           Se connecter avec Twitch
         </a>
       </article>
@@ -77,7 +100,7 @@ const creatorItems = ['Tout ce qui est dans Starter', 'Extraits de VOD (format l
             <span class="font-semibold text-white" aria-live="polite">{{ clips }} clips par mois</span>
             <span class="text-white/60">{{ packs }} pack{{ packs > 1 ? 's' : '' }} de {{ CLIPS_PER_PACK }}</span>
           </div>
-          <input v-model.number="packs" type="range" min="1" :max="MAX_PACKS" step="1" class="pack-range mt-3 w-full" :style="{ '--fill': fill }" aria-label="Nombre de clips par mois" :aria-valuetext="`${clips} clips par mois`">
+          <input v-model.number="packs" type="range" @change="trackEvent('pricing_packs_changed', { packs })" min="1" :max="MAX_PACKS" step="1" class="pack-range mt-3 w-full" :style="{ '--fill': fill }" aria-label="Nombre de clips par mois" :aria-valuetext="`${clips} clips par mois`">
           <div class="mt-2 flex justify-between text-[11px] text-white/50" aria-hidden="true">
             <span v-for="n in MAX_PACKS" :key="n" :class="n === packs ? 'font-bold text-white' : ''">{{ n * CLIPS_PER_PACK }}</span>
           </div>

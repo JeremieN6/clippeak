@@ -13,7 +13,9 @@ const login = computed(() => {
 // « Previens-moi » : enregistre la demande seulement au clic (l'identite vient du cookie signe pose au retour de Twitch).
 const state = ref<'idle' | 'sending' | 'done' | 'invited' | 'error'>('idle')
 const problem = ref('')
+onMounted(() => trackEvent('waiting_page_opened'))
 async function ask() {
+  trackEvent('access_request_clicked')
   state.value = 'sending'
   problem.value = ''
   try {

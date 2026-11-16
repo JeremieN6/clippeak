@@ -1156,6 +1156,23 @@ try {
   assert.equal((await q(`SELECT status FROM channel_billing WHERE channel_id = $1`, [cid]))[0].status, 'canceled')
   ok('facturation Stripe (faux Stripe) : offre visible au streamer seulement, paiement et portail, webhook signe (falsifie, ancien ou corps modifie refuses), idempotent, plan et plafond suivent l etat Stripe, evenement ancien ou sans chaine ignore, reabonnement avec le meme client')
 
+  // --- entonnoir d'acquisition (admin) : lecture seule, agrege, sans donnee personnelle, chaines de test exclues
+  assert.equal((await call('/api/admin/funnel', streamerAs)).status, 401)
+  const f0 = (await call('/api/admin/funnel')).json
+  assert.equal(f0.steps.length, 8)
+  const count = (f, id) => f.steps.find(x => x.id === id).count
+  await q(`INSERT INTO access_requests (id, twitch_id, twitch_login) VALUES (gen_random_uuid(), 'f-1', 'entonnoir_a'), (gen_random_uuid(), 'f-2', 'entonnoir_b')`)
+  await q(`INSERT INTO channel_invites (id, twitch_login, twitch_id) VALUES (gen_random_uuid(), 'entonnoir_a', 'f-1')`)
+  await q(`INSERT INTO channels (id, twitch_id, login, display_name) VALUES (gen_random_uuid(), 'f-1', 'entonnoir_a', 'EntonnoirA'), (gen_random_uuid(), 'test-entonnoir', 'testfun', 'TestFun')`)
+  const f1 = (await call('/api/admin/funnel')).json
+  assert.equal(count(f1, 'requests'), count(f0, 'requests') + 2)
+  assert.equal(count(f1, 'invites'), count(f0, 'invites') + 1)
+  assert.equal(count(f1, 'connected'), count(f0, 'connected') + 1, 'la chaine de test n est pas comptee')
+  assert.equal(f1.weeks.length, 12)
+  assert.ok(f1.steps.every(x => x.rateFromParent === null || (x.rateFromParent >= 0 && x.rateFromParent <= 100)))
+  assert.ok(!JSON.stringify(f1).match(/entonnoir_a|EntonnoirA|yassencore|f-1/), 'aucun pseudo ni identifiant dans la reponse')
+  ok('entonnoir admin : 401 hors admin, 8 etapes + 12 semaines, demandes / invitations / premieres connexions comptees, chaines de test exclues, taux jamais au-dessus de 100 %, aucun pseudo ni identifiant renvoye')
+
   console.log('API_IT_OK')
 } catch (error) {
   failure = error
