@@ -105,6 +105,14 @@ const progress = computed(() => {
   return { running: running.length, minutes: Math.max(1, Math.ceil(running.length * 40 / 60)), pct: Math.max(8, Math.round(((total - running.length) / total) * 100)) }
 })
 
+// Une seule zone d'avancement a la fois (maquette « haut de page ») : demarrage rapide, puis analyse du live, puis preparation des clips.
+const zone = computed<'start' | 'analysis' | 'prepare' | 'none'>(() => {
+  const p = studio.startProgress.value
+  if (p?.fresh && p.phase !== 'ready' && p.phase !== 'paused') return 'start'
+  if (studio.analysis.value.length) return 'analysis'
+  return progress.value ? 'prepare' : 'none'
+})
+
 // Plateforme a reconnecter : un envoi a echoue parce que l'acces a expire, sans envoi reussi ou programme apres lui.
 const platformNames: Record<string, string> = { youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram' }
 const disconnected = computed(() => {
@@ -196,12 +204,7 @@ const selectClass = 'st-field !min-h-11 !w-full'
           <span v-if="s.status === 'warn' || s.status === 'skip'" class="text-xs font-bold" :class="s.status === 'warn' ? 'text-st-warn' : 'text-st-soft'">{{ s.status === 'warn' ? 'À revoir' : 'Passée' }}</span>
         </button>
       </div>
-      <div v-if="studio.quota.value && studio.quota.value.limit !== null" class="mt-auto hidden flex-col gap-2 rounded-xl border border-st-border bg-st-surface p-3.5 lg:flex" :class="collapsed ? 'lg:!hidden' : ''" aria-label="Utilisation de ce mois-ci">
-        <div class="text-xs font-extrabold uppercase tracking-widest text-st-dim">{{ studio.quota.value.unit === 'lives' ? 'Lives ce mois-ci' : 'Clips ce mois-ci' }}</div>
-        <div class="flex items-baseline gap-1.5"><span class="st-title text-2xl font-bold leading-none">{{ studio.quota.value.used }}</span><span class="text-sm st-muted">/ {{ studio.quota.value.limit }}</span></div>
-        <div class="h-1.5 overflow-hidden rounded-[3px] bg-st-raised2" role="progressbar" :aria-label="studio.quota.value.unit === 'lives' ? 'Lives utilisés' : 'Clips utilisés'" aria-valuemin="0" :aria-valuemax="studio.quota.value.limit" :aria-valuenow="studio.quota.value.used"><div class="st-bar h-full" :style="{ width: `${Math.min(100, Math.round(studio.quota.value.used / Math.max(1, studio.quota.value.limit) * 100))}%` }" /></div>
-        <div v-if="offerLine" class="text-[13px] leading-5 st-muted">{{ offerLine }}</div>
-      </div>
+      <div v-if="studio.quota.value && studio.quota.value.limit !== null" class="mt-auto hidden lg:block" :class="collapsed ? 'lg:!hidden' : ''"><StudioQuotaBox /></div>
       <div class="hidden items-center gap-2 lg:flex px-2 text-[13px] leading-[18px] st-muted" :class="[collapsed ? 'lg:!hidden' : '', studio.quota.value && studio.quota.value.limit !== null ? '' : 'mt-auto']"><span class="h-2 w-2 flex-none rounded-full bg-st-ok" />Clippeak surveille ton prochain live</div>
     </nav>
 
@@ -221,8 +224,8 @@ const selectClass = 'st-field !min-h-11 !w-full'
 
       <StudioVodAlerts />
 
-      <StudioStartBanner />
-      <StudioAnalysisBanner />
+      <StudioStartBanner :active="zone === 'start'" />
+      <StudioAnalysisBanner :active="zone === 'analysis'" />
 
       <div v-if="studio.connectFailure.value" class="st-alert st-alert-error st-rise flex-wrap items-center" role="alert">
         <div class="min-w-[220px] flex-1">
@@ -241,16 +244,15 @@ const selectClass = 'st-field !min-h-11 !w-full'
       <StudioQuotaNotice />
       <p v-if="studio.quota.value && studio.quota.value.limit !== null && studio.quota.value.used < studio.quota.value.limit" class="m-0 -mt-4 text-[13px] st-muted lg:hidden">{{ studio.quota.value.unit === 'lives' ? 'Lives' : 'Clips' }} ce mois-ci : {{ studio.quota.value.used }} / {{ studio.quota.value.limit }}</p>
 
-      <StudioBilling />
 
-      <div v-if="progress" class="st-alert st-alert-info st-rise flex-col !gap-2.5" role="status">
-        <div class="flex items-center gap-2 font-bold">
-          <svg class="flex-none" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" opacity=".3" /><path d="M12 3a9 9 0 0 1 9 9" /></svg>
-          Clippeak prépare {{ progress.running }} clip{{ progress.running > 1 ? 's' : '' }}
+      <section v-if="zone === 'prepare' && progress" class="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[14px] border border-[#2D4A7A] bg-st-infoBg px-4 py-3 st-rise" role="status" aria-label="Préparation des clips">
+        <svg class="flex-none text-st-info" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 109 9"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.9s" repeatCount="indefinite" /></path></svg>
+        <div class="flex min-w-0 flex-[1_1_300px] flex-col gap-0.5">
+          <div class="text-sm font-extrabold leading-5 text-st-info">Clippeak prépare {{ progress.running }} clip{{ progress.running > 1 ? 's' : '' }}, environ {{ progress.minutes }} min</div>
+          <div class="text-[13px] leading-[19px] opacity-90">Les clips arrivent dans « À valider » dès qu’ils sont prêts. Tu peux fermer la page.</div>
         </div>
-        <p class="m-0 text-[13px] opacity-90">Il cherche et monte les meilleurs moments. Compte environ {{ progress.minutes }} min. Les clips arrivent ici dès qu’ils sont prêts, tu peux fermer la page.</p>
-        <div class="h-1.5 w-full overflow-hidden rounded-[3px] bg-st-border" role="progressbar" aria-label="Préparation des clips" :aria-valuenow="progress.pct" aria-valuemin="0" aria-valuemax="100"><div class="st-bar st-bar-live" :style="{ width: `${progress.pct}%` }" /></div>
-      </div>
+        <div class="h-1.5 w-full flex-none overflow-hidden rounded-[3px] bg-st-raised2 sm:w-[180px]" role="progressbar" aria-label="Préparation des clips" :aria-valuenow="progress.pct" aria-valuemin="0" aria-valuemax="100"><div class="st-bar st-bar-live h-full" :style="{ width: `${progress.pct}%` }" /></div>
+      </section>
 
       <div v-for="p in disconnected" :key="p.id" class="st-alert st-alert-warn st-rise flex-wrap items-center" role="alert">
         <div class="min-w-[220px] flex-1">

@@ -19,14 +19,14 @@ const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') open.value = false }
 onMounted(() => { document.addEventListener('click', away); document.addEventListener('keydown', esc) })
 onBeforeUnmount(() => { document.removeEventListener('click', away); document.removeEventListener('keydown', esc) })
 
-const go = (v: 'dashboard' | 'roadmap' | 'long' | 'referral' | 'account') => { view.value = v; open.value = false }
+const go = (v: 'dashboard' | 'roadmap' | 'long' | 'referral' | 'offer' | 'account') => { view.value = v; open.value = false }
 
 // « Mon abonnement » : avec un abonnement, on va droit au portail Stripe (changer de carte, factures, RESILIER) ; sans, a la carte « Mon offre ».
 const hasSubscription = computed(() => Boolean(studio.billing.value?.canManage))
 function subscription() {
   open.value = false
   if (hasSubscription.value) studio.openPortal()
-  else view.value = 'dashboard'
+  else view.value = 'offer'
 }
 
 async function switchChannel() {

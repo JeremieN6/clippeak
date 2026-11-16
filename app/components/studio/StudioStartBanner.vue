@@ -2,7 +2,7 @@
 // « Demarrage rapide » : pour un streamer inscrit depuis moins d'une semaine, dit ou en est l'analyse de son dernier live et dans combien de
 // temps arrivent ses premiers clips, SANS qu'il ait a finir l'onboarding. Le delai est une estimation (file d'attente du serveur comprise).
 // Se rafraichit toutes les 30 secondes ; quand les premiers clips arrivent, la liste des clips est relue.
-const props = defineProps<{ onboarding?: boolean }>()
+const props = withDefaults(defineProps<{ onboarding?: boolean, active?: boolean }>(), { active: true })
 const studio = useStudio()
 const p = computed(() => studio.startProgress.value)
 const shown = computed(() => Boolean(p.value?.fresh) && p.value?.phase !== 'ready' && p.value?.phase !== 'paused')
@@ -25,7 +25,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 </script>
 
 <template>
-  <section v-if="p && shown" class="st-alert st-rise !flex-col !items-start !gap-2.5" :class="warn ? 'st-alert-warn' : 'st-alert-info'" role="status" aria-label="Démarrage rapide">
+  <section v-if="p && shown && props.active" class="st-alert st-rise !flex-col !items-start !gap-2.5" :class="warn ? 'st-alert-warn' : 'st-alert-info'" role="status" aria-label="Démarrage rapide">
     <div class="flex items-start gap-3">
       <svg v-if="working" class="mt-0.5 flex-none" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 109 9"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.9s" repeatCount="indefinite" /></path></svg>
       <div class="min-w-0 flex-1">

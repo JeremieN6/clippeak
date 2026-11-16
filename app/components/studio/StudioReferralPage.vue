@@ -41,7 +41,7 @@ const plural = (n: number, one: string, many: string) => (n > 1 ? many : one)
         Retour
       </button>
       <h1 class="st-title m-0 text-[34px] font-extrabold leading-10">Parrainage</h1>
-      <p class="m-0 text-base leading-[26px] st-muted">Parraine un autre streamer : quand son premier clip est prêt, tu gagnes un live de plus à découper ce mois-ci, et il passe devant la liste d’attente.</p>
+      <p class="m-0 text-base leading-[26px] st-muted">Invite un autre streamer. Quand son premier clip est prêt, tu gagnes 1 live de plus à découper ce mois-ci.</p>
     </div>
 
     <div v-if="loading" class="st-card h-40 animate-pulse" aria-busy="true" aria-label="Chargement du parrainage" />
@@ -64,7 +64,7 @@ const plural = (n: number, one: string, many: string) => (n > 1 ? many : one)
         <div class="st-card flex flex-col gap-1">
           <div class="text-xs font-extrabold uppercase tracking-widest text-st-dim">Lives gagnés ce mois-ci</div>
           <div class="flex items-baseline gap-1.5"><span class="st-title text-3xl font-bold leading-none">{{ referral.bonusThisMonth }}</span><span class="text-sm st-muted">/ {{ referral.bonusCap }}</span></div>
-          <div class="text-[13px] leading-5 st-muted">{{ capReached ? 'Maximum atteint : il revient le mois prochain.' : `Jusqu’à ${referral.bonusCap} par mois.` }}</div>
+          <div class="text-[13px] leading-5 st-muted">{{ capReached ? 'Maximum atteint : {{ referral.bonusCap }} lives gagnés ce mois-ci.' : `Jusqu’à ${referral.bonusCap} par mois.` }}</div>
         </div>
         <div class="st-card flex flex-col gap-1">
           <div class="text-xs font-extrabold uppercase tracking-widest text-st-dim">Parrainages validés</div>
@@ -81,16 +81,16 @@ const plural = (n: number, one: string, many: string) => (n > 1 ? many : one)
       <section class="st-card flex flex-col gap-4" aria-label="Comment ça marche">
         <h2 class="m-0 text-[17px] font-bold">Comment ça marche</h2>
         <ol class="m-0 flex list-none flex-col gap-3 p-0">
-          <li class="flex gap-3"><span class="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-st-accentSoft text-sm font-extrabold text-st-accentLight" aria-hidden="true">1</span><span class="text-sm leading-6">Tu envoies ton lien à un streamer.</span></li>
-          <li class="flex gap-3"><span class="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-st-accentSoft text-sm font-extrabold text-st-accentLight" aria-hidden="true">2</span><span class="text-sm leading-6">Il se connecte avec Twitch grâce à ce lien : il passe devant la liste d’attente.</span></li>
-          <li class="flex gap-3"><span class="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-st-accentSoft text-sm font-extrabold text-st-accentLight" aria-hidden="true">3</span><span class="text-sm leading-6">Dès que son premier clip est prêt, tu gagnes {{ referral.livesPerReferral }} {{ plural(referral.livesPerReferral, 'live', 'lives') }} de plus à découper pour le mois en cours (au maximum {{ referral.bonusCap }} par mois).</span></li>
+          <li class="flex gap-3"><span class="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-st-accentSoft text-sm font-extrabold text-st-accentLight" aria-hidden="true">1</span><span class="text-sm leading-6">Partage ton lien : envoie-le à un streamer.</span></li>
+          <li class="flex gap-3"><span class="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-st-accentSoft text-sm font-extrabold text-st-accentLight" aria-hidden="true">2</span><span class="text-sm leading-6">Il s’inscrit avec ton lien (connexion Twitch) : il passe devant la liste d’attente.</span></li>
+          <li class="flex gap-3"><span class="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-st-accentSoft text-sm font-extrabold text-st-accentLight" aria-hidden="true">3</span><span class="text-sm leading-6">Son premier clip est prêt : tu gagnes {{ referral.livesPerReferral }} {{ plural(referral.livesPerReferral, 'live', 'lives') }} de plus à découper pour le mois en cours (au maximum {{ referral.bonusCap }} par mois).</span></li>
         </ol>
         <p class="m-0 text-[13px] leading-5 st-muted">Un live offert est valable le mois où il est gagné. Il s’ajoute à tes lives gratuits, ça ne change pas ton abonnement.</p>
       </section>
 
       <section class="st-card flex flex-col gap-3" aria-label="Les personnes que tu as amenées">
         <h2 class="m-0 text-[17px] font-bold">Les personnes que tu as amenées</h2>
-        <p v-if="!referral.referred.length" class="m-0 text-sm leading-6 st-muted">Personne pour l’instant. Copie ton lien ci-dessus et envoie-le à un ami streamer.</p>
+        <p v-if="!referral.referred.length" class="m-0 text-sm leading-6 st-muted">Personne n’est encore passé par ton lien. Copie-le ci-dessus et envoie-le à un ami streamer.</p>
         <ul v-else class="m-0 flex list-none flex-col gap-2 p-0">
           <li v-for="r in referral.referred" :key="r.name" class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-st-border px-3.5 py-2.5">
             <span class="min-w-0 truncate text-sm font-bold">{{ r.name }}</span>

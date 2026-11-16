@@ -74,7 +74,10 @@ const openLong = () => { try { localStorage.setItem('clippeak.longSeen', '1') } 
 <template>
   <div class="flex min-h-[calc(100vh-56px)] flex-col pb-24">
     <main class="flex flex-col gap-4 px-4 pt-4">
-      <h1 class="st-title m-0 text-2xl font-bold leading-8">{{ title }}</h1>
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h1 class="st-title m-0 text-2xl font-bold leading-8">{{ title }}</h1>
+        <button v-if="studio.quota.value && studio.quota.value.limit !== null" type="button" class="inline-flex min-h-11 items-center gap-2 rounded-full border border-st-border bg-st-surface px-3.5 text-sm font-bold" :aria-label="`${studio.quota.value.unit === 'lives' ? 'Lives' : 'Clips'} ce mois-ci : ${studio.quota.value.used} sur ${studio.quota.value.limit}. Ouvrir mon offre.`" @click="studio.view.value = 'offer'"><span class="h-2 w-2 rounded-full bg-current" aria-hidden="true" />{{ studio.quota.value.used }} / {{ studio.quota.value.limit }} {{ studio.quota.value.unit === 'lives' ? 'lives' : 'clips' }}</button>
+      </div>
 
       <StudioVodAlerts />
 
@@ -158,7 +161,6 @@ const openLong = () => { try { localStorage.setItem('clippeak.longSeen', '1') } 
           </button>
           <p v-if="studio.quota.value && studio.quota.value.limit !== null" class="m-0 px-1 pt-2 text-[13px] st-muted">{{ studio.quota.value.unit === 'lives' ? 'Lives' : 'Clips' }} ce mois-ci : {{ studio.quota.value.used }} / {{ studio.quota.value.limit }}</p>
         </div>
-        <StudioBilling />
       </template>
     </main>
 
