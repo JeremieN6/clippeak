@@ -33,3 +33,6 @@ export const prismaVodStore: VodStore = {
     return result.count
   }
 }
+
+// Nombre de VODs deja connues de la chaine (la reprise des derniers lives n'a lieu que pour une chaine qui n'en a aucune).
+export const countChannelVods = (channelId: string) => prisma.vod.count({ where: { channelId } })

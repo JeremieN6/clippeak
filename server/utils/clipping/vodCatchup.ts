@@ -20,7 +20,12 @@ export interface CatchupDeps {
   store: CatchupStore
   now?: () => Date
   archivesPerChannel?: number
+  // Reprise des derniers lives d'une chaine toute neuve restee sans VOD (la reprise de l'inscription a pu echouer) : voir welcomeVods.ts.
+  welcome?: (channel: CatchupChannel) => Promise<number>
 }
+
+// Une chaine est « toute neuve » pendant 3 jours : au-dela, un live ancien n'est plus repris automatiquement.
+const WELCOME_WINDOW_MS = 3 * 24 * 3600 * 1000
 
 export interface CatchupSummary {
   channels: number
@@ -47,6 +52,7 @@ export async function runVodCatchup(deps: CatchupDeps): Promise<CatchupSummary> 
 
   for (const channel of channels) {
     try {
+      if (deps.welcome && now().getTime() - channel.createdAt.getTime() < WELCOME_WINDOW_MS) summary.registered += await deps.welcome(channel)
       const live = liveByUser.get(channel.twitchId)
       const archives = await deps.api.listArchives(channel.twitchId, deps.archivesPerChannel ?? 20)
       const recent = archives.filter(v => v.createdAt >= channel.createdAt)
