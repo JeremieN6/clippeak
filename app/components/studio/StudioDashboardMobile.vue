@@ -84,10 +84,8 @@ const openLong = () => { try { localStorage.setItem('clippeak.longSeen', '1') } 
           <div class="min-w-[200px] flex-1"><strong class="font-extrabold">{{ p.name }} n’est plus connecté.</strong> Reconnecte-le pour y publier.</div>
           <a :href="`/api/auth/${p.id}`" class="st-btn no-underline">Reconnecter {{ p.name }}</a>
         </div>
-        <div v-if="studio.quota.value?.reached" class="st-alert st-alert-warn flex-col !items-start" role="alert">
-          <div class="font-bold">Plafond du mois atteint ({{ studio.quota.value.used }} / {{ studio.quota.value.limit }} clips)</div>
-          <div class="text-[13px] opacity-90">Les nouveaux clips reprennent le mois prochain : tes prochains lives attendent, rien n’est perdu. Besoin de plus de place ? Voir « Mon offre » dans Réglages.</div>
-        </div>
+        <StudioStartBanner />
+        <StudioQuotaNotice />
         <section class="flex flex-col gap-3 rounded-2xl border border-st-accentBorder bg-st-accentDeep p-[18px]" aria-label="Prochaine action">
           <div class="st-eyebrow">Prochaine action</div>
           <h2 class="st-title m-0 text-xl font-bold leading-[26px]">{{ next.title }}</h2>

@@ -123,3 +123,13 @@ test('getLiveStreams batches user ids by 100 and maps live streams by user', asy
   assert.equal(live.get('u0')?.id, 's1')
   assert.equal(live.size, 1)
 })
+
+test('catch-up : une chaine toute neuve sans VOD reprend ses derniers lives, une chaine ancienne non', async () => {
+  const called: string[] = []
+  const fresh = { id: 'fresh', twitchId: '1', createdAt: new Date('2026-10-23T18:00:00Z') }
+  const old = { id: 'old', twitchId: '2', createdAt: new Date('2026-10-01T18:00:00Z') }
+  const { store } = fakeStore({ channels: [fresh, old] })
+  const summary = await runVodCatchup({ api: fakeApi([]), store, now: () => NOW, welcome: async (c) => { called.push(c.id); return 2 } })
+  assert.deepEqual(called, ['fresh'])
+  assert.equal(summary.registered, 2)
+})

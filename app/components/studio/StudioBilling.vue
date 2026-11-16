@@ -25,7 +25,7 @@ const rhythm = computed(() => b.value?.interval === 'year' ? 'facturé chaque an
 </script>
 
 <template>
-  <section v-if="b?.available" class="st-card flex flex-col gap-3" aria-label="Mon offre">
+  <section v-if="b?.available" id="mon-offre" class="st-card flex flex-col gap-3" aria-label="Mon offre">
     <div class="flex flex-wrap items-center gap-2">
       <h2 class="st-title m-0 text-lg font-bold">Mon offre : {{ b.planName }}<template v-if="b.plan === 'creator' && (b.packs ?? 1) > 1"> ×{{ b.packs }}</template></h2>
       <span class="st-badge" :class="b.plan === 'creator' ? 'st-badge-ok' : 'st-badge-neutral'">{{ b.plan === 'creator' ? `${b.paidTotalClips ?? b.paidClips} clips par mois` : `Gratuit · ${b.freeClips} clips par mois` }}</span>

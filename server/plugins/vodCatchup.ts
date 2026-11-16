@@ -2,6 +2,8 @@ import { readEnv } from '../utils/env'
 import { createTwitchApi } from '../utils/clipping/twitchApi'
 import { runVodCatchup } from '../utils/clipping/vodCatchup'
 import { prismaCatchupStore } from '../utils/clipping/prismaCatchupStore'
+import { registerWelcomeVods } from '../utils/clipping/welcomeVods'
+import { countChannelVods, prismaVodStore } from '../utils/clipping/prismaVodStore'
 
 const DEFAULT_INTERVAL_SEC = 300
 const STARTUP_DELAY_MS = 30_000
@@ -26,7 +28,7 @@ export default defineNitroPlugin((nitro) => {
     if (running) return
     running = true
     try {
-      const summary = await runVodCatchup({ api, store: prismaCatchupStore })
+      const summary = await runVodCatchup({ api, store: prismaCatchupStore, welcome: channel => registerWelcomeVods(channel, { api, store: { upsertVod: prismaVodStore.upsertVod, countVods: countChannelVods } }) })
       if (summary.registered || summary.closed || summary.errors) console.info('[twitch] rattrapage', summary)
     } catch (error) {
       console.error('[twitch] rattrapage en echec', error)

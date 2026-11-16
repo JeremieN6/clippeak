@@ -22,7 +22,9 @@ import { transcribeWav } from '../utils/clipping/whisperTranscribe'
 import { transcribePeak } from '../utils/clipping/peakTranscript'
 import { createClaudeScorer, heuristicScorer } from '../utils/clipping/momentScoring'
 import { usesChat } from '../utils/clipping/contentDetection'
-import { contentDetectionEnabled } from './detectionConfig'
+import { contentDetectionEnabled, groqKey, localFallbackEnabled } from './detectionConfig'
+import { transcribeRemote } from '../utils/clipping/remoteTranscribe'
+import { transcribeAuto } from '../utils/clipping/transcribeAuto'
 import { buildReferenceProfile, rateAgainstReference } from '../utils/clipping/referenceClips'
 import { buildCorpus, rateBySimilarity } from '../utils/clipping/referenceSimilarity'
 import { performanceWeights } from '../utils/clipping/referenceProfile'
@@ -59,6 +61,15 @@ export async function loadReferenceBank(channelId: string) {
   }
 }
 
+// Transcription des fenetres autour des pics de chat. Avec une cle Groq : Groq (quelques secondes par pic), jamais le serveur sauf WORKER_LOCAL_FALLBACK=1
+// (12 pics en local = plusieurs minutes pendant lesquelles les 2 coeurs ne rendent plus aucun clip). Sans cle Groq : Whisper local comme avant
+// l'arrivee de la detection par le contenu (le chat seul n'a pas d'autre moyen).
+async function transcribePeakAudio(path: string) {
+  const apiKey = groqKey()
+  if (!apiKey) return transcribeWav(path)
+  return (await transcribeAuto(path, { remote: wav => transcribeRemote(wav, { apiKey }), local: transcribeWav, localFallback: localFallbackEnabled() })).result
+}
+
 async function runAnalysis(vod: VodToAnalyze, live: boolean) {
   // « Contenu seul » : le chat ne sert pas a trouver des moments (la detection par le contenu s'en charge, voir contentDetection.ts). Sans moyen de
   // transcrire (ni cle Groq ni repli local), la detection par le contenu ne tourne pas : le chat reprend son role d'avant.
@@ -80,7 +91,7 @@ async function runAnalysis(vod: VodToAnalyze, live: boolean) {
     detectPeaks: (messages, keywords) => detectChatPeaks(messages, keywords.length ? { keywords } : {}),
     transcribePeak: peak => transcribePeak(peak, {
       extractWindow: (start, duration, path) => extractAudioWindow(audioUrl, start, duration, path),
-      transcribe: path => transcribeWav(path),
+      transcribe: transcribePeakAudio,
       tempWavPath: () => join(tmpdir(), `clippeak-${randomUUID()}.wav`),
       removeFile: unlink
     }),

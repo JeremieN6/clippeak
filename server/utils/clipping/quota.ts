@@ -41,3 +41,12 @@ export function parseQuotaInput(value: unknown): { ok: true, value: number | nul
   if (typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 1000) return { ok: true, value }
   return { ok: false }
 }
+
+// Niveau du plafond pour les messages du studio : « near » a partir de 80 % (message court), « reached » a 100 % (message complet).
+export type QuotaLevel = 'ok' | 'near' | 'reached'
+export const NEAR_QUOTA_SHARE = 0.8
+export function quotaLevel(view: { limit: number | null, used: number }): QuotaLevel {
+  if (view.limit === null) return 'ok'
+  if (view.used >= view.limit) return 'reached'
+  return view.limit > 0 && view.used / view.limit >= NEAR_QUOTA_SHARE ? 'near' : 'ok'
+}

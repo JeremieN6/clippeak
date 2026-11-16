@@ -63,6 +63,7 @@ watch(step, () => nextTick(() => main.value?.scrollIntoView({ block: 'start' }))
           <span>Tes premiers clips sont arrivés ({{ studio.clips.value.length }}). Tu peux les voir sans finir le parcours.</span>
           <button type="button" class="st-btn" @click="studio.view.value = 'dashboard'">Voir mes clips</button>
         </div>
+        <StudioStartBanner onboarding class="mb-6" />
         <StudioConversation />
       </div>
 
