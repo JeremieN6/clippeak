@@ -94,14 +94,18 @@ export const instagramTokenExpired = (expiresAt: Date | null, nowMs: number): bo
 
 export interface InstagramProfile { userId: string, username: string }
 
-// Comptes Instagram professionnels que le streamer a partages avec Clippeak pendant la connexion. On prend le premier : un streamer en partage
-// en general un seul, et Clippeak publie sur un seul compte par chaine.
-export async function fetchInstagramProfile(fetchFn: FetchFn, accessToken: string, graphBase = INSTAGRAM_GRAPH_BASE): Promise<InstagramProfile | null> {
+// Comptes Instagram professionnels que l'entreprise du streamer a assignes a Clippeak. Attention : Meta garde les comptes deja partages lors
+// d'une connexion precedente, meme si le streamer ne les coche plus : c'est donc le streamer qui choisit le bon dans Clippeak.
+export async function fetchInstagramAccounts(fetchFn: FetchFn, accessToken: string, graphBase = INSTAGRAM_GRAPH_BASE): Promise<InstagramProfile[]> {
   const url = new URL(`${graphBase}/${INSTAGRAM_GRAPH_VERSION}/me/assigned_instagram_accounts`)
   url.searchParams.set('fields', 'id,username')
   const body = await call<{ data?: Array<Record<string, string>> }>(fetchFn, url.toString(), { headers: { authorization: `Bearer ${accessToken}` } }, 'Lecture du compte Instagram')
-  const row = body.data?.find(item => item.id)
-  return row ? { userId: String(row.id), username: String(row.username ?? '').slice(0, 120) } : null
+  return (body.data ?? []).filter(item => item.id).slice(0, 50).map(item => ({ userId: String(item.id), username: String(item.username ?? '').slice(0, 120) }))
+}
+
+// Premier compte de la liste : celui qu'on garde a la connexion, le streamer peut en choisir un autre ensuite.
+export async function fetchInstagramProfile(fetchFn: FetchFn, accessToken: string, graphBase = INSTAGRAM_GRAPH_BASE): Promise<InstagramProfile | null> {
+  return (await fetchInstagramAccounts(fetchFn, accessToken, graphBase))[0] ?? null
 }
 
 const reelUrl = (graphBase: string, path: string) => `${graphBase}/${INSTAGRAM_GRAPH_VERSION}/${path}`

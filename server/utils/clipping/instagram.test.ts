@@ -4,7 +4,7 @@ import { createHmac } from 'node:crypto'
 import { PublishError, instagramCaption } from './publishing.ts'
 import { runPublishOnce } from './publishQueue.ts'
 import type { DuePublication, PublishStore } from './publishQueue.ts'
-import { buildInstagramAuthUrl, classifyInstagramError, exchangeInstagramCode, fetchInstagramProfile, instagramTokenExpired, parseInstagramSignedRequest } from './instagramApi.ts'
+import { buildInstagramAuthUrl, classifyInstagramError, exchangeInstagramCode, fetchInstagramAccounts, fetchInstagramProfile, instagramTokenExpired, parseInstagramSignedRequest } from './instagramApi.ts'
 import { instagramVideoUrl, verifyInstagramVideoToken } from './instagramMedia.ts'
 import { createInstagramPublisher } from './instagramPublisher.ts'
 
@@ -64,6 +64,12 @@ test('fetchInstagramProfile takes the first shared Instagram account, or null wh
   assert.deepEqual(await fetchInstagramProfile(make({ data: [{ id: '77', username: 'streamer' }, { id: '78', username: 'autre' }] }), 'tok'), { userId: '77', username: 'streamer' })
   assert.ok(urls[0]!.startsWith('https://graph.facebook.com/v27.0/me/assigned_instagram_accounts?'))
   assert.equal(await fetchInstagramProfile(make({ data: [] }), 'tok'), null)
+})
+
+test('fetchInstagramAccounts lists every assigned account, skipping entries without an id', async () => {
+  const make = (body: unknown) => (async () => json(body)) as unknown as typeof fetch
+  assert.deepEqual(await fetchInstagramAccounts(make({ data: [{ id: '77', username: 'a' }, { username: 'sans-id' }, { id: '78', username: 'b' }] }), 'tok'), [{ userId: '77', username: 'a' }, { userId: '78', username: 'b' }])
+  assert.deepEqual(await fetchInstagramAccounts(make({}), 'tok'), [])
 })
 
 test('instagramTokenExpired: a token without expiry never expires, a past date does', () => {

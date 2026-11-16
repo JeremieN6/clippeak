@@ -100,7 +100,7 @@ const fakeTwitch = createServer((req, res) => {
     }
     if (req.url.startsWith('/v27.0/me/assigned_instagram_accounts?')) {
       const none = req.headers.authorization === 'Bearer ig-long-none'
-      return res.end(JSON.stringify({ data: none ? [] : [{ id: '1020', username: 'streamer_ig' }] }))
+      return res.end(JSON.stringify({ data: none ? [] : [{ id: '1020', username: 'streamer_ig' }, { id: '1021', username: 'autre_ig' }] }))
     }
     if (req.url === '/v27.0/1020/media' && req.method === 'POST') { igCalls.push({ url: 'media', form: Object.fromEntries(new URLSearchParams(body)), auth: req.headers.authorization }); return res.end(JSON.stringify({ id: 'cont-77' })) }
     if (req.url.startsWith('/v27.0/cont-77?')) return res.end(JSON.stringify({ status_code: 'FINISHED' }))
@@ -883,6 +883,26 @@ try {
   const igConn = (await call(`/api/studio/channels/${channelId}/connections`, pub)).json.connections.find(c => c.platform === 'instagram')
   assert.deepEqual([igConn.available, igConn.connected, igConn.accountName, igConn.needsReconnect], [true, true, 'streamer_ig', undefined])
   ok('connexion Instagram : fenetre de connexion unifiee (config_id), etat en cookie HttpOnly, etat faux / jeton absent / aucun compte partage / sans session / annulation geres, jeton CHIFFRE, nom du compte affiche')
+
+  // choix du compte Instagram parmi ceux que Meta a assignes (Meta garde les comptes deja partages)
+  const igAccountsUrl = `/api/studio/channels/${channelId}/instagram-accounts`
+  const igList = await call(igAccountsUrl, pub)
+  assert.equal(igList.status, 200)
+  assert.deepEqual(igList.json, { accounts: [{ id: '1020', username: 'streamer_ig' }, { id: '1021', username: 'autre_ig' }], selectedId: '1020' })
+  assert.equal((await call(igAccountsUrl, { auth: false })).status, 401)
+  assert.equal((await call(`/api/studio/channels/${otherId}/instagram-accounts`, pub)).status, 404)
+  assert.equal((await call(igAccountsUrl, { ...pub, method: 'PUT', body: { accountId: '999' } })).status, 400) // pas dans la liste de Meta
+  assert.equal((await call(igAccountsUrl, { ...pub, method: 'PUT', body: {} })).status, 400)
+  assert.equal((await call(igAccountsUrl, { ...pub, method: 'PUT', body: { accountId: '1021' } })).status, 200)
+  assert.deepEqual((await q(`SELECT account_name, external_id FROM platform_connections WHERE channel_id = $1 AND platform = 'instagram'`, [channelId]))[0], { account_name: 'autre_ig', external_id: '1021' })
+  assert.equal((await call(`/api/studio/channels/${channelId}/connections`, pub)).json.connections.find(c => c.platform === 'instagram').accountName, 'autre_ig')
+  assert.equal((await call(igAccountsUrl, { ...pub, method: 'PUT', body: { accountId: '1020' } })).status, 200)
+  assert.equal((await q(`SELECT external_id FROM platform_connections WHERE channel_id = $1 AND platform = 'instagram'`, [channelId]))[0].external_id, '1020')
+  await q(`UPDATE platform_connections SET expires_at = now() - interval '1 day' WHERE channel_id = $1 AND platform = 'instagram'`, [channelId])
+  assert.equal((await call(igAccountsUrl, pub)).status, 409) // acces expire : reconnecter
+  assert.equal((await call(igAccountsUrl, { ...pub, method: 'PUT', body: { accountId: '1021' } })).status, 409)
+  await q(`UPDATE platform_connections SET expires_at = NULL WHERE channel_id = $1 AND platform = 'instagram'`, [channelId])
+  ok('choix du compte Instagram : liste lue chez Meta, autre chaine et sans session refusees, compte hors liste refuse, choix enregistre et reflete partout, acces expire = reconnecter')
 
   const igOptions = { caption: 'Mon Reel #gta6', consent: true }
   assert.equal((await publish(reviewId, { platform: 'instagram' })).status, 400)
