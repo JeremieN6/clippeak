@@ -19,6 +19,7 @@ export const isPublished = (clip: { status: string, publications: Array<{ status
 export interface StudioPublication { id: string, platform: string, status: string, scheduledAt: string, publishedAt: string | null, url: string | null, error: string | null }
 export interface StudioBilling { available: boolean, testMode?: boolean, plan?: 'free' | 'creator', planName?: string, status?: string | null, renewsAt?: string | null, canManage?: boolean, freeClips?: number, paidClips?: number, paidTotalClips?: number, packs?: number, maxPacks?: number, interval?: 'month' | 'year' | null, paidName?: string, price?: { amount: number, currency: string, interval: string | null }, prices?: { month: { amount: number, currency: string }, year: { amount: number, currency: string } | null } }
 export interface VodAlert { id: string, title: string, state: 'blocked' | 'working' | 'restore', since: string | null }
+export interface InstagramAccounts { accounts: Array<{ id: string, username: string }>, selectedId: string | null }
 export interface TiktokCreator { nickname: string, username: string, avatarUrl: string | null, privacyOptions: string[], commentDisabled: boolean, duetDisabled: boolean, stitchDisabled: boolean, maxVideoDurationSec: number }
 export interface LongExtractVod { id: string, title: string | null, startedAt: string, durationSec: number | null }
 export interface LongProposalView { id: string, origin: 'manual' | 'streamer' | 'analysis', state: 'proposed' | 'ignored' | 'preparing' | 'validate', title: string, theme: string | null, why: string | null, score: number | null, progress: number | null, startSec: number, endSec: number, durationSec: number, createdAt: string, vod: { id: string, twitchVodId: string, title: string | null, startedAt: string } }
@@ -512,6 +513,12 @@ export function createStudio() {
 
   // Informations du compte TikTok (pseudo, visibilites permises...), lues a chaque ouverture de l'ecran de publication.
   const loadTiktokCreator = () => api<TiktokCreator>(`/api/studio/channels/${channelId.value}/tiktok-creator`)
+  const loadInstagramAccounts = () => api<InstagramAccounts>(`/api/studio/channels/${channelId.value}/instagram-accounts`)
+  // Choix du compte Instagram : puis on relit les connexions pour que le nom affiche partout soit le bon.
+  async function chooseInstagramAccount(accountId: string) {
+    await api(`/api/studio/channels/${channelId.value}/instagram-accounts`, { method: 'PUT', body: { accountId } })
+    await loadConnections()
+  }
 
   // VOD reservee aux abonnes : « c'est fait, verifier maintenant » puis « je l'ai remise comme avant ».
   const recheckVod = (id: string) => run(async () => {
@@ -532,7 +539,7 @@ export function createStudio() {
 
   return {
     connected, error, notice, busy, clipsLoadedAt, analysis, connectFailure, loadAnalysis, channels, channelId, detail, bank, clips, quota, billing, loadBilling, startCheckout, openPortal, connections, vodAlerts, view, step, onboarding, mode,
-    disconnectPlatform, publishClip, publishMany, loadTiktokCreator, loadLongExtracts, saveLongExtractSettings, startLongAnalysis, addVod, addLongProposal, updateLongProposal, prepareLongProposal, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
+    disconnectPlatform, publishClip, publishMany, loadTiktokCreator, loadInstagramAccounts, chooseInstagramAccount, loadLongExtracts, saveLongExtractSettings, startLongAnalysis, addVod, addLongProposal, updateLongProposal, prepareLongProposal, cancelPublication, loadConnections, loadVodAlerts, recheckVod, ackVod,
     api, run, track, assetsOf, restoreSession, logout, resetDemo, switchChannel, loadChannel, loadBank, loadClips,
     saveLook, saveDetection, setPlatforms, setCaptionTags, advance, finishOnboarding, goToStep, stepStatus,
     addAssets, saveAsset, removeAsset, addReferences, saveStat, removeReference, reviewClip, approveMany
