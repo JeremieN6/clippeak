@@ -57,7 +57,7 @@ test('renderJob refuses to send a clip that fails quality control', async () => 
   const deps: PipelineDeps = {
     getVideoUrl: async () => 'x.mp4',
     runFfmpeg: async () => '',
-    collectMetrics: async () => ({ width: 1080, height: 1920, videoSec: 12, audioSec: 12, freezeAtEndSec: 10, leadingSilenceSec: 0, trailingSilenceSec: 0 }),
+    collectMetrics: async () => ({ width: 1080, height: 1920, videoSec: 12, audioSec: 12, freezeAtEndSec: 3, leadingSilenceSec: 0, trailingSilenceSec: 0 }),
     outputDir: mkdtempSync(join(tmpdir(), 'cw-out-'))
   }
   try {

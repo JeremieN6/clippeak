@@ -31,6 +31,18 @@ test('each defect is reported with its own code', () => {
   assert.ok(evaluateQc({ ...good, audioSec: null }, expect).issues.some(i => i.code === 'no_audio'))
 })
 
+test('image fixe en fin de clip : avertissement si courte, refus seulement au-dela de la moitie du clip', () => {
+  const tail = (freezeAtEndSec: number) => evaluateQc({ ...good, videoSec: 40, audioSec: 40, freezeAtEndSec }, expect)
+  const short = tail(37.6) // 2,4 s figees sur 40 : la scene ne bouge pas, le clip reste
+  assert.equal(short.passed, true)
+  assert.deepEqual(short.issues.map(i => [i.code, i.severity]), [['frozen_end', 'warning']])
+  assert.equal(tail(20).passed, true) // exactement la moitie : encore un avertissement
+  const half = tail(15) // 25 s figees sur 40 : video bloquee, refus
+  assert.equal(half.passed, false)
+  assert.deepEqual(half.issues.map(i => [i.code, i.severity]), [['frozen_end', 'error']])
+  assert.equal(evaluateQc(good, expect).issues.length, 0)
+})
+
 test('title problems are caught: empty, too many lines, invalid characters', () => {
   assert.ok(evaluateQc(good, { ...expect, title: '  ' }).issues.some(i => i.code === 'title'))
   assert.ok(evaluateQc(good, { ...expect, title: 'un deux trois quatre cinq six sept huit neuf dix onze douze treize quatorze quinze' }).issues.some(i => i.code === 'title'))
