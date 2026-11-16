@@ -27,7 +27,7 @@
         </li>
       </ol>
 
-      <a href="/connexion" class="inline-flex items-center gap-2 rounded-xl bg-clippeak-violet px-5 py-3 text-sm font-semibold text-white transition hover:bg-clippeak-violetLight">
+      <a href="/connexion" @click="trackEvent('login_clicked', { location: 'visual' })" class="inline-flex items-center gap-2 rounded-xl bg-clippeak-violet px-5 py-3 text-sm font-semibold text-white transition hover:bg-clippeak-violetLight">
         Se connecter avec Twitch
         <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>

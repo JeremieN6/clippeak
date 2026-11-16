@@ -22,7 +22,7 @@
                                 ça marche</a></li>
                         <li><a href="/#offers" class="text-sm text-slate-400 transition hover:text-white">Tarifs</a>
                         </li>
-                        <li><a href="/try-now" class="text-sm text-slate-400 transition hover:text-white">Voir
+                        <li><a href="/try-now" @click="trackEvent('demo_clicked', { location: 'footer' })" class="text-sm text-slate-400 transition hover:text-white">Voir
                                 la démo</a></li>
                     </ul>
                 </div>

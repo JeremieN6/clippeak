@@ -47,7 +47,7 @@ onMounted(async () => {
 
         <p v-if="message" class="st-alert st-alert-warn m-0" role="alert">{{ message }}</p>
 
-        <a href="/api/auth/twitch" class="st-btn st-btn-lg w-full !bg-[#9146FF] no-underline hover:!bg-[#A970FF]">
+        <a href="/api/auth/twitch" @click="trackEvent('login_clicked', { location: signup ? 'signup_page' : 'login_page' })" class="st-btn st-btn-lg w-full !bg-[#9146FF] no-underline hover:!bg-[#A970FF]">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.3 3 3 6.4V19h4.3v2.3H10L12.3 19h3.4L21 13.7V3H4.3zm14.9 9.7-3 3h-4.4l-2.3 2.3v-2.3H7.3V4.7h11.9v8zM16.4 7.4h-1.7v4.7h1.7V7.4zm-4.5 0h-1.7v4.7h1.7V7.4z" /></svg>
           {{ signup ? 'S’inscrire avec Twitch' : 'Se connecter avec Twitch' }}
         </a>

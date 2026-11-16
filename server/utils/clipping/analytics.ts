@@ -13,6 +13,19 @@ export const STUDIO_EVENTS = [
 ] as const
 export type StudioEvent = (typeof STUDIO_EVENTS)[number]
 
+// Evenements nommes du site public et de la connexion (parcours d'acquisition). Partent APRES accord seulement, comme tout le reste.
+// Proprietes : mots-cles courts et nombres (emplacement du bouton, rythme de facturation, nombre de packs), jamais un texte libre.
+export const PUBLIC_EVENTS = [
+  'login_clicked', // clic « Se connecter avec Twitch » : { location } (hero, final_cta, flow, visual, pricing, login_page, signup_page)
+  'demo_clicked', // clic « Voir la demo » : { location } (hero, final_cta, footer, navbar)
+  'pricing_viewed', // la section Tarifs a ete vue a l'ecran
+  'pricing_interval_changed', // annuel / mensuel : { interval } (year | month)
+  'pricing_packs_changed', // curseur de packs : { packs }
+  'waiting_page_opened', // arrivee sur /attente (connecte avec Twitch sans invitation)
+  'access_request_clicked' // clic « Prevenez-moi » (aucune donnee d'identite n'est envoyee a PostHog)
+] as const
+export type PublicEvent = (typeof PUBLIC_EVENTS)[number]
+
 // Pages ou le tracking automatique (clics, textes) est coupe : espace du streamer, administration, connexion, attente.
 const PRIVATE_PREFIXES = ['/studio', '/admin', '/attente', '/connexion', '/inscription']
 export function isPrivatePath(path: string): boolean {
@@ -35,6 +48,12 @@ export function safeProps(props: Record<string, unknown> = {}): Record<string, s
 export function buildEvent(name: string, props?: Record<string, unknown>): { name: StudioEvent, props: Record<string, string | number | boolean> } | null {
   if (!(STUDIO_EVENTS as readonly string[]).includes(name)) return null
   return { name: name as StudioEvent, props: safeProps(props) }
+}
+
+// Idem pour le site public (liste fermee PUBLIC_EVENTS).
+export function buildPublicEvent(name: string, props?: Record<string, unknown>): { name: PublicEvent, props: Record<string, string | number | boolean> } | null {
+  if (!(PUBLIC_EVENTS as readonly string[]).includes(name)) return null
+  return { name: name as PublicEvent, props: safeProps(props) }
 }
 
 // Nettoyage de TOUT evenement PostHog avant envoi (y compris les pages vues automatiques) :
