@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { clipRoom, DEFAULT_MONTHLY_CLIPS, effectiveQuota, isQuotaExempt, liveLimit, liveQuotaView, liveRoom, monthStart, nextMonthStart, parseQuotaInput, quotaMode, quotaView } from './quota.ts'
+import { clipRoom, DEFAULT_MONTHLY_CLIPS, effectiveQuota, isDefaultQuotaSetting, isQuotaExempt, liveLimit, liveQuotaView, liveRoom, monthStart, nextMonthStart, parseQuotaInput, quotaMode, quotaView } from './quota.ts'
 
 test('mois en UTC : debut et mois suivant, y compris en decembre', () => {
   assert.equal(monthStart(new Date('2026-10-31T23:59:00Z')).toISOString(), '2026-10-01T00:00:00.000Z')
@@ -83,6 +83,14 @@ test('mode du plafond : gratuit en lives, Creator ou reglage admin en clips, tes
   assert.equal(quotaMode({ twitchId: '1', setting: null }), 'unlimited')
   assert.equal(quotaMode({ twitchId: 'test-x', setting: 5 }), 'unlimited')
   assert.equal(quotaMode({ twitchId: 'demo-clippeak', setting: undefined }), 'unlimited')
+})
+
+test('reglage « par defaut » : absent ou egal au quota gratuit ; tout autre chiffre, y compris 0 et illimite, est un vrai reglage', () => {
+  assert.equal(isDefaultQuotaSetting(undefined), true)
+  assert.equal(isDefaultQuotaSetting(DEFAULT_MONTHLY_CLIPS), true) // saisir ce chiffre dans l'admin remet le plan gratuit (en lives)
+  assert.equal(isDefaultQuotaSetting(DEFAULT_MONTHLY_CLIPS + 1), false)
+  assert.equal(isDefaultQuotaSetting(0), false)
+  assert.equal(isDefaultQuotaSetting(null), false)
 })
 
 test('lives gratuits : 2 par mois, +1 par parrainage active, jamais negatif', () => {
