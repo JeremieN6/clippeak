@@ -31,8 +31,24 @@ export interface QcExpectations {
 export interface QcIssue {
   // 'warning' : signale au relecteur sans bloquer le clip (ex. un nom qui ressemble a un nom du dictionnaire).
   severity: 'error' | 'warning'
-  code: 'framing' | 'resolution' | 'duration' | 'sync' | 'no_audio' | 'frozen_end' | 'leading_silence' | 'trailing_silence' | 'title' | 'name'
+  code: 'framing' | 'streamer' | 'resolution' | 'duration' | 'sync' | 'no_audio' | 'frozen_end' | 'leading_silence' | 'trailing_silence' | 'title' | 'name'
   message: string
+}
+
+// Regle prioritaire : le streamer doit etre visible dans chaque clip (plein cadre, ou ecran scinde avec sa camera).
+//   absent  : verifie avec ses photos, il n'apparait pas dans le cadrage retenu -> clip REFUSE (jamais envoye pour validation)
+//   unknown : impossible de verifier (pas de photo, reconnaissance en panne) -> avertissement au relecteur
+export type StreamerPresence = 'visible' | 'absent' | 'unknown'
+
+export function streamerIssue(presence: StreamerPresence, reason?: string): QcIssue | null {
+  if (presence === 'absent') return { severity: 'error', code: 'streamer', message: reason ?? "Le streamer n'apparait pas dans ce clip (scene sans camera, ou camera hors du cadre) : clip refuse" }
+  if (presence === 'unknown') return { severity: 'warning', code: 'streamer', message: reason ?? 'Impossible de verifier que le streamer est visible : regarde le clip avant de valider' }
+  return null
+}
+
+// Rapport d'un clip refuse avant meme le rendu (pas de video, donc pas de mesures).
+export function refusalReport(issue: QcIssue): QcReport {
+  return { passed: false, issues: [issue], metrics: { width: 0, height: 0, videoSec: 0, audioSec: null, freezeAtEndSec: null, leadingSilenceSec: 0, trailingSilenceSec: 0 } }
 }
 
 export interface QcReport {
@@ -118,6 +134,8 @@ export function evaluateQc(metrics: ClipMetrics, expect: QcExpectations): QcRepo
   else if (lineCount > expect.titleMaxLines) issues.push({ severity: 'error', code: 'title', message: `Titre sur ${lineCount} lignes (max ${expect.titleMaxLines})` })
   else if (/[�]/.test(expect.title)) issues.push({ severity: 'error', code: 'title', message: 'Titre avec des caracteres invalides' })
 
+  const presence = streamerIssue(expect.streamer ?? 'visible', expect.streamerReason)
+  if (presence) issues.push(presence)
   issues.push(...checkNames([expect.title, ...expect.texts], expect.names))
   return { passed: !issues.some(i => i.severity === 'error'), issues, metrics }
 }

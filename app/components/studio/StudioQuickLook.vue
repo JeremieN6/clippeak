@@ -3,9 +3,9 @@
 // le style tout de suite (l'apercu a droite bouge) ; l'enregistrement se fait au « Continuer » de la barre du bas, comme avant.
 // Cadrage, polices, avatar et illustrations restent dans les « Reglages detailles ».
 import {
-  ACCENT_COLORS, applySplitPreset, applySubtitlePreset, applyTitlePreset, applyZoomPreset, asksAccentColor,
+  ACCENT_COLORS, applySplitPreset, applySubtitlePreset, applyTitlePreset, applyZoomPreset, applyFramePreset, asksAccentColor, framePresetOf,
   splitPresetOf, subtitlePresetOf, titlePresetOf, zoomPresetOf,
-  type QuickQuestion, type SplitPreset, type SubtitlePreset, type TitlePreset, type ZoomPreset
+  type QuickQuestion, type SplitPreset, type FramePreset, type SubtitlePreset, type TitlePreset, type ZoomPreset
 } from '~~/server/utils/clipping/lookPresets'
 
 defineProps<{ resume?: boolean }>()
@@ -39,6 +39,10 @@ const questions = computed<QuickQuestion[]>(() => {
       options: [{ value: 'strong', label: 'Oui, marqué' }, { value: 'light', label: 'Oui, léger' }, { value: 'none', label: 'Non' }]
     },
     {
+      id: 'frame', label: 'Cadrage', text: 'Quand je te recadre pour le format vertical, tu veux quel plan ?', current: framePresetOf(s),
+      options: [{ value: 'wide', label: 'Large', hint: 'On te voit en entier, avec de la marge' }, { value: 'normal', label: 'Moyen' }, { value: 'close', label: 'Serré', hint: 'Visage plus gros' }]
+    },
+    {
       id: 'split', label: 'Écran partagé', text: 'Si ta caméra est dans un coin de l’écran, je montre ce que tu regardes en haut et toi en bas ?', current: splitPresetOf(s),
       options: [{ value: 'auto', label: 'Oui, automatiquement' }, { value: 'off', label: 'Non, plein écran' }]
     }
@@ -53,6 +57,7 @@ function onPick(id: string, value: string) {
   else if (id === 'subs') applySubtitlePreset(d.style, value as SubtitlePreset)
   else if (id === 'color' && d.settings) d.settings.highlightColor = value
   else if (id === 'zoom') applyZoomPreset(d.style, value as ZoomPreset)
+  else if (id === 'frame') applyFramePreset(d.style, value as FramePreset)
   else if (id === 'split') applySplitPreset(d.style, value as SplitPreset)
 }
 </script>

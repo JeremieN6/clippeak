@@ -229,6 +229,13 @@ async function pickAvatar(event: Event) {
           {{ studio.assetsOf('photo').length >= 3 ? 'Tes photos suffisent.' : `Il te faut 3 photos (tu en as ${studio.assetsOf('photo').length}) : retourne à l’étape 2.` }}
           Si tu n’es pas reconnu dans un clip, la position ci-dessous est utilisée et un avertissement apparaît.
         </p>
+        <div v-if="detail.style.framing.auto" class="flex flex-col gap-1.5">
+          <span class="st-label">Plan</span>
+          <div class="flex flex-wrap gap-2">
+            <button v-for="o in [{ v: 'wide', l: 'Large' }, { v: 'normal', l: 'Moyen' }, { v: 'close', l: 'Serré' }]" :key="o.v" type="button" :class="detail.style.framing.autoZoom === o.v ? 'st-btn' : 'st-btn-ghost'" @click="detail.style.framing.autoZoom = o.v as 'wide' | 'normal' | 'close'">{{ o.l }}</button>
+          </div>
+          <span class="st-hint">Large : on te voit en entier. Serré : ton visage est plus gros.</span>
+        </div>
         <label class="flex flex-col gap-1.5"><span class="flex items-center justify-between"><span class="st-label">{{ detail.style.framing.auto ? 'Repli : ' : '' }}Gauche ou droite</span><span class="st-badge st-badge-violet">{{ detail.style.framing.centerX }}</span></span><input v-model.number="detail.style.framing.centerX" type="range" step="0.05" min="0" max="1" class="st-range"></label>
         <label class="flex flex-col gap-1.5"><span class="flex items-center justify-between"><span class="st-label">Haut ou bas</span><span class="st-badge st-badge-violet">{{ detail.style.framing.centerY }}</span></span><input v-model.number="detail.style.framing.centerY" type="range" step="0.05" min="0" max="1" class="st-range"></label>
         <label class="flex flex-col gap-1.5"><span class="flex items-center justify-between"><span class="st-label">Zoom</span><span class="st-badge st-badge-violet">{{ detail.style.framing.zoom }}</span></span><input v-model.number="detail.style.framing.zoom" type="range" step="0.1" min="1" max="3" class="st-range"></label>

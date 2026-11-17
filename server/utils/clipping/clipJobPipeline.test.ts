@@ -116,7 +116,7 @@ test('renderJob reads a local source extract and shifts every time by its start 
   const run = (getVideoSource?: PipelineDeps['getVideoSource']) => renderJob({ ...ctx, style: { ...ctx.style, framing: { ...ctx.style.framing, auto: true } }, photoPaths: ['p.png'] }, {
     getVideoUrl: async () => 'https://vod/index.m3u8',
     getVideoSource,
-    detectFraming: async (input) => { frames.push(input); return null },
+    detectFraming: async (input) => { frames.push(input); return { centerX: 0.5, centerY: 0.5, zoom: 1 } },
     runFfmpeg: async (args) => { seen.push(args); return '' },
     collectMetrics: async () => metrics,
     outputDir: tmpdir()

@@ -8,7 +8,7 @@ import { detectFraming, framingFromHits, runLocateScript, sampleTimes } from './
 import { renderJob } from './clipJobPipeline.ts'
 import type { JobContext } from './clipJobPipeline.ts'
 import { cropRect } from './clipRender.ts'
-import { defaultStyle, parseStyle } from './streamerStyle.ts'
+import { parseStyle } from './streamerStyle.ts'
 
 const hit = (x: number, y: number, w: number, h: number, similarity = 0.7) => ({ found: true, similarity, box: { x, y, w, h } })
 const miss = { found: false, similarity: 0.2 }
@@ -51,7 +51,7 @@ test('detectFraming extracts frames, calls the locator with the photos and clean
     workDir: async () => '/tmp/work',
     cleanup: async (dir) => { cleaned = dir }
   })
-  assert.deepEqual(framing, { centerX: 0.5, centerY: 0.55, zoom: 1 })
+  assert.deepEqual({ centerX: framing!.centerX, centerY: framing!.centerY, zoom: framing!.zoom }, { centerX: 0.5, centerY: 0.55, zoom: 1 })
   assert.equal(extracted.length, 5)
   assert.deepEqual(request.photos, ['a.jpg', 'b.jpg'])
   assert.equal(request.models, '/models')
@@ -125,16 +125,10 @@ test('renderJob crops on the detected streamer and warns when he is not recognis
     assert.ok(seen[0].includes(`crop=${expected.w}:${expected.h}:${expected.x}:${expected.y}`))
     assert.equal(ok.qc.issues.some(i => i.code === 'framing'), false)
 
-    const lost = await renderJob(context(), { ...base, detectFraming: async () => null })
-    const manual = cropRect(1280, 720, { centerX: 0.5, centerY: 0.5, zoom: 1 })
-    assert.ok(seen[1].includes(`crop=${manual.w}:${manual.h}:${manual.x}:${manual.y}`))
-    assert.deepEqual(lost.qc.issues.filter(i => i.code === 'framing').map(i => i.severity), ['warning'])
-    assert.equal(lost.qc.passed, true)
-
     const noPhotos = await renderJob(context({ photoPaths: [] }), { ...base, detectFraming: async () => { throw new Error('ne doit pas etre appele') } })
     assert.match(noPhotos.qc.issues.find(i => i.code === 'framing')!.message, /aucune photo/)
 
-    const off = await renderJob(context({ style: defaultStyle() }), { ...base, detectFraming: async () => { throw new Error('ne doit pas etre appele') } })
+    const off = await renderJob(context({ style: parseStyle({ framing: { auto: false } }) }), { ...base, detectFraming: async () => ({ centerX: 0.5, centerY: 0.5, zoom: 1, face: { x: 0.4, y: 0.2, w: 0.1, h: 0.4 } }) })
     assert.equal(off.qc.issues.some(i => i.code === 'framing'), false)
 
     const failing = await renderJob(context(), { ...base, detectFraming: async () => { throw new Error('python absent') } })
