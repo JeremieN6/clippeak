@@ -454,7 +454,7 @@ try {
   assert.equal((await call(`/api/studio/channels/${crypto.randomUUID()}/referral`, as(ownerToken))).status, 404)
   const ref0 = (await call(`/api/studio/channels/${created.id}/referral`, as(ownerToken))).json
   assert.match(ref0.code, /^[A-HJ-NP-Z2-9]{8}$/)
-  assert.deepEqual([ref0.clipsPerReferral, ref0.bonusCap, ref0.bonusThisMonth], [5, 25, 0])
+  assert.deepEqual([ref0.livesPerReferral, ref0.bonusCap, ref0.bonusThisMonth], [1, 5, 0]) // parrainage en LIVES : +1 live par personne amenee, 5 par mois au plus
   const refHit = await redirect(`/r/${ref0.code}`)
   assert.equal(refHit.headers.get('location'), '/connexion')
   const refSet = refHit.headers.getSetCookie().find(c => c.startsWith('clippeak_ref='))
@@ -472,7 +472,7 @@ try {
   assert.equal((await call('/api/admin/waves', { auth: false })).status, 401)
   assert.equal((await call('/api/admin/waves', { ...as(ownerToken), method: 'PUT', body: { wavesEnabled: true } })).status, 401)
   const waves0 = (await call('/api/admin/waves')).json
-  assert.deepEqual([waves0.config.wavesEnabled, waves0.config.dailyCap, waves0.config.referralBonusCap, waves0.queue.total, waves0.queue.referred], [false, 20, 25, 2, 1])
+  assert.deepEqual([waves0.config.wavesEnabled, waves0.config.dailyCap, waves0.config.referralBonusCap, waves0.queue.total, waves0.queue.referred], [false, 20, 5, 2, 1])
   assert.deepEqual(waves0.queue.items.map(i => [i.position, i.login, i.referred]), [[1, 'stranger', true], [2, 'plain700', false]])
   for (const bad of [{ dailyCap: -1 }, { dailyCap: 1.5 }, { dailyCap: 501 }, { wavesEnabled: 'oui' }, { inconnu: 1 }]) assert.equal((await call('/api/admin/waves', { method: 'PUT', body: bad })).status, 400)
   assert.equal((await call('/api/admin/waves', { method: 'PUT', body: { wavesEnabled: true, dailyCap: 0 } })).status, 200)
@@ -480,7 +480,7 @@ try {
   assert.equal((await call('/api/admin/waves', { method: 'PUT', body: { dailyCap: 20 } })).status, 200)
   assert.equal((await (await waitStatus(waitCookie)).json()).state, 'next_wave')
   assert.equal((await call('/api/admin/waves', { method: 'PUT', body: { wavesEnabled: false } })).status, 200)
-  // Invitation a la main du parraine : il garde son parrain, s'inscrit, recoit ses 5 clips ; le parrain gagne les siens au premier clip valide
+  // Invitation a la main du parraine : il garde son parrain et s'inscrit (il ne recoit rien de plus) ; le parrain gagne 1 live au premier clip pret du parraine
   const reqRows = (await call('/api/admin/access-requests')).json.requests
   assert.equal((await call(`/api/admin/access-requests/${reqRows.find(r => r.login === 'stranger').id}/invite`, { method: 'POST' })).status, 200)
   assert.equal((await q(`SELECT referred_by_channel_id FROM channel_invites WHERE twitch_login = 'stranger'`))[0].referred_by_channel_id, created.id)
@@ -489,10 +489,11 @@ try {
   const kidToken = kidLogin.headers.getSetCookie().find(c => c.startsWith('clippeak_session=')).split(';')[0].split('=')[1]
   const [{ id: kidId }] = await q(`SELECT id FROM channels WHERE twitch_id = '666'`)
   assert.equal((await q(`SELECT referred_by_id FROM channels WHERE id = $1`, [kidId]))[0].referred_by_id, created.id)
-  assert.deepEqual((await q(`SELECT kind, clips FROM referral_grants WHERE channel_id = $1`, [kidId])).map(g => [g.kind, g.clips]), [['signup', 5]])
+  assert.deepEqual((await q(`SELECT kind, clips FROM referral_grants WHERE channel_id = $1`, [kidId])).map(g => [g.kind, g.clips]), []) // le parraine ne recoit aucun don a l'inscription
   const kidQuota = (await call(`/api/studio/channels/${kidId}/quota`, as(kidToken))).json
-  assert.deepEqual([kidQuota.limit, kidQuota.bonus], [25, 5]) // 20 gratuits + 5 offerts, sans offre payante
-  assert.equal((await call(`/api/studio/channels/${created.id}/quota`, as(ownerToken))).json.limit, 20) // le parrain n'a rien tant que le parraine n'a pas valide de clip
+  assert.deepEqual([kidQuota.unit, kidQuota.limit, kidQuota.bonus], ['lives', 2, 0]) // gratuit : 2 lives par mois, aucun bonus pour le parraine
+  const ownerQuota0 = (await call(`/api/studio/channels/${created.id}/quota`, as(ownerToken))).json
+  assert.deepEqual([ownerQuota0.unit, ownerQuota0.limit, ownerQuota0.bonus], ['lives', 2, 0]) // le parrain n'a rien tant que le parraine n'a pas de clip pret
   const [{ id: kidVod }] = await q(`INSERT INTO vods (id, channel_id, twitch_vod_id, url, status) VALUES (gen_random_uuid(), $1, 'kid-vod', 'u', 'done') RETURNING id`, [kidId])
   const [{ id: kidMoment }] = await q(`INSERT INTO moments (id, vod_id, start_sec, end_sec, peak_sec, score, signals) VALUES (gen_random_uuid(), $1, 0, 30, 15, 7, '{}') RETURNING id`, [kidVod])
   const [{ id: kidClip }] = await q(`INSERT INTO clip_jobs (id, moment_id, status, batch, start_sec, end_sec, updated_at) VALUES (gen_random_uuid(), $1, 'review', 1, 0, 30, now()) RETURNING id`, [kidMoment])
@@ -501,9 +502,9 @@ try {
   await call(`/api/studio/clips/${kidClip}/review`, { ...as(kidToken), method: 'POST', body: { action: 'reopen' } })
   assert.equal((await call(`/api/studio/clips/${kidClip}/review`, { ...as(kidToken), method: 'POST', body: { action: 'approve' } })).status, 200)
   const ownerQuota = (await call(`/api/studio/channels/${created.id}/quota`, as(ownerToken))).json
-  assert.deepEqual([ownerQuota.limit, ownerQuota.bonus], [25, 5])
+  assert.deepEqual([ownerQuota.unit, ownerQuota.limit, ownerQuota.bonus], ['lives', 3, 1]) // 2 lives gratuits + 1 live offert par le parrainage
   const ref1 = (await call(`/api/studio/channels/${created.id}/referral`, as(ownerToken))).json
-  assert.deepEqual([ref1.code, ref1.bonusThisMonth, ref1.referred.map(r => [r.name, r.validated])], [ref0.code, 5, [['Stranger', true]]])
+  assert.deepEqual([ref1.code, ref1.bonusThisMonth, ref1.referred.map(r => [r.name, r.validated])], [ref0.code, 1, [['Stranger', true]]])
   assert.equal((await call(`/api/studio/channels/${kidId}/referral`, as(kidToken))).status, 200)
   assert.equal((await call('/api/admin/waves')).json.referrals.channels.length, 1)
   // Retour a l'etat d'avant : le parraine disparait avec ses bonus, 'stranger' redevient simplement invite
@@ -513,7 +514,7 @@ try {
   await q(`DELETE FROM invitation_settings`)
   await q(`INSERT INTO channel_invites (id, twitch_login) VALUES (gen_random_uuid(), 'stranger')`)
   assert.equal((await q(`SELECT count(*)::int AS n FROM referral_grants`))[0].n, 0)
-  ok('file garantie et parrainage : place affichee (parraine devant), etats « places du jour prises » / vague / manuel, lien /r/CODE (cookie HttpOnly, code inconnu ignore), reglages admin valides et proteges, 5 clips a l inscription puis 5 au parrain au premier clip valide (pas sur un refus), plafond du parrain intact avant')
+  ok('file garantie et parrainage : place affichee (parraine devant), etats « places du jour prises » / vague / manuel, lien /r/CODE (cookie HttpOnly, code inconnu ignore), reglages admin valides et proteges, rien pour le parraine a l inscription, +1 live au parrain au premier clip pret du parraine (pas sur un refus), plafond du parrain intact avant')
 
   // --- session admin (cookie pose par /admin) et chaine de demonstration
   const adminLogin = (password) => fetch(B + '/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password }) })
@@ -1305,7 +1306,7 @@ try {
   const cid = created.id
   const qUrl = `/api/studio/channels/${cid}/quota`
   const q0 = (await call(qUrl, as(sessionCookie.split('=')[1]))).json
-  assert.deepEqual([q0.limit, q0.used, q0.remaining, q0.reached], [20, 0, 20, false])
+  assert.deepEqual([q0.unit, q0.limit, q0.used, q0.remaining, q0.reached], ['lives', 2, 0, 2, false]) // gratuit sans reglage : 2 lives par mois (aucun live admis pour l'instant)
   assert.ok(new Date(q0.resetsAt).getUTCDate() === 1)
   assert.equal((await call(`/api/studio/channels/${crypto.randomUUID()}/quota`, as(sessionCookie.split('=')[1]))).status, 404)
   assert.equal((await call(qUrl, { auth: false })).status, 401)
@@ -1314,11 +1315,10 @@ try {
     const [{ id: qm }] = await q(`INSERT INTO moments (id, vod_id, start_sec, end_sec, peak_sec, score, signals) VALUES (gen_random_uuid(), $1, 0, 30, 15, 7, '{}') RETURNING id`, [qvod])
     await q(`INSERT INTO clip_jobs (id, moment_id, status, batch, start_sec, end_sec, updated_at) VALUES (gen_random_uuid(), $1, $2, 1, 0, 30, now())`, [qm, status])
   }
-  assert.equal((await call(qUrl, as(sessionCookie.split('=')[1]))).json.used, 1) // l'echec de rendu ne compte pas
+  assert.equal((await call(qUrl, as(sessionCookie.split('=')[1]))).json.clipsUsed, 1) // l'echec de rendu ne compte pas (en lives, `used` compte les lives, `clipsUsed` les clips)
   const [{ id: testQid }] = await q(`INSERT INTO channels (id, twitch_id, login, display_name) VALUES (gen_random_uuid(), 'test-quota', 'test-quota', 'Test quota') RETURNING id`)
   const adminQ = (await call('/api/admin/quotas')).json.quotas
-  assert.equal(adminQ[cid].limit, 20)
-  assert.equal(adminQ[cid].used, 1)
+  assert.deepEqual([adminQ[cid].unit, adminQ[cid].limit, adminQ[cid].clipsUsed], ['lives', 2, 1])
   assert.equal(adminQ[testQid], undefined)
   assert.equal((await call('/api/admin/quotas', as(sessionCookie.split('=')[1]))).status, 401)
   const putQuota = (id, limit, opts = {}) => call(`/api/admin/channels/${id}/quota`, { method: 'PUT', body: { limit }, ...opts })
@@ -1441,7 +1441,8 @@ try {
   assert.equal((await q(`SELECT status FROM channel_billing WHERE channel_id = $1`, [cid]))[0].status, 'past_due')
   assert.equal((await send(subEvt('evt_3', 'customer.subscription.updated', 'unpaid', t0 + 20))).status, 200)
   assert.equal((await q(`SELECT plan FROM channel_billing WHERE channel_id = $1`, [cid]))[0].plan, 'free')
-  assert.equal((await call(qUrl, streamerAs)).json.limit, 20) // retour au gratuit
+  const backToFree = (await call(qUrl, streamerAs)).json
+  assert.deepEqual([backToFree.unit, backToFree.limit], ['lives', 2]) // retour au gratuit : 2 lives par mois
   assert.equal((await (await send({ id: 'evt_x', type: 'invoice.paid', created: t0 + 30, data: { object: {} } })).json()).result, 'ignored')
   assert.equal((await (await send(subEvt('evt_y', 'customer.subscription.created', 'active', t0 + 40, { metadata: { channel_id: crypto.randomUUID() }, customer: 'cus_inconnu' }))).json()).result, 'unknown_channel')
   assert.equal((await send(subEvt('evt_4', 'customer.subscription.created', 'active', t0 + 50))).status, 200) // abonnement avant paiement termine : lie par la metadonnee

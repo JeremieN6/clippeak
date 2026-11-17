@@ -1,11 +1,12 @@
 import { spawn as nodeSpawn } from 'node:child_process'
 import { constants, setPriority } from 'node:os'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { ChildProcess, SpawnOptions } from 'node:child_process'
 import type { Framing } from './clipRender.ts'
 import type { RunFfmpegOptions } from './ffmpegRunner.ts'
+import { planTrack } from './faceTrack.ts'
 
 export interface FaceHit {
   found: boolean
@@ -121,6 +122,8 @@ export interface DetectFramingDeps {
   extractFrame: (videoUrl: string, timeSec: number, outPath: string) => Promise<void>
   locate: (request: { models: string, photos: string[], frames: Array<{ path: string, t: number }>, threshold?: number }) => Promise<{ photos_used: number, frames: Array<FaceHit & { t: number }> }>
   modelsDir: string
+  // Suivi du visage : une seule passe ffmpeg qui depose des images regulieres dans `dir` (chemins renvoyes dans l'ordre, la k-ieme est a startSec + k x stepSec).
+  extractSeries?: (videoUrl: string, startSec: number, durationSec: number, stepSec: number, dir: string) => Promise<string[]>
   workDir?: () => Promise<string>
   cleanup?: (dir: string) => Promise<void>
 }
@@ -135,6 +138,8 @@ export interface DetectFramingInput {
   zoomLevel?: FramingZoomLevel
   sourceAspect?: number
   introAmount?: number
+  // Suivre le visage pendant le clip (cadre qui glisse doucement) au lieu d'un cadre fixe.
+  follow?: boolean
 }
 
 // Retrouve le streamer dans quelques images du clip avec ses photos de reference et en deduit le cadrage.
@@ -145,6 +150,18 @@ export async function detectFraming(input: DetectFramingInput, deps: DetectFrami
   const options: FramingOptions = { ...FRAMING_ZOOM_LEVELS[input.zoomLevel ?? 'normal'], sourceAspect: input.sourceAspect, introAmount: input.introAmount }
   const dir = await (deps.workDir ?? (() => mkdtemp(join(tmpdir(), 'clippeak-frames-'))))()
   try {
+    // Suivi : images regulieres sur tout le clip (une seule passe ffmpeg), puis trajet doux du cadre. Sans suivi possible, on retombe sur le cadre fixe.
+    if (input.follow && deps.extractSeries) {
+      const duration = input.endSec - input.startSec
+      const step = Math.min(2.5, Math.max(1, duration / 20))
+      const files = await deps.extractSeries(input.videoUrl, input.startSec, duration, step, dir)
+      if (files.length >= 2) {
+        const result = await deps.locate({ models: deps.modelsDir, photos: input.photos, frames: files.map((path, k) => ({ path, t: round(input.startSec + k * step, 2) })) })
+        if (!result.photos_used) return null
+        const plan = planTrack(result.frames, input.startSec, { ...options })
+        if (plan) return { centerX: plan.centerX, centerY: plan.centerY, zoom: plan.zoom, face: plan.face, ...(plan.moves.length ? { pan: plan.moves } : {}) }
+      }
+    }
     const first = input.frames ?? 5
     for (const count of [first, first + 5]) {
       const times = sampleTimes(input.startSec, input.endSec, count)
@@ -207,4 +224,12 @@ export function runLocateScript(request: unknown, options: PythonRunOptions = {}
 export function frameExtractor(runFfmpeg: (args: string[], options?: RunFfmpegOptions) => Promise<string>) {
   return (videoUrl: string, timeSec: number, outPath: string) =>
     runFfmpeg(['-ss', String(timeSec), '-i', videoUrl, '-frames:v', '1', '-vf', 'scale=1280:-2', '-q:v', '3', outPath], { timeoutMs: 60_000 }).then(() => undefined)
+}
+
+// Une seule passe ffmpeg : une image tous les `stepSec` secondes, reduites (le detecteur de visage n'a pas besoin de plus).
+export function frameSeriesExtractor(runFfmpeg: (args: string[], options?: RunFfmpegOptions) => Promise<string>) {
+  return async (videoUrl: string, startSec: number, durationSec: number, stepSec: number, dir: string): Promise<string[]> => {
+    await runFfmpeg(['-ss', String(startSec), '-t', String(durationSec), '-i', videoUrl, '-an', '-vf', `fps=1/${stepSec},scale=960:-2`, '-q:v', '4', join(dir, 's%03d.jpg')], { timeoutMs: 180_000 })
+    return (await readdir(dir)).filter(f => /^s\d+\.jpg$/.test(f)).sort().map(f => join(dir, f))
+  }
 }

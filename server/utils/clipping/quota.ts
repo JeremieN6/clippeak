@@ -3,8 +3,11 @@
 
 import { FREE_CLIPS, FREE_LIVES } from './pricing.ts'
 
-// Plafond par defaut = le quota gratuit (une seule source : ./pricing.ts).
+// Plafond par defaut = le quota gratuit (une seule source : ./pricing.ts). C'est aussi la valeur par defaut de la colonne
+// `streamer_settings.monthly_clip_quota` : un reglage egal a cette valeur (ou absent) veut dire « pas de reglage particulier », donc le plan
+// gratuit compte en LIVES. Un admin qui saisit ce chiffre remet donc la chaine sur le plan gratuit (c'est dit dans l'ecran admin).
 export const DEFAULT_MONTHLY_CLIPS = FREE_CLIPS
+export const isDefaultQuotaSetting = (setting: number | null | undefined): boolean => setting === undefined || setting === DEFAULT_MONTHLY_CLIPS
 
 // Chaines de demonstration et de test (admin) : jamais plafonnees.
 export const isQuotaExempt = (twitchId: string): boolean => twitchId === 'demo-clippeak' || twitchId.startsWith('test-')
@@ -14,8 +17,8 @@ export const monthStart = (now: Date = new Date()): Date => new Date(Date.UTC(no
 export const nextMonthStart = (now: Date = new Date()): Date => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1))
 
 // Plafond effectif : null = illimite (chaine exemptee, ou plafond retire par l'admin) ; sinon le nombre de clips par mois.
-// L'offre payante ajoute de la place sans jamais en retirer : on prend le plus grand entre le reglage de la chaine (defaut 40, releve par
-// l'admin) et le quota de l'offre (`planClips`, 0 si gratuit). Reglage a null (illimite, decide par l'admin) : illimite.
+// L'offre payante ajoute de la place sans jamais en retirer : on prend le plus grand entre le reglage de la chaine (defaut
+// DEFAULT_MONTHLY_CLIPS, releve par l'admin) et le quota de l'offre (`planClips`, 0 si gratuit). Reglage a null (illimite, decide par l'admin) : illimite.
 // `bonusClips` : clips gratuits de parrainage du mois, AJOUTES au plafond (ils ne comptent jamais comme une offre payante).
 export function effectiveQuota(input: { twitchId: string, setting: number | null | undefined, planClips?: number, bonusClips?: number }): number | null {
   if (isQuotaExempt(input.twitchId)) return null
@@ -37,7 +40,7 @@ export type QuotaMode = 'unlimited' | 'lives' | 'clips'
 export function quotaMode(input: { twitchId: string, setting: number | null | undefined, planClips?: number }): QuotaMode {
   if (isQuotaExempt(input.twitchId) || input.setting === null) return 'unlimited'
   if ((input.planClips ?? 0) > 0) return 'clips'
-  return input.setting === undefined || input.setting === DEFAULT_MONTHLY_CLIPS ? 'lives' : 'clips'
+  return isDefaultQuotaSetting(input.setting) ? 'lives' : 'clips'
 }
 
 // Lives gratuits du mois : 2, plus 1 par parrainage active (voir waves.ts).

@@ -11,7 +11,7 @@ import { runFfmpeg } from '../utils/clipping/ffmpegRunner'
 import { existsSync } from 'node:fs'
 import { getVodVideoPlaylistUrl } from '../utils/clipping/vodPlaylist'
 import { coversPlan, sourceRelPath, sourceWindow } from '../utils/clipping/sourceExtract'
-import { detectFraming, frameExtractor, runLocateScript } from '../utils/clipping/framingDetect'
+import { detectFraming, frameExtractor, frameSeriesExtractor, runLocateScript } from '../utils/clipping/framingDetect'
 import { detectLayout } from '../utils/clipping/layoutDetect'
 import { join, resolve } from 'node:path'
 import type { ClipJobToRender } from '../utils/clipping/clipQueue'
@@ -73,6 +73,7 @@ export async function renderClip(job: ClipJobToRender): Promise<{ outputPath: st
       },
       detectFraming: input => detectFraming(input, {
         extractFrame: frameExtractor(runFfmpeg),
+        extractSeries: frameSeriesExtractor(runFfmpeg),
         locate: runLocateScript,
         modelsDir: process.env.VISION_MODELS_DIR || join(dataDir(), 'models')
       }),

@@ -27,3 +27,5 @@ logs
 
 /tmp
 /tmp/*
+# Pages de verification jetables a la racine (jamais commitees)
+tmp_*.html
