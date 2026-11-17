@@ -1,5 +1,6 @@
 <script setup lang="ts">
 // Studio de l'admin : la chaine de demonstration (pour voir et essayer sans toucher a un vrai compte) puis les chaines inscrites.
+import { FREE_CLIPS } from '~~/server/utils/clipping/pricing'
 defineProps<{ admin: Admin }>()
 const testName = ref('')
 const confirming = ref('')
@@ -78,6 +79,8 @@ async function removeTest(admin: Admin, id: string) {
             <input v-model="quotaInput[c.id]" class="st-field !min-h-11 !w-28" inputmode="numeric" placeholder="illimité" :aria-label="`Plafond mensuel de ${c.displayName} (vide = illimité)`">
           </label>
           <button type="button" class="st-btn-ghost text-sm" :disabled="admin.busy.value || quotaInput[c.id] === undefined" @click="saveQuota(admin, c.id)">Régler le plafond</button>
+          <!-- Le chiffre par défaut remet la chaîne sur le plan gratuit (compté en lives) : on le dit, pour ne pas le régler sans le vouloir. -->
+          <p class="m-0 basis-full text-xs st-muted">Vide : illimité. {{ FREE_CLIPS }} : remet le plan gratuit (compté en lives). Tout autre nombre : plafond de clips par mois.</p>
         </div>
       </div>
     </section>

@@ -62,7 +62,11 @@ const baseStyleSchema = z.object({
   }).prefault({}),
   framing: z.object({
     // Cadrage automatique par reconnaissance du visage (photos du streamer) ; le cadrage manuel sert de repli.
-    auto: z.boolean().default(false),
+    auto: z.boolean().default(true),
+    // Plan : large (loin), normal, serre (zoome sur le visage). Utilise par le cadrage automatique.
+    autoZoom: z.enum(['wide', 'normal', 'close']).default('normal'),
+    // Le cadre suit doucement le visage pendant le clip (sinon cadre fixe).
+    follow: z.boolean().default(true),
     centerX: fraction.default(0.5),
     centerY: fraction.default(0.5),
     zoom: z.number().min(1).max(3).default(1)

@@ -6,7 +6,8 @@ import { loadInvitationConfig } from '../../utils/clipping/prismaWaves'
 const schema = z.object({
   wavesEnabled: z.boolean().optional(),
   dailyCap: z.number().int().min(0).max(500).optional(),
-  referralBonusCap: z.number().int().min(0).max(5).optional()
+  referralBonusCap: z.number().int().min(0).max(5).optional(),
+  openUntil: z.number().int().min(0).max(500).optional()
 }).strict()
 
 // Regle les vagues : actives ou non, plafond d'invitations par jour (0 a 500), plafond mensuel de clips bonus de parrainage (0 a 500).

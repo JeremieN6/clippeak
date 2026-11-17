@@ -27,6 +27,7 @@ export default defineEventHandler(async (event) => {
   const validated = new Set((await prisma.referralGrant.findMany({ where: { kind: 'referrer', otherChannelId: { in: referredChannels.map(c => c.id) } }, select: { otherChannelId: true } })).map(g => g.otherChannelId))
   return {
     config,
+    openTaken: await prisma.channelInvite.count(),
     server: { verdict: latest ? verdictOf(latest) : null, calm: serverOk, measuredAt: latest?.at ?? null },
     invitedToday: today,
     // Ce que la prochaine vague inviterait (0 si elle est coupee, si le serveur n'est pas calme ou si le plafond du jour est atteint).

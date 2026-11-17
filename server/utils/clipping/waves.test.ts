@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { bonusLives, isReferralCode, orderQueue, parisDayStart, referralAllowed, serverAllowsWave, waitState, waveSize } from './waves.ts'
+import { bonusLives, isReferralCode, orderQueue, parisDayStart, referralAllowed, serverAllowsWave, waitState, waveSize, openSignupAllowed } from './waves.ts'
 import type { Sample } from './capacity.ts'
 
 const calm: Sample = { load1: 0.4, load5: 0.4, cores: 2, memTotalMb: 8000, memFreeMb: 5000, clipsQueued: 0, clipsRendering: 0, analysesQueued: 0, analysesRunning: 0, oldestWaitSec: null }
@@ -70,4 +70,18 @@ test('bonus du mois plafonne, code de parrainage', () => {
   assert.equal(isReferralCode('abcd2345'), false)
   assert.equal(isReferralCode('ABCD234O'), false) // pas de O (confusion avec 0)
   assert.equal(isReferralCode('../../etc'), false)
+})
+
+test('inscription libre : seulement sous le plafond N, serveur calme, reglage actif', () => {
+  assert.equal(openSignupAllowed({ openUntil: 10, taken: 3, serverOk: true }), true)
+  assert.equal(openSignupAllowed({ openUntil: 10, taken: 9, serverOk: true }), true)
+  assert.equal(openSignupAllowed({ openUntil: 10, taken: 10, serverOk: true }), false) // plafond atteint : la file reprend
+  assert.equal(openSignupAllowed({ openUntil: 10, taken: 12, serverOk: true }), false)
+  assert.equal(openSignupAllowed({ openUntil: 10, taken: 3, serverOk: false }), false) // serveur charge ou mesures absentes
+  assert.equal(openSignupAllowed({ openUntil: 0, taken: 0, serverOk: true }), false) // reglage coupe (defaut)
+})
+
+test('page d’attente : places libres prises', () => {
+  assert.equal(waitState({ enabled: false, dailyCap: 20, invitedToday: 0, openFull: true }), 'open_full')
+  assert.equal(waitState({ enabled: true, dailyCap: 20, invitedToday: 5, openFull: false }), 'next_wave')
 })

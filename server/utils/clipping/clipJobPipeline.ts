@@ -8,7 +8,9 @@ import { buildAss, fitTitle } from './assBuilder.ts'
 import { fitTitleToBand } from './titleFit.ts'
 import type { TimedWord } from './assBuilder.ts'
 import { buildRenderArgs, splitZones } from './clipRender.ts'
-import { evaluateQc } from './clipQc.ts'
+import { evaluateQc, refusalReport, streamerIssue } from './clipQc.ts'
+import type { StreamerPresence } from './clipQc.ts'
+import { framingShows } from './framingDetect.ts'
 import type { ClipMetrics, QcReport } from './clipQc.ts'
 import { buildCaption } from './caption.ts'
 import { placeIllustrations } from './illustrations.ts'
@@ -158,15 +160,58 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
     }))
 
     // Cadrage automatique : le streamer doit etre reconnu ; sinon on garde le cadrage manuel et on le signale.
+    // REGLE PRIORITAIRE : le streamer est toujours visible. Des qu'on a ses photos, on le cherche dans le clip MEME si le cadrage manuel est
+    // choisi (un cadrage au centre rate une camera placee dans un coin) : cadrage manuel garde seulement s'il montre bien le streamer, sinon
+    // cadrage trouve par la reconnaissance. Streamer introuvable apres deux passes : clip refuse, avant meme le rendu.
+    // Les mouvements du suivi sont dates dans la source ; le rendu les lit dans le temps du clip monte (silences retires).
+    const toClipTime = (framing: Framing): Framing => {
+      if (!framing.pan?.length) return framing
+      const pan = framing.pan
+        .map(m => ({ ...m, start: timeline.toClipTime(baseSec + m.at), end: timeline.toClipTime(baseSec + m.at + m.dur) }))
+        .filter(m => m.start < timeline.totalSec - 0.5)
+        .map(m => ({ at: Math.round(m.start * 1000) / 1000, dur: Math.max(1, Math.round((m.end - m.start) * 1000) / 1000), to: m.to }))
+      return { ...framing, pan }
+    }
+    let presence: StreamerPresence = 'visible'
+    let presenceReason: string | undefined
+    const hasPhotos = (ctx.photoPaths?.length ?? 0) > 0
     if (split) {
-      // Le cadrage 9:16 ne sert pas : le contenu et la camera sont recadres par la disposition.
-    } else if (ctx.style.framing.auto && (ctx.photoPaths?.length ?? 0) > 0 && deps.detectFraming) {
-      const detected = await deps.detectFraming({ videoUrl, startSec: plan.startSec - baseSec, endSec: plan.endSec - baseSec, photos: ctx.photoPaths ?? [] }).catch(() => null)
-      if (detected) renderStyle = { ...renderStyle, framing: detected }
-      else framingWarning = 'Streamer non reconnu dans le clip : cadrage manuel utilise (verifier que personne d\'autre n\'est au centre)'
+      // Le cadrage 9:16 ne sert pas : le contenu et la camera sont recadres par la disposition (la camera est reconnue avec les photos si elles existent).
+    } else if (hasPhotos && deps.detectFraming) {
+      const introAmount = ctx.style.zoomIntro.enabled ? ctx.style.zoomIntro.amount : 0
+      const aspect = sourceWidth / sourceHeight
+      let detected: Framing | null | 'error'
+      try {
+        detected = await deps.detectFraming({
+          videoUrl, startSec: plan.startSec - baseSec, endSec: plan.endSec - baseSec, photos: ctx.photoPaths ?? [],
+          zoomLevel: ctx.style.framing.autoZoom, sourceAspect: aspect, introAmount, follow: ctx.style.framing.follow
+        })
+      } catch {
+        detected = 'error'
+      }
+      if (detected === 'error') {
+        presence = 'unknown'
+        presenceReason = 'La reconnaissance du visage a echoue : impossible de verifier que tu es visible, regarde le clip avant de valider'
+        if (ctx.style.framing.auto) framingWarning = 'Reconnaissance du visage indisponible : cadrage manuel utilise'
+      } else if (!detected) {
+        presence = 'absent'
+        presenceReason = 'Tu n\'apparais pas dans ce moment du live (ecran de contenu sans ta camera, ou camera hors du cadre) : clip refuse plutot que montrer un clip sans toi'
+      } else if (ctx.style.framing.auto) {
+        renderStyle = { ...renderStyle, framing: toClipTime(detected) }
+      } else if (!detected.face || !framingShows(renderStyle.framing, detected.face, aspect, introAmount)) {
+        // Le cadrage manuel ne montrerait pas le streamer : on prend celui de la reconnaissance.
+        renderStyle = { ...renderStyle, framing: toClipTime(detected) }
+        framingWarning = 'Ton cadrage manuel ne te montrait pas dans ce clip : cadrage automatique utilise a la place'
+      }
     } else if (ctx.style.framing.auto) {
       framingWarning = 'Cadrage automatique actif mais aucune photo de reference : cadrage manuel utilise'
+      presence = 'unknown'
+    } else {
+      presence = 'unknown'
+      presenceReason = 'Aucune photo de reference : impossible de verifier que tu es visible, regarde le clip avant de valider'
     }
+    const presenceIssue = streamerIssue(presence, presenceReason)
+    if (presence === 'absent' && presenceIssue) throw new QcFailedError(refusalReport(presenceIssue))
     const { args } = buildRenderArgs({
       input: videoUrl,
       sourceStartSec: plan.startSec - baseSec,
@@ -191,7 +236,9 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
       titleMaxLines: layout.maxLines,
       titleMaxCharsPerLine: layout.maxCharsPerLine,
       texts: words.map(w => w.text),
-      names: [...ctx.style.names, ctx.channelName]
+      names: [...ctx.style.names, ctx.channelName],
+      streamer: presence,
+      streamerReason: presenceReason
     })
     if (framingWarning) qc.issues.push({ severity: 'warning', code: 'framing', message: framingWarning })
     if (!qc.passed) throw new QcFailedError(qc)

@@ -9,12 +9,6 @@ import type { TranscriptSegment } from './whisperTranscribe.ts'
 export const DETECTION_MODES = ['both', 'content', 'chat'] as const
 export type DetectionMode = (typeof DETECTION_MODES)[number]
 
-export const DETECTION_LABELS: Record<DetectionMode, string> = {
-  both: 'Contenu + chat',
-  content: 'Contenu seul',
-  chat: 'Chat seul'
-}
-
 export function parseDetectionMode(value: unknown): DetectionMode {
   return (DETECTION_MODES as readonly string[]).includes(value as string) ? value as DetectionMode : 'both'
 }

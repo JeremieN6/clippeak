@@ -10,6 +10,8 @@ export type TitlePreset = 'big' | 'mid' | 'small' | 'none'
 export type SubtitlePreset = 'color' | 'plain' | 'none'
 export type ZoomPreset = 'strong' | 'light' | 'none'
 export type SplitPreset = 'auto' | 'off'
+// Plan du cadrage sur le streamer : large (on voit tout), moyen, serre (visage plus gros).
+export type FramePreset = 'wide' | 'normal' | 'close'
 
 export const TITLE_PRESETS: Record<Exclude<TitlePreset, 'none'>, { fontSize: number, maxLines: number }> = {
   big: { fontSize: 90, maxLines: 2 }, // gros et punchy : peu de mots, grande taille
@@ -77,6 +79,11 @@ export function applySplitPreset(style: LookStyle, preset: SplitPreset): void {
   style.layout = { split: preset }
 }
 export const splitPresetOf = (style: LookStyle): SplitPreset => style.layout?.split === 'off' ? 'off' : 'auto'
+
+export function applyFramePreset(style: LookStyle, preset: FramePreset): void {
+  style.framing = { ...style.framing, autoZoom: preset }
+}
+export const framePresetOf = (style: LookStyle): FramePreset => style.framing?.autoZoom ?? 'normal'
 
 // Sons : reponse « Aucun » = situation coupee ; sinon situation activee avec ce son. L'interrupteur general suit : allume des qu'un son est choisi.
 interface SoundStyle {

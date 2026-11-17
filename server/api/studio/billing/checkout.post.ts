@@ -2,6 +2,7 @@ import { prisma } from '../../../utils/prisma'
 import { billingConfig, stripeClient } from '../../../utils/billingConfig'
 import { requireBillingChannel } from '../../../utils/studioBilling'
 import { clampPacks, isPayingStatus, normalizeInterval } from '../../../utils/clipping/billing'
+import { isMissingResource } from '../../../utils/clipping/stripeApi'
 
 // Ouvre la page de paiement Stripe pour l'offre payante. Le paiement a lieu chez Stripe : Clippeak ne voit jamais la carte.
 export default defineEventHandler(async (event) => {
@@ -18,17 +19,23 @@ export default defineEventHandler(async (event) => {
   const packs = clampPacks(body?.packs)
   try {
     // Client Stripe cree par nos soins (nom de la chaine + mention de TVA en pied de facture) ou mis a jour s'il existe deja.
-    let customerId = billing?.stripeCustomerId ?? null
-    if (!customerId) {
+    const newCustomer = async (): Promise<string> => {
       const channel = await prisma.channel.findUniqueOrThrow({ where: { id: channelId }, select: { displayName: true } })
-      customerId = (await stripe.createCustomer({ channelId, name: channel.displayName, footer: config.invoiceFooter })).id
-      await prisma.channelBilling.upsert({ where: { channelId }, create: { channelId, stripeCustomerId: customerId }, update: { stripeCustomerId: customerId } })
-    } else if (config.invoiceFooter) {
-      await stripe.setCustomerInvoiceFooter(customerId, config.invoiceFooter).catch(() => {})
+      const id = (await stripe.createCustomer({ channelId, name: channel.displayName, footer: config.invoiceFooter })).id
+      await prisma.channelBilling.upsert({ where: { channelId }, create: { channelId, stripeCustomerId: id }, update: { stripeCustomerId: id } })
+      return id
     }
-    const session = await stripe.createCheckoutSession({
-      priceId: interval === 'year' ? config.yearlyPriceId : config.priceId, channelId, customerId, packs, interval,
+    let customerId = billing?.stripeCustomerId ?? null
+    if (!customerId) customerId = await newCustomer()
+    else if (config.invoiceFooter) await stripe.setCustomerInvoiceFooter(customerId, config.invoiceFooter).catch(() => {})
+    const open = (customer: string) => stripe.createCheckoutSession({
+      priceId: interval === 'year' ? config.yearlyPriceId : config.priceId, channelId, customerId: customer, packs, interval,
       successUrl: `${config.origin}/studio?billing=ok`, cancelUrl: `${config.origin}/studio?billing=cancel`
+    })
+    // Client connu mais absent chez Stripe (cree avec les cles de test, jamais retrouve en production) : on en cree un nouveau, une seule fois.
+    const session = await open(customerId).catch(async (error) => {
+      if (!isMissingResource(error)) throw error
+      return open(await newCustomer())
     })
     return { url: session.url }
   } catch (error) {

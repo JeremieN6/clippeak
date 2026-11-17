@@ -12,7 +12,7 @@ const login = computed(() => {
 
 // File d'attente garantie : la page lit l'etat (invite ou non, place dans la file, vagues du jour) avec le cookie d'identite pose au retour de
 // Twitch (15 minutes). Elle se met a jour toute seule et ouvre la connexion des que la chaine est invitee.
-type WaitState = 'manual' | 'day_full' | 'next_wave'
+type WaitState = 'manual' | 'day_full' | 'next_wave' | 'open_full'
 interface Status { invited: boolean, requested: boolean, position: number | null, total: number, state: WaitState }
 const status = ref<Status | null>(null)
 const expired = ref(false)
@@ -48,12 +48,13 @@ async function ask() {
   } finally { sending.value = false }
 }
 
-// Message de la file : on dit ou en est la personne, jamais a quelle heure elle sera invitee.
-const queueMessage = computed(() => {
+// Ce que la file garantit, selon l'etat : on dit ou en est la personne, jamais a quelle heure elle sera invitee.
+const guarantee = computed(() => {
   const state = status.value?.state
-  if (state === 'day_full') return 'Les places du jour sont prises : ta place est réservée, tu seras invité dans la prochaine vague.'
-  if (state === 'next_wave') return 'Ta place est réservée : les invitations partent par vagues au fil de la journée, dans l’ordre d’arrivée.'
-  return 'Ta place est réservée : on t’invite dès qu’une place s’ouvre.'
+  if (state === 'open_full') return 'Les premières places sont prises. Tu seras invité dès qu’une nouvelle série s’ouvre, dans l’ordre d’arrivée.'
+  if (state === 'day_full') return 'Les places du jour sont prises. Tu seras invité dans la prochaine vague, dans l’ordre d’arrivée.'
+  if (state === 'next_wave') return 'Les invitations partent par vagues au fil de la journée, dans l’ordre d’arrivée.'
+  return 'On t’invite dès qu’une place s’ouvre, dans l’ordre d’arrivée.'
 })
 </script>
 
@@ -66,49 +67,60 @@ const queueMessage = computed(() => {
       </NuxtLink>
     </header>
 
-    <main class="mx-auto flex max-w-md flex-col gap-6 px-5 py-16">
-      <span class="st-badge st-badge-violet self-start">Bêta sur invitation</span>
+    <main class="mx-auto flex max-w-lg flex-col gap-7 px-5 py-14 sm:py-20">
       <div class="flex flex-col gap-3">
-        <h1 class="st-title m-0 text-3xl font-bold">Ton accès n’est pas encore ouvert</h1>
-        <p class="m-0 text-sm leading-relaxed st-muted">
+        <span class="st-badge st-badge-violet self-start">Bêta sur invitation</span>
+        <h1 class="st-title m-0 text-3xl font-bold leading-tight">
+          <template v-if="status?.invited">Ta chaîne est invitée</template>
+          <template v-else-if="status?.requested">Ta place est réservée</template>
+          <template v-else>Ta chaîne n’a pas encore de place</template>
+        </h1>
+        <p v-if="!status?.invited && !status?.requested" class="m-0 text-[15px] leading-relaxed st-muted">
           <template v-if="login">Merci d’être passé, <strong class="text-white">{{ login }}</strong>. </template>
-          Clippeak ouvre ses accès par petits groupes, pour que chaque streamer ait des clips rapides et soignés. Ta chaîne n’est pas encore dans la liste : ce n’est pas un refus, juste une question de place.
+          Clippeak ouvre ses accès par petits groupes, pour que chaque streamer ait des clips rapides et soignés. Ce n’est pas un refus, juste une question de place.
         </p>
       </div>
 
-      <section class="st-card flex flex-col gap-3">
-        <h2 class="m-0 text-[17px] font-bold">Et maintenant ?</h2>
+      <!-- Invitee : on entre directement. -->
+      <section v-if="login && status?.invited" class="st-card flex flex-col gap-4" role="status">
+        <p class="m-0 text-[15px] leading-relaxed">Tu peux entrer dans Clippeak avec ton compte Twitch.</p>
+        <a href="/api/auth/twitch" class="st-btn self-start no-underline">Me connecter avec Twitch</a>
+      </section>
+
+      <!-- Place reservee : position dans la file. -->
+      <section v-else-if="login && status?.requested" class="st-card flex flex-col gap-4" role="status">
+        <div v-if="status.position" class="flex items-baseline gap-3">
+          <span class="st-title text-5xl font-bold leading-none">n° {{ status.position }}</span>
+          <span class="text-sm st-muted">dans la file ({{ status.total }} personne{{ status.total > 1 ? 's' : '' }} en attente)</span>
+        </div>
+        <p class="m-0 text-[15px] leading-relaxed">{{ guarantee }}</p>
         <ul class="m-0 flex list-none flex-col gap-2 p-0 text-sm leading-relaxed st-muted">
-          <li>Aucun compte n’a été créé et rien n’a été enregistré sur ta chaîne.</li>
-          <li>Clique sur « Réserver ma place » : ta place dans la file est garantie, dans l’ordre d’arrivée.</li>
-          <li>Reviens sur cette page ou reconnecte-toi avec Twitch : dès que ta chaîne est invitée, tu entres directement.</li>
+          <li>Cette page se met à jour toute seule, tu peux aussi la fermer.</li>
+          <li>Ta place est gardée 90 jours : il suffira de te reconnecter avec Twitch.</li>
         </ul>
       </section>
 
-      <section v-if="login" class="flex flex-col gap-3">
-        <div v-if="status?.invited" class="st-alert st-alert-ok flex-col !items-start gap-3" role="status">
-          <div class="font-bold">Bonne nouvelle : ta chaîne est invitée.</div>
-          <a href="/api/auth/twitch" class="st-btn no-underline">Me connecter avec Twitch</a>
-        </div>
-        <template v-else-if="status?.requested">
-          <div class="st-alert st-alert-ok flex-col !items-start gap-1" role="status">
-            <div class="font-bold">{{ queueMessage }}</div>
-            <div v-if="status.position" class="text-sm">Tu es n° {{ status.position }} dans la file ({{ status.total }} personne{{ status.total > 1 ? 's' : '' }} en attente).</div>
-            <div class="text-sm opacity-90">Cette page se met à jour toute seule. Tu peux aussi la fermer : ta place est gardée 90 jours au plus, il suffira de te reconnecter avec Twitch.</div>
-          </div>
-        </template>
-        <template v-else>
-          <p v-if="status?.state === 'day_full'" class="m-0 text-sm st-muted">Les places du jour sont prises. Réserve la tienne : tu seras invité dans la prochaine vague, dans l’ordre d’arrivée.</p>
-          <button type="button" class="st-btn self-start" :disabled="sending || expired" @click="ask">Réserver ma place</button>
-          <p v-if="expired" class="m-0 text-sm st-muted">Ta session de connexion a expiré. <a href="/api/auth/twitch" class="underline">Reconnecte-toi avec Twitch</a> pour réserver ta place.</p>
-        </template>
-        <p v-if="problem" class="m-0 text-sm text-st-error" role="alert">{{ problem }}</p>
-        <p class="m-0 text-xs st-muted">On garde seulement ton pseudo Twitch ({{ login }}), pour 90 jours au plus, pour t’inviter. Tu peux le faire effacer en écrivant à contact.clippeak@sassify.fr. <NuxtLink to="/confidentialite" class="underline">Politique de confidentialité</NuxtLink></p>
+      <!-- Session de connexion expiree : on repart de Twitch. -->
+      <section v-else-if="login && expired" class="st-card flex flex-col gap-4" role="status">
+        <p class="m-0 text-[15px] leading-relaxed">Ta connexion a expiré (elle ne dure que 15 minutes). Reconnecte-toi avec Twitch pour réserver ta place.</p>
+        <a href="/api/auth/twitch" class="st-btn self-start no-underline">Me reconnecter avec Twitch</a>
       </section>
 
+      <!-- Pas encore de demande : une seule action. -->
+      <section v-else-if="login" class="st-card flex flex-col gap-4">
+        <h2 class="m-0 text-[17px] font-bold">Réserve ta place</h2>
+        <p class="m-0 text-[15px] leading-relaxed st-muted">{{ guarantee }} Tu n’as rien d’autre à faire : dès que ta chaîne est invitée, tu entres directement en te reconnectant avec Twitch.</p>
+        <button type="button" class="st-btn self-start" :disabled="sending" @click="ask">Réserver ma place</button>
+        <p v-if="problem" class="m-0 text-sm text-st-error" role="alert">{{ problem }}</p>
+      </section>
+
+      <p v-if="login && !status?.invited" class="m-0 text-xs leading-relaxed st-muted">
+        Aucun compte n’a été créé et rien n’est enregistré sur ta chaîne tant que tu n’as pas réservé ta place. Ensuite, on garde seulement ton pseudo Twitch ({{ login }}), 90 jours au plus, pour t’inviter. Tu peux le faire effacer en écrivant à contact.clippeak@sassify.fr. <NuxtLink to="/confidentialite" class="underline">Politique de confidentialité</NuxtLink>
+      </p>
+
       <div class="flex flex-wrap gap-2">
-        <NuxtLink to="/try-now" class="st-btn no-underline">Essayer la simulation</NuxtLink>
-        <NuxtLink to="/" class="st-btn-ghost no-underline">Retour à l’accueil</NuxtLink>
+        <NuxtLink to="/try-now" class="st-btn-ghost no-underline">Essayer la simulation</NuxtLink>
+        <NuxtLink to="/" class="st-btn-quiet no-underline">Retour à l’accueil</NuxtLink>
       </div>
     </main>
   </div>

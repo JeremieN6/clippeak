@@ -4,8 +4,13 @@ type FetchFn = typeof fetch
 
 export class StripeError extends Error {
   status: number
-  constructor(message: string, status: number) { super(message); this.name = 'StripeError'; this.status = status }
+  // Code d'erreur de Stripe (ex. « resource_missing » : un client ou un prix qui n'existe pas dans ce mode, test ou production).
+  code: string | null
+  constructor(message: string, status: number, code: string | null = null) { super(message); this.name = 'StripeError'; this.status = status; this.code = code }
 }
+
+// Stripe dit que l'objet demande n'existe pas (ex. un client cree en mode test, jamais retrouve avec les cles de production).
+export const isMissingResource = (error: unknown): boolean => error instanceof StripeError && error.code === 'resource_missing'
 
 export interface StripeClient {
   // `packs` = quantite de l'abonnement ; `interval` = rythme choisi (garde dans les metadonnees, pour l'evenement de fin de paiement).
@@ -30,7 +35,10 @@ export function createStripeClient(config: { secretKey: string, apiBase?: string
     const text = await response.text()
     let json: any = {}
     try { json = JSON.parse(text) } catch { /* reponse non JSON : traitee ci-dessous */ }
-    if (!response.ok) throw new StripeError(`Stripe a refusé la demande (${response.status}${json?.error?.code ? `, ${json.error.code}` : ''}).`, response.status)
+    if (!response.ok) {
+      const code = typeof json?.error?.code === 'string' ? json.error.code : null
+      throw new StripeError(`Stripe a refusé la demande (${response.status}${code ? `, ${code}` : ''}).`, response.status, code)
+    }
     return json as T
   }
 

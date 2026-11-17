@@ -1,4 +1,4 @@
-import type { TwitchApi } from './twitchApi.ts'
+import type { TwitchApi, TwitchLiveStream, TwitchVideo } from './twitchApi.ts'
 
 export interface KnownChannel {
   id: string
@@ -15,6 +15,22 @@ export interface VodRecord {
   status: 'live' | 'ended'
   source: 'auto' | 'manual'
   endedAt?: Date | null
+}
+
+// Enregistrement d'une archive Twitch decouverte hors evenement (reprise de l'inscription, rattrapage periodique) : « live » si c'est le
+// direct en cours (debut = celui du direct, pas de fin), sinon « termine » avec sa date de fin deduite de sa duree. Une seule version.
+export function vodRecordFromArchive(channelId: string, video: TwitchVideo, live: TwitchLiveStream | undefined): VodRecord {
+  const current = live && video.streamId === live.id ? live : null
+  return {
+    channelId,
+    twitchVodId: video.id,
+    url: video.url,
+    title: video.title || null,
+    startedAt: current ? current.startedAt : video.createdAt,
+    endedAt: current ? null : new Date(video.createdAt.getTime() + video.durationSec * 1000),
+    status: current ? 'live' : 'ended',
+    source: 'auto'
+  }
 }
 
 export interface VodStore {
