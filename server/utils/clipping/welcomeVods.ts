@@ -3,6 +3,7 @@
 // Regles pures et testables : l'acces a Twitch et a la base est injecte.
 
 import type { TwitchLiveStream, TwitchVideo } from './twitchApi.ts'
+import { vodRecordFromArchive } from './vodSync.ts'
 import type { VodRecord } from './vodSync.ts'
 
 // Nombre de lives repris, duree minimale d'un live qui vaut la peine d'etre analyse, anciennete maximale (Twitch garde les VODs 7 a 60 jours).
@@ -49,18 +50,6 @@ export async function registerWelcomeVods(channel: { id: string, twitchId: strin
   const [archives, liveByUser] = await Promise.all([deps.api.listArchives(channel.twitchId, 10), deps.api.getLiveStreams([channel.twitchId])])
   const live = liveByUser.get(channel.twitchId)
   const picked = pickWelcomeVods(archives, live, now)
-  for (const video of picked) {
-    const recording = !!live && video.streamId === live.id
-    await deps.store.upsertVod({
-      channelId: channel.id,
-      twitchVodId: video.id,
-      url: video.url,
-      title: video.title || null,
-      startedAt: recording ? live.startedAt : video.createdAt,
-      endedAt: recording ? null : new Date(video.createdAt.getTime() + video.durationSec * 1000),
-      status: recording ? 'live' : 'ended',
-      source: 'auto'
-    })
-  }
+  for (const video of picked) await deps.store.upsertVod(vodRecordFromArchive(channel.id, video, live))
   return picked.length
 }

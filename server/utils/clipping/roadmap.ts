@@ -26,14 +26,6 @@ export const IDEAS_PER_DAY = 5
 export const FEATURE_STATUSES = ['backlog', 'voting', 'building', 'waiting_access', 'delivered'] as const
 export type FeatureStatus = typeof FEATURE_STATUSES[number]
 
-export const STATUS_LABELS: Record<FeatureStatus, string> = {
-  backlog: 'Dans la liste',
-  voting: 'En vote',
-  building: 'En cours',
-  waiting_access: 'En attente d’accès',
-  delivered: 'Livré'
-}
-
 // Textes des notifications de la cloche (une ligne = un titre court + une phrase).
 export interface Note { kind: 'roadmap_vote' | 'roadmap_result' | 'roadmap_status', title: string, body: string }
 

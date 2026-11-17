@@ -1,4 +1,5 @@
 import type { TwitchApi } from './twitchApi.ts'
+import { vodRecordFromArchive } from './vodSync.ts'
 import type { VodRecord } from './vodSync.ts'
 
 export interface CatchupChannel {
@@ -60,17 +61,7 @@ export async function runVodCatchup(deps: CatchupDeps): Promise<CatchupSummary> 
 
       for (const video of recent) {
         if (known.has(video.id)) continue
-        const recording = !!live && video.streamId === live.id
-        await deps.store.upsertVod({
-          channelId: channel.id,
-          twitchVodId: video.id,
-          url: video.url,
-          title: video.title || null,
-          startedAt: recording ? live.startedAt : video.createdAt,
-          endedAt: recording ? null : new Date(video.createdAt.getTime() + video.durationSec * 1000),
-          status: recording ? 'live' : 'ended',
-          source: 'auto'
-        })
+        await deps.store.upsertVod(vodRecordFromArchive(channel.id, video, live))
         summary.registered++
       }
 
