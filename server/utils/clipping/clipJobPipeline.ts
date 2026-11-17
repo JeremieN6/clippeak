@@ -163,6 +163,15 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
     // REGLE PRIORITAIRE : le streamer est toujours visible. Des qu'on a ses photos, on le cherche dans le clip MEME si le cadrage manuel est
     // choisi (un cadrage au centre rate une camera placee dans un coin) : cadrage manuel garde seulement s'il montre bien le streamer, sinon
     // cadrage trouve par la reconnaissance. Streamer introuvable apres deux passes : clip refuse, avant meme le rendu.
+    // Les mouvements du suivi sont dates dans la source ; le rendu les lit dans le temps du clip monte (silences retires).
+    const toClipTime = (framing: Framing): Framing => {
+      if (!framing.pan?.length) return framing
+      const pan = framing.pan
+        .map(m => ({ ...m, start: timeline.toClipTime(baseSec + m.at), end: timeline.toClipTime(baseSec + m.at + m.dur) }))
+        .filter(m => m.start < timeline.totalSec - 0.5)
+        .map(m => ({ at: Math.round(m.start * 1000) / 1000, dur: Math.max(1, Math.round((m.end - m.start) * 1000) / 1000), to: m.to }))
+      return { ...framing, pan }
+    }
     let presence: StreamerPresence = 'visible'
     let presenceReason: string | undefined
     const hasPhotos = (ctx.photoPaths?.length ?? 0) > 0
@@ -175,7 +184,7 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
       try {
         detected = await deps.detectFraming({
           videoUrl, startSec: plan.startSec - baseSec, endSec: plan.endSec - baseSec, photos: ctx.photoPaths ?? [],
-          zoomLevel: ctx.style.framing.autoZoom, sourceAspect: aspect, introAmount
+          zoomLevel: ctx.style.framing.autoZoom, sourceAspect: aspect, introAmount, follow: ctx.style.framing.follow
         })
       } catch {
         detected = 'error'
@@ -188,10 +197,10 @@ export async function renderJob(ctx: JobContext, deps: PipelineDeps): Promise<Jo
         presence = 'absent'
         presenceReason = 'Tu n\'apparais pas dans ce moment du live (ecran de contenu sans ta camera, ou camera hors du cadre) : clip refuse plutot que montrer un clip sans toi'
       } else if (ctx.style.framing.auto) {
-        renderStyle = { ...renderStyle, framing: detected }
+        renderStyle = { ...renderStyle, framing: toClipTime(detected) }
       } else if (!detected.face || !framingShows(renderStyle.framing, detected.face, aspect, introAmount)) {
         // Le cadrage manuel ne montrerait pas le streamer : on prend celui de la reconnaissance.
-        renderStyle = { ...renderStyle, framing: detected }
+        renderStyle = { ...renderStyle, framing: toClipTime(detected) }
         framingWarning = 'Ton cadrage manuel ne te montrait pas dans ce clip : cadrage automatique utilise a la place'
       }
     } else if (ctx.style.framing.auto) {
