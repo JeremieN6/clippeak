@@ -11,7 +11,6 @@ const run = promisify(execFile)
 // Ce n'est PAS une chaine de test ni de demo : Instagram peut s'y connecter et on peut y publier. Elle ne contient qu'un clip d'exemple
 // (un motif video genere, aucune donnee d'ami) et n'ecoute aucun live. On y entre par un code (variable REVIEWER_CODE), jamais par Twitch.
 export const REVIEWER_TWITCH_ID = 'meta-review'
-export const isReviewerTwitchId = (twitchId: string) => twitchId === REVIEWER_TWITCH_ID
 const SAMPLE_PATH = 'reviewer/exemple.mp4'
 
 // Video d'exemple : 8 secondes verticales (1080x1920, H.264 + AAC silencieux), conformes a ce qu'attend Instagram pour un Reel.

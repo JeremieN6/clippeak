@@ -2,8 +2,17 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { computeSignature, createSeenMessages, verifyEventSubSignature } from './eventsub.ts'
 import { createTwitchApi, TwitchApiError } from './twitchApi.ts'
-import { handleStreamOffline, handleStreamOnline, syncRecentVods } from './vodSync.ts'
+import { handleStreamOffline, handleStreamOnline, syncRecentVods, vodRecordFromArchive } from './vodSync.ts'
 import type { VodRecord, VodStore } from './vodSync.ts'
+
+test('archive Twitch -> enregistrement : le direct en cours reste « live » sans fin, une archive terminee a sa fin deduite de sa duree', () => {
+  const video = { id: 'v1', streamId: 's1', url: 'https://twitch.tv/videos/v1', title: '', createdAt: new Date('2026-10-23T10:00:00Z'), durationSec: 3600 }
+  const live = { id: 's1', userId: 'u1', startedAt: new Date('2026-10-23T09:59:30Z') }
+  assert.deepEqual(vodRecordFromArchive('c1', video, live), { channelId: 'c1', twitchVodId: 'v1', url: video.url, title: null, startedAt: live.startedAt, endedAt: null, status: 'live', source: 'auto' })
+  const ended = vodRecordFromArchive('c1', { ...video, title: 'Mon live' }, { ...live, id: 'autre-direct' })
+  assert.deepEqual([ended.status, ended.title, ended.startedAt, ended.endedAt], ['ended', 'Mon live', video.createdAt, new Date('2026-10-23T11:00:00Z')])
+  assert.equal(vodRecordFromArchive('c1', video, undefined).status, 'ended') // chaine hors ligne
+})
 
 const NOW = Date.parse('2026-10-23T20:00:00Z')
 
