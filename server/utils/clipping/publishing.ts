@@ -4,8 +4,6 @@
 export const PUBLISH_PLATFORMS = ['youtube', 'tiktok', 'instagram'] as const
 export type PublishPlatform = typeof PUBLISH_PLATFORMS[number]
 
-export type PublicationStatus = 'scheduled' | 'publishing' | 'published' | 'failed' | 'cancelled'
-
 // auth : acces refuse ou expire, il faut reconnecter ; quota / rejected : inutile de reessayer ; transient : reessayer plus tard.
 export type PublishErrorKind = 'auth' | 'quota' | 'rejected' | 'transient'
 
@@ -100,9 +98,6 @@ export interface TiktokPostOptions {
 
 // Instagram (Reels) : seule la legende est choisie par le streamer dans l'ecran de publication.
 export const INSTAGRAM_CAPTION_MAX = 2200
-export interface InstagramPostOptions {
-  caption: string
-}
 
 // Legende d'un Reel : 2 200 caracteres, 30 hashtags au plus (limites de Meta). Les hashtags au-dela du 30e sont retires.
 export function instagramCaption(raw: string): string {

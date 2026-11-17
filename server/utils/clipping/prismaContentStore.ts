@@ -131,5 +131,3 @@ export function createContentStore(db: Db) {
     }
   }
 }
-
-export type ContentStore = ReturnType<typeof createContentStore>

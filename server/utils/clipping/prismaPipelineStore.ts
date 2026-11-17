@@ -336,5 +336,4 @@ export function createPipelineStore(db: Db) {
   }
 }
 
-export type PipelineStore = ReturnType<typeof createPipelineStore>
 export const outputDirectory = clipsDir
