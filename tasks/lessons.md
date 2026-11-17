@@ -235,3 +235,7 @@
 ## 2026-11-17 : un changement de modele metier doit mettre a jour les tests d'integration (ils ne tournent pas au deploiement)
 - **Erreur** : le passage du gratuit puis du parrainage en LIVES (2026-11-16) a mis a jour les tests unitaires mais pas `scripts/integration/api-it.mjs` : il attendait encore des clips (20 gratuits, 5 offerts, plafond 25). Le test est reste rouge sur `main`, sans que personne le voie, parce que `deploy.yml` ne lance aucun test et que le test s'arrete a la premiere erreur (les suivants ne tournaient plus).
 - **Regle** : apres tout changement de regle metier (offre, quota, parrainage), lancer `npm test` ET `npx nuxt build` puis `node scripts/integration/api-it.mjs .` avant de proposer la fusion ; chercher dans `api-it.mjs` les anciens chiffres (`grep -n "limit, 20\|25\|clipsPerReferral"`).
+
+## 2026-11-17 : analyser un dossier de travail en retard sur main
+- **Erreur** : pour enqueter sur des clips refuses (« image figee »), j'ai lu `clipQc.ts` dans le dossier principal, 57 commits derriere `main` : le correctif (PR #118) existait deja et j'ai propose de le refaire.
+- **Regle** : avant de conclure qu'un correctif ou une fonction manque, `git fetch` puis lire `origin/main` (`git show origin/main:chemin`, `git log origin/main --grep`) et la section « Notes de Session » de `CLAUDE.md` de `origin/main`. Les echecs vus en base datent peut-etre d'avant le correctif : comparer leur date a celle de la fusion.
