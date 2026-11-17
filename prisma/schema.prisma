@@ -605,6 +605,8 @@ model InvitationSettings {
   referralBonusCap Int      @default(25) @map("referral_bonus_cap")
   // Inscription libre : tant que moins de N chaines ont une place (invitation), la connexion Twitch ouvre le studio sans attente. 0 = coupee.
   openUntil        Int      @default(0) @map("open_until")
+  // Ouverture automatique par lots : taille du lot ouvert quand le precedent se gere bien (batchHealth.ts). 0 = ouverture manuelle seulement.
+  autoOpenBatch    Int      @default(0) @map("auto_open_batch")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@map("invitation_settings")
