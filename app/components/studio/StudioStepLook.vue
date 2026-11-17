@@ -236,6 +236,10 @@ async function pickAvatar(event: Event) {
           </div>
           <span class="st-hint">Large : on te voit en entier. Serré : ton visage est plus gros.</span>
         </div>
+        <div v-if="detail.style.framing.auto" class="flex items-center justify-between gap-4">
+          <div><span class="st-label">Suivre mon visage</span><div class="st-hint">Si tu bouges pendant le clip, le cadre glisse doucement pour te garder à l’image. Sinon il reste fixe.</div></div>
+          <StudioSwitch v-model="detail.style.framing.follow" label="Suivre mon visage" />
+        </div>
         <label class="flex flex-col gap-1.5"><span class="flex items-center justify-between"><span class="st-label">{{ detail.style.framing.auto ? 'Repli : ' : '' }}Gauche ou droite</span><span class="st-badge st-badge-violet">{{ detail.style.framing.centerX }}</span></span><input v-model.number="detail.style.framing.centerX" type="range" step="0.05" min="0" max="1" class="st-range"></label>
         <label class="flex flex-col gap-1.5"><span class="flex items-center justify-between"><span class="st-label">Haut ou bas</span><span class="st-badge st-badge-violet">{{ detail.style.framing.centerY }}</span></span><input v-model.number="detail.style.framing.centerY" type="range" step="0.05" min="0" max="1" class="st-range"></label>
         <label class="flex flex-col gap-1.5"><span class="flex items-center justify-between"><span class="st-label">Zoom</span><span class="st-badge st-badge-violet">{{ detail.style.framing.zoom }}</span></span><input v-model.number="detail.style.framing.zoom" type="range" step="0.1" min="1" max="3" class="st-range"></label>

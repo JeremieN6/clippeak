@@ -1,6 +1,7 @@
 import type { KeepRange } from './cutPlanner.ts'
 import { BUILTIN_SYNTH } from './sounds.ts'
 import type { BuiltinSound } from './sounds.ts'
+import type { PanMove } from './faceTrack.ts'
 
 export const OUT_WIDTH = 1080
 export const OUT_HEIGHT = 1920
@@ -13,6 +14,8 @@ export interface Framing {
   zoom: number
   // Zone du streamer (0..1) trouvee par la reconnaissance du visage ; absente d'un cadrage manuel. Ignoree par le rendu.
   face?: { x: number, y: number, w: number, h: number }
+  // Suivi du visage : mouvements doux du cadre (temps du clip monte), a partir de `centerX`. Voir faceTrack.ts.
+  pan?: PanMove[]
 }
 
 export interface OverlaySpec {
@@ -103,6 +106,40 @@ export function cropRect(sourceWidth: number, sourceHeight: number, framing: Fra
   return { w, h, x, y }
 }
 
+// Centre du cadre (0..1 de la largeur de la source) en fonction du temps du clip : position de depart + chaque mouvement en « S ».
+export function panExpression(startX: number, moves: PanMove[]): string {
+  let from = startX
+  const terms = moves.map((m) => {
+    const u = `clip((t-${num(m.at)})/${num(m.dur)},0,1)`
+    const term = `${num(m.to - from)}*(${u}*${u}*(3-2*${u}))`
+    from = m.to
+    return term
+  })
+  return [num(startX), ...terms].join('+')
+}
+
+// Cadrage 9:16 qui suit le visage. Un crop de ffmpeg ne se deplace que par pixels entiers de la source, ce qui se voit comme de petits a-coups
+// une fois agrandi : on decoupe donc en deux temps. 1) un recadrage GROSSIER (pixels pairs de la source) un peu plus large que necessaire,
+// agrandi a la taille finale ; 2) le recadrage FIN, en pixels de sortie (donc 2,7 fois plus precis), en 4:4:4 pour que le deplacement
+// ne soit pas arrondi par la sous-resolution des couleurs.
+export function panCropFilter(sourceWidth: number, sourceHeight: number, framing: Framing, moves: PanMove[]): string {
+  const crop = cropRect(sourceWidth, sourceHeight, framing)
+  const margin = 4
+  const w2 = crop.w + margin
+  const left = `min(max((${panExpression(framing.centerX, moves)})*${sourceWidth}-${num(crop.w / 2)},0),${sourceWidth - crop.w})`
+  const coarse = `min(2*floor((${left})/2),${sourceWidth - w2})`
+  const wOut = Math.ceil(w2 * OUT_WIDTH / crop.w) + 2
+  const sx = wOut / w2
+  const fine = `min(max((${left}-${coarse})*${num(sx)},0),${wOut - OUT_WIDTH})`
+  return [
+    `crop=${w2}:${crop.h}:x='${coarse}':y=${crop.y}`,
+    `scale=${wOut}:${OUT_HEIGHT}:flags=lanczos`,
+    'format=yuv444p',
+    `crop=${OUT_WIDTH}:${OUT_HEIGHT}:x='${fine}':y=0`,
+    'format=yuv420p'
+  ].join(',')
+}
+
 // Hauteurs des deux zones d'un ecran partage (sous la bande du titre) : camera incrustee 760 px, panneau camera pleine hauteur
 // 860 px (le visage y est plus grand), le contenu prend le reste.
 export function splitZones(split: SplitLayout, _sourceWidth: number, _sourceHeight: number, bandHeight: number): { camH: number, contentH: number } {
@@ -184,8 +221,12 @@ export function buildRenderArgs(spec: RenderSpec): { args: string[], filterCompl
     )
   } else {
     // --- Cadrage 9:16 sur le streamer puis mise a l'echelle.
-    const crop = cropRect(spec.sourceWidth, spec.sourceHeight, style.framing)
-    filters.push(`[vc]crop=${crop.w}:${crop.h}:${crop.x}:${crop.y},scale=${OUT_WIDTH}:${OUT_HEIGHT}:flags=lanczos,setsar=1,fps=30[vf]`)
+    if (style.framing.pan?.length) {
+      filters.push(`[vc]${panCropFilter(spec.sourceWidth, spec.sourceHeight, style.framing, style.framing.pan)},setsar=1,fps=30[vf]`)
+    } else {
+      const crop = cropRect(spec.sourceWidth, spec.sourceHeight, style.framing)
+      filters.push(`[vc]crop=${crop.w}:${crop.h}:${crop.x}:${crop.y},scale=${OUT_WIDTH}:${OUT_HEIGHT}:flags=lanczos,setsar=1,fps=30[vf]`)
+    }
   }
 
   // --- Zoom d'ouverture : zoompan sur la seule premiere fraction du clip.
