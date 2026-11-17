@@ -227,3 +227,7 @@
 ## 2026-11-16 : un `v-else` insere dans une chaine `v-if` casse le build en production
 - **Erreur** : la PR #112 a ajoute un bloc `v-else` entre un `v-if` et un `v-else-if` de `StudioDashboard.vue`. Aucun test ne compile ce gabarit : la PR a ete fusionnee et le deploiement a echoue sur le serveur (`v-else/v-else-if has no adjacent v-if`).
 - **Regle** : apres toute modification d'un gabarit Vue qui touche une chaine `v-if` / `v-else-if` / `v-else`, lancer `npx nuxt build` avant d'ouvrir la PR ; un bloc a afficher en plus de la chaine prend son propre `v-if`, place APRES la chaine.
+
+## 2026-11-17 : un changement de modele metier doit mettre a jour les tests d'integration (ils ne tournent pas au deploiement)
+- **Erreur** : le passage du gratuit puis du parrainage en LIVES (2026-11-16) a mis a jour les tests unitaires mais pas `scripts/integration/api-it.mjs` : il attendait encore des clips (20 gratuits, 5 offerts, plafond 25). Le test est reste rouge sur `main`, sans que personne le voie, parce que `deploy.yml` ne lance aucun test et que le test s'arrete a la premiere erreur (les suivants ne tournaient plus).
+- **Regle** : apres tout changement de regle metier (offre, quota, parrainage), lancer `npm test` ET `npx nuxt build` puis `node scripts/integration/api-it.mjs .` avant de proposer la fusion ; chercher dans `api-it.mjs` les anciens chiffres (`grep -n "limit, 20\|25\|clipsPerReferral"`).
