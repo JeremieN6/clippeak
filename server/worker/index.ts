@@ -12,6 +12,7 @@ import { purgeSourcesStep, vodAccessStep } from './vodAccess'
 import { bellStep } from './bell'
 import { retentionStep } from './retention'
 import { invitationWavesStep } from './invitationWaves'
+import { autoOpenStep } from './autoOpen'
 import { referenceStep } from './reference'
 import { similarityScanStep } from './similarityScan'
 import { contentDetectionStep } from './contentDetection'
@@ -70,7 +71,7 @@ async function main() {
     store: retrying(createPrismaClipQueueStore(prisma), { onRetry: (error, attempt) => console.warn(`[worker] base injoignable (tentative ${attempt}), nouvel essai`) }),
     render: renderClip,
     // Quand la file de rendu est vide : publication echue, VOD terminee, puis tranche de live, puis notification de lot.
-    idleTask: async () => (await publishStep()) || (await vodAccessStep()) || (await referenceStep()) || (await analysisStep()) || (await liveAnalysisStep()) || (await bellStep()) || (await notifyStep()) || (await markersStep()) || (await longAnalysisStep()) || (await contentDetectionStep()) || (await similarityScanStep()) || (await purgeSourcesStep()) || (await retentionStep()) || (await invitationWavesStep()),
+    idleTask: async () => (await publishStep()) || (await vodAccessStep()) || (await referenceStep()) || (await analysisStep()) || (await liveAnalysisStep()) || (await bellStep()) || (await notifyStep()) || (await markersStep()) || (await longAnalysisStep()) || (await contentDetectionStep()) || (await similarityScanStep()) || (await purgeSourcesStep()) || (await retentionStep()) || (await invitationWavesStep()) || (await autoOpenStep()),
     pollMs,
     shouldStop: () => stopping,
     log: (message, detail) => (detail === undefined ? console.info('[worker]', message) : console.error('[worker]', message, detail))

@@ -8,11 +8,11 @@ type Db = Pick<PrismaClient, 'accessRequest' | 'channelInvite' | 'invitationSett
 // Duree de conservation d'une demande d'acces (vie privee : on ne garde que le pseudo Twitch, 90 jours au plus).
 export const REQUEST_KEEP_DAYS = 90
 
-export interface InvitationConfig { wavesEnabled: boolean, dailyCap: number, referralBonusCap: number, openUntil: number }
+export interface InvitationConfig { wavesEnabled: boolean, dailyCap: number, referralBonusCap: number, openUntil: number, autoOpenBatch: number }
 
 export async function loadInvitationConfig(db: Pick<Db, 'invitationSettings'>): Promise<InvitationConfig> {
   const row = await db.invitationSettings.findUnique({ where: { id: 1 } })
-  return { wavesEnabled: row?.wavesEnabled ?? false, dailyCap: row?.dailyCap ?? DEFAULT_DAILY_CAP, referralBonusCap: row?.referralBonusCap ?? DEFAULT_REFERRAL_BONUS_CAP, openUntil: row?.openUntil ?? 0 }
+  return { wavesEnabled: row?.wavesEnabled ?? false, dailyCap: row?.dailyCap ?? DEFAULT_DAILY_CAP, referralBonusCap: row?.referralBonusCap ?? DEFAULT_REFERRAL_BONUS_CAP, openUntil: row?.openUntil ?? 0, autoOpenBatch: row?.autoOpenBatch ?? 0 }
 }
 
 // Places prises = invitations (manuelles, par vague ou par inscription libre) : une invitation reserve sa place meme avant la premiere connexion.

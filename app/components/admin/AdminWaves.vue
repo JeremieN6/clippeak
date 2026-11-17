@@ -5,8 +5,9 @@
 interface QueueItem { id: string, position: number, login: string, displayName: string | null, createdAt: string, referred: boolean }
 interface ReferredChannel { id: string, login: string, displayName: string, createdAt: string, referrer: string | null, validated: boolean }
 interface Waves {
-  config: { wavesEnabled: boolean, dailyCap: number, referralBonusCap: number, openUntil: number }
+  config: { wavesEnabled: boolean, dailyCap: number, referralBonusCap: number, openUntil: number, autoOpenBatch: number }
   openTaken: number
+  autoOpen: { batchSize: number, freePlaces: number, waiting: number, health: { ok: boolean, reason: 'ok' | 'too_early' | 'slow_clips' | 'server', evaluated: number, good: number, needed: number, calmShare: number, samples: number } | null }
   server: { verdict: 'ok' | 'attention' | 'sature' | null, calm: boolean, measuredAt: string | null }
   invitedToday: number
   nextWaveSize: number
@@ -21,7 +22,8 @@ const notice = ref('')
 const busy = ref(false)
 const cap = ref(20)
 const bonusCap = ref(25)
-const openCap = ref(0)
+const openAdd = ref<number | null>(null)
+const batchSize = ref(0)
 
 async function load() {
   try {
@@ -31,9 +33,16 @@ async function load() {
 }
 // Les champs de saisie ne sont remplis qu'une fois (sinon la mise à jour automatique effacerait ce que tu tapes).
 let filled = false
-watch(data, (d) => { if (d && !filled) { filled = true; cap.value = d.config.dailyCap; bonusCap.value = d.config.referralBonusCap; openCap.value = d.config.openUntil } })
+watch(data, (d) => { if (d && !filled) { filled = true; cap.value = d.config.dailyCap; bonusCap.value = d.config.referralBonusCap; batchSize.value = d.config.autoOpenBatch } })
 
-async function save(patch: Partial<Waves['config']>, message: string) {
+async function addPlaces() {
+  const n = Math.floor(Number(openAdd.value))
+  if (!(n >= 1)) return
+  await save({ openAdd: n }, `${n} place${n > 1 ? 's' : ''} ouverte${n > 1 ? 's' : ''}.`)
+  openAdd.value = null
+}
+
+async function save(patch: Partial<Waves['config']> & { openAdd?: number }, message: string) {
   busy.value = true
   error.value = ''
   try {
@@ -98,14 +107,32 @@ const status = computed(() => {
           </label>
           <button type="button" class="st-btn-ghost" :disabled="busy" @click="save({ dailyCap: cap }, `Plafond du jour : ${cap} invitations.`)">Enregistrer</button>
         </div>
-        <div class="flex flex-col gap-2 rounded-xl border border-st-border p-4">
-          <div class="flex flex-wrap items-center gap-2"><strong class="text-sm">Inscription libre</strong><span class="st-badge" :class="data.config.openUntil > 0 ? 'st-badge-ok' : 'st-badge-neutral'">{{ data.config.openUntil > 0 ? `Active : ${data.openTaken} / ${data.config.openUntil} places prises` : 'Coupée' }}</span></div>
-          <p class="m-0 text-xs st-muted">Tant que moins de N chaînes ont une place (invitations manuelles, par vague ou libres), un streamer qui se connecte avec Twitch entre directement, sans file d’attente. Au-delà, ou si le serveur n’est pas calme, la file reprend. 0 = coupée.</p>
-          <div class="flex flex-wrap items-end gap-3">
-            <label class="flex flex-col gap-1.5"><span class="st-label">Places en inscription libre (N)</span>
-              <input v-model.number="openCap" type="number" min="0" max="500" class="st-field w-32" aria-label="Nombre de places en inscription libre">
+        <div class="flex flex-col gap-3 rounded-xl border border-st-border p-4">
+          <div class="flex flex-wrap items-center gap-2"><strong class="text-sm">Inscription libre</strong><span class="st-badge" :class="data.autoOpen.freePlaces > 0 ? 'st-badge-ok' : 'st-badge-neutral'">{{ data.autoOpen.freePlaces > 0 ? `${data.autoOpen.freePlaces} place${data.autoOpen.freePlaces > 1 ? 's' : ''} libre${data.autoOpen.freePlaces > 1 ? 's' : ''}` : 'Aucune place libre' }}</span><span class="text-xs st-muted">{{ data.openTaken }} chaîne{{ data.openTaken > 1 ? 's' : '' }} ont une place</span></div>
+          <p class="m-0 text-xs st-muted">Tant qu’il reste des places libres et que le serveur est calme, un streamer qui se connecte avec Twitch entre directement, sans file d’attente. Quand elles sont toutes prises, la file garantie reprend. Tu écris combien de places tu ouvres en plus : le total se calcule tout seul, tu n’as rien à retenir.</p>
+          <div class="flex flex-wrap items-end gap-2">
+            <label class="flex flex-col gap-1.5"><span class="st-label">Combien de places ouvrir</span>
+              <input v-model.number="openAdd" type="number" min="1" max="500" placeholder="ex. 10" class="st-field w-40" aria-label="Nombre de places à ouvrir en plus" @keyup.enter="openAdd && openAdd >= 1 && addPlaces()">
             </label>
-            <button type="button" class="st-btn-ghost" :disabled="busy" @click="save({ openUntil: openCap }, openCap > 0 ? `Inscription libre jusqu’à ${openCap} places.` : 'Inscription libre coupée.')">Enregistrer</button>
+            <button type="button" class="st-btn" :disabled="busy || !openAdd || openAdd < 1" @click="addPlaces">Ouvrir ces places</button>
+            <button v-if="data.autoOpen.freePlaces > 0" type="button" class="st-btn-quiet" :disabled="busy" @click="save({ openUntil: 0 }, 'Inscription libre fermée.')">Fermer les places libres</button>
+          </div>
+          <div class="flex flex-col gap-2 border-t border-st-border pt-3">
+            <strong class="text-sm">Ouverture automatique</strong>
+            <p class="m-0 text-xs st-muted">Quand toutes les places sont prises et que des gens attendent, ouvre le lot suivant tout seul, mais seulement si le lot précédent se gère bien : au moins 80 % de ses streamers (jugés 24 h après leur premier live) ont un premier clip prêt en moins de 24 h, et le serveur est resté calme 90 % du temps sur 24 h. Sinon rien ne s’ouvre et tu reçois un message. 0 = ouverture à la main seulement.</p>
+            <div class="flex flex-wrap items-end gap-3">
+              <label class="flex flex-col gap-1.5"><span class="st-label">Taille du lot (0 = manuelle)</span>
+                <input v-model.number="batchSize" type="number" min="0" max="100" class="st-field w-32" aria-label="Taille du lot d’ouverture automatique">
+              </label>
+              <button type="button" class="st-btn-ghost" :disabled="busy" @click="save({ autoOpenBatch: batchSize }, batchSize > 0 ? `Ouverture automatique : lots de ${batchSize}.` : 'Ouverture automatique coupée.')">Enregistrer</button>
+            </div>
+            <p v-if="data.autoOpen.health" class="m-0 text-xs" :class="data.autoOpen.health.ok ? 'text-st-ok' : 'st-muted'" role="status">
+              Dernier lot : {{ data.autoOpen.health.evaluated }} chaîne{{ data.autoOpen.health.evaluated > 1 ? 's' : '' }} jugée{{ data.autoOpen.health.evaluated > 1 ? 's' : '' }} (il en faut {{ data.autoOpen.health.needed }}), {{ data.autoOpen.health.good }} avec un premier clip en moins de 24 h, serveur calme {{ Math.round(data.autoOpen.health.calmShare * 100) }} % du temps.
+              <template v-if="data.autoOpen.health.reason === 'too_early'">Trop tôt pour décider.</template>
+              <template v-else-if="data.autoOpen.health.reason === 'slow_clips'">Clips trop lents : le prochain lot reste fermé.</template>
+              <template v-else-if="data.autoOpen.health.reason === 'server'">Serveur trop chargé : le prochain lot reste fermé.</template>
+              <template v-else>Le lot se gère bien.</template>
+            </p>
           </div>
         </div>
         <p class="m-0 text-xs st-muted">Une vague horaire invite au plus un huitième du plafond, pour étaler les arrivées sur la journée. Le plafond repart de zéro à minuit (heure de Paris). Tes invitations à la main ne comptent pas dedans.</p>

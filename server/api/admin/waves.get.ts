@@ -1,6 +1,7 @@
 import { prisma } from '../../utils/prisma'
 import { requireStudioAdmin } from '../../utils/studioAuth'
 import { loadInvitationConfig, invitedToday, purgeOldRequests, queueHead } from '../../utils/clipping/prismaWaves'
+import { autoOpenStatus } from '../../utils/clipping/prismaAutoOpen'
 import { serverAllowsWave, waveSize, REFERRAL_LIVES } from '../../utils/clipping/waves'
 import { verdictOf } from '../../utils/clipping/capacity'
 import { monthStart } from '../../utils/clipping/quota'
@@ -28,6 +29,7 @@ export default defineEventHandler(async (event) => {
   return {
     config,
     openTaken: await prisma.channelInvite.count(),
+    autoOpen: await autoOpenStatus(prisma),
     server: { verdict: latest ? verdictOf(latest) : null, calm: serverOk, measuredAt: latest?.at ?? null },
     invitedToday: today,
     // Ce que la prochaine vague inviterait (0 si elle est coupee, si le serveur n'est pas calme ou si le plafond du jour est atteint).

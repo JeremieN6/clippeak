@@ -34,6 +34,7 @@ export const REQUIRED_SCHEMA = [
   { table: 'ops_samples', column: 'at' },
   { table: 'invitation_settings', column: 'daily_cap' },
   { table: 'invitation_settings', column: 'open_until' },
+  { table: 'invitation_settings', column: 'auto_open_batch' },
   { table: 'referral_grants', column: 'clips' }
 ]
 
