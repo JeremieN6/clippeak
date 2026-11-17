@@ -227,3 +227,7 @@
 ## 2026-11-16 : un `v-else` insere dans une chaine `v-if` casse le build en production
 - **Erreur** : la PR #112 a ajoute un bloc `v-else` entre un `v-if` et un `v-else-if` de `StudioDashboard.vue`. Aucun test ne compile ce gabarit : la PR a ete fusionnee et le deploiement a echoue sur le serveur (`v-else/v-else-if has no adjacent v-if`).
 - **Regle** : apres toute modification d'un gabarit Vue qui touche une chaine `v-if` / `v-else-if` / `v-else`, lancer `npx nuxt build` avant d'ouvrir la PR ; un bloc a afficher en plus de la chaine prend son propre `v-if`, place APRES la chaine.
+
+## 2026-11-17 : des donnees Stripe de test restees en base de production cassent le portail
+- **Erreur** : la chaine de l'admin avait un abonnement cree en mode test (31 octobre, avant les cles de production). Avec les cles de production, Stripe repond « No such customer » : le portail affichait « pas disponible, reessaie dans quelques minutes » alors que ce n'etait pas passager, et le paiement aurait echoue de la meme facon. Trouve en comparant la base (`channel_billing`) et Stripe (client absent en mode production).
+- **Regle** : au passage des cles de test aux cles de production, verifier les lignes `channel_billing` creees avant (clients absents en production) et les remettre a zero ; une erreur Stripe `resource_missing` n'est jamais une panne passagere (message clair, et nouveau client au paiement).
