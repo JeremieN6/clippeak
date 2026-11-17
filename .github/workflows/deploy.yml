@@ -18,6 +18,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Tests unitaires AVANT de toucher au serveur : s'ils echouent, le deploiement s'arrete ici (le site reste sur la version precedente)
+      # et l'etape « Notifier Sassify Ops » signale l'echec. `--ignore-scripts` : les tests n'ont besoin ni du client Prisma genere ni de Nuxt.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (tests)
+        run: npm ci --ignore-scripts
+
+      - name: Unit tests
+        run: npm test
+        env:
+          NODE_OPTIONS: --experimental-strip-types
+
       - name: Add SSH key to agent
         uses: webfactory/ssh-agent@v0.6.0
         with:
