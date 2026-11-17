@@ -33,6 +33,7 @@ export const REQUIRED_SCHEMA = [
   { table: 'clip_jobs', column: 'render_started_at' },
   { table: 'ops_samples', column: 'at' },
   { table: 'invitation_settings', column: 'daily_cap' },
+  { table: 'invitation_settings', column: 'open_until' },
   { table: 'referral_grants', column: 'clips' }
 ]
 
