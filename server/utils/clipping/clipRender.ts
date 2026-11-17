@@ -11,6 +11,8 @@ export interface Framing {
   centerY: number
   // 1 = plan large (toute la hauteur de la source) ; 1,5 = grand plan.
   zoom: number
+  // Zone du streamer (0..1) trouvee par la reconnaissance du visage ; absente d'un cadrage manuel. Ignoree par le rendu.
+  face?: { x: number, y: number, w: number, h: number }
 }
 
 export interface OverlaySpec {
