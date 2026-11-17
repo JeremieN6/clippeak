@@ -603,6 +603,8 @@ model InvitationSettings {
   wavesEnabled     Boolean  @default(false) @map("waves_enabled")
   dailyCap         Int      @default(20) @map("daily_cap")
   referralBonusCap Int      @default(25) @map("referral_bonus_cap")
+  // Inscription libre : tant que moins de N chaines ont une place (invitation), la connexion Twitch ouvre le studio sans attente. 0 = coupee.
+  openUntil        Int      @default(0) @map("open_until")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@map("invitation_settings")

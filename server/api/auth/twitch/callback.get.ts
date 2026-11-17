@@ -7,6 +7,7 @@ import { createTwitchApi } from '../../../utils/clipping/twitchApi'
 import { registerWelcomeVods } from '../../../utils/clipping/welcomeVods'
 import { prismaVodStore, countChannelVods } from '../../../utils/clipping/prismaVodStore'
 import { setWaitCookie } from '../../../utils/accessRequest'
+import { openSignupAvailable } from '../../../utils/clipping/prismaWaves'
 import { attachReferral, referrerFromCode } from '../../../utils/clipping/prismaReferral'
 import { REF_COOKIE } from '../../../utils/referralCookie'
 import { exchangeCode, fetchIdentity, hashToken, newToken, SESSION_COOKIE, SESSION_TTL_MS, STATE_COOKIE } from '../../../utils/clipping/twitchLogin'
@@ -41,7 +42,16 @@ export default defineEventHandler(async (event) => {
   }
 
   // Inscription sur invitation : le pseudo (ou l'identifiant Twitch deja enregistre) doit etre dans la liste de l'admin.
-  const invite = await prisma.channelInvite.findFirst({ where: { OR: [{ twitchId: identity.id }, { twitchLogin: identity.login }] } })
+  let invite = await prisma.channelInvite.findFirst({ where: { OR: [{ twitchId: identity.id }, { twitchLogin: identity.login }] } })
+  // Inscription libre (reglage admin) : tant qu'il reste des places et que le serveur est calme, la chaine recoit sa place tout de suite.
+  // Deux connexions simultanees peuvent depasser le plafond d'une place ou deux : sans importance, la file reprend aussitot apres.
+  if (!invite && await openSignupAvailable(prisma).catch(() => false)) {
+    invite = await prisma.channelInvite.upsert({
+      where: { twitchLogin: identity.login },
+      update: {},
+      create: { twitchLogin: identity.login, twitchId: null, note: 'Inscription libre', source: 'open' }
+    })
+  }
   if (!invite) {
     // Rien n'est enregistre ici : seule l'identite est gardee 15 min dans un cookie signe, pour le bouton « Previens-moi » de la page d'attente.
     setWaitCookie(event, { id: identity.id, login: identity.login, displayName: identity.displayName })

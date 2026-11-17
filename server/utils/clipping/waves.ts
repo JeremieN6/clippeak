@@ -37,6 +37,12 @@ export function serverAllowsWave(samples: Array<Sample & { at: Date }>, now: Dat
   return recent.every(s => verdictOf(s) === 'ok')
 }
 
+// Inscription libre (2026-11-17) : tant que le nombre de places prises est sous le plafond N ET que le serveur est calme, un streamer qui se
+// connecte avec Twitch entre directement, sans file d'attente. Au-dela (ou serveur charge, ou mesures absentes), la file garantie reprend.
+export function openSignupAllowed(input: { openUntil: number, taken: number, serverOk: boolean }): boolean {
+  return input.openUntil > 0 && input.taken < input.openUntil && input.serverOk
+}
+
 export interface WaveInput { enabled: boolean, dailyCap: number, invitedToday: number, serverOk: boolean, queueLength: number }
 
 // Combien d'invitations lancer maintenant : 0 si les vagues sont coupees, si le serveur n'est pas calme ou si le plafond du jour est atteint.
@@ -56,8 +62,9 @@ export function orderQueue<T extends QueueItem>(items: T[]): T[] {
 }
 
 // Etat affiche sur la page d'attente. On ne promet jamais d'heure.
-export type WaitState = 'manual' | 'day_full' | 'next_wave'
-export function waitState(input: { enabled: boolean, dailyCap: number, invitedToday: number }): WaitState {
+export type WaitState = 'manual' | 'day_full' | 'next_wave' | 'open_full'
+export function waitState(input: { enabled: boolean, dailyCap: number, invitedToday: number, openFull?: boolean }): WaitState {
+  if (input.openFull) return 'open_full'
   if (!input.enabled) return 'manual'
   return input.invitedToday >= input.dailyCap ? 'day_full' : 'next_wave'
 }

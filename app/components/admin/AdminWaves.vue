@@ -5,7 +5,8 @@
 interface QueueItem { id: string, position: number, login: string, displayName: string | null, createdAt: string, referred: boolean }
 interface ReferredChannel { id: string, login: string, displayName: string, createdAt: string, referrer: string | null, validated: boolean }
 interface Waves {
-  config: { wavesEnabled: boolean, dailyCap: number, referralBonusCap: number }
+  config: { wavesEnabled: boolean, dailyCap: number, referralBonusCap: number, openUntil: number }
+  openTaken: number
   server: { verdict: 'ok' | 'attention' | 'sature' | null, calm: boolean, measuredAt: string | null }
   invitedToday: number
   nextWaveSize: number
@@ -20,6 +21,7 @@ const notice = ref('')
 const busy = ref(false)
 const cap = ref(20)
 const bonusCap = ref(25)
+const openCap = ref(0)
 
 async function load() {
   try {
@@ -29,7 +31,7 @@ async function load() {
 }
 // Les champs de saisie ne sont remplis qu'une fois (sinon la mise à jour automatique effacerait ce que tu tapes).
 let filled = false
-watch(data, (d) => { if (d && !filled) { filled = true; cap.value = d.config.dailyCap; bonusCap.value = d.config.referralBonusCap } })
+watch(data, (d) => { if (d && !filled) { filled = true; cap.value = d.config.dailyCap; bonusCap.value = d.config.referralBonusCap; openCap.value = d.config.openUntil } })
 
 async function save(patch: Partial<Waves['config']>, message: string) {
   busy.value = true
@@ -95,6 +97,16 @@ const status = computed(() => {
             <input v-model.number="cap" type="number" min="0" max="5" class="st-field w-32" aria-label="Plafond d’invitations par jour">
           </label>
           <button type="button" class="st-btn-ghost" :disabled="busy" @click="save({ dailyCap: cap }, `Plafond du jour : ${cap} invitations.`)">Enregistrer</button>
+        </div>
+        <div class="flex flex-col gap-2 rounded-xl border border-st-border p-4">
+          <div class="flex flex-wrap items-center gap-2"><strong class="text-sm">Inscription libre</strong><span class="st-badge" :class="data.config.openUntil > 0 ? 'st-badge-ok' : 'st-badge-neutral'">{{ data.config.openUntil > 0 ? `Active : ${data.openTaken} / ${data.config.openUntil} places prises` : 'Coupée' }}</span></div>
+          <p class="m-0 text-xs st-muted">Tant que moins de N chaînes ont une place (invitations manuelles, par vague ou libres), un streamer qui se connecte avec Twitch entre directement, sans file d’attente. Au-delà, ou si le serveur n’est pas calme, la file reprend. 0 = coupée.</p>
+          <div class="flex flex-wrap items-end gap-3">
+            <label class="flex flex-col gap-1.5"><span class="st-label">Places en inscription libre (N)</span>
+              <input v-model.number="openCap" type="number" min="0" max="500" class="st-field w-32" aria-label="Nombre de places en inscription libre">
+            </label>
+            <button type="button" class="st-btn-ghost" :disabled="busy" @click="save({ openUntil: openCap }, openCap > 0 ? `Inscription libre jusqu’à ${openCap} places.` : 'Inscription libre coupée.')">Enregistrer</button>
+          </div>
         </div>
         <p class="m-0 text-xs st-muted">Une vague horaire invite au plus un huitième du plafond, pour étaler les arrivées sur la journée. Le plafond repart de zéro à minuit (heure de Paris). Tes invitations à la main ne comptent pas dedans.</p>
       </section>
