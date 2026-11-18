@@ -102,7 +102,7 @@ const submit = () => {
           <div class="flex flex-wrap items-baseline gap-2"><span class="st-title text-[44px] font-extrabold leading-none sm:text-[52px]" aria-live="polite">{{ priceMain }}</span><span class="text-lg font-bold text-st-soft">/mois</span></div>
           <div class="text-sm leading-[22px] text-st-soft">
             <template v-if="showAnnual">Facturé {{ eur(yearlyTotal) }} par an ({{ eur(b.prices?.year?.amount ?? 0) }} par pack).</template>
-            <template v-else>Facturé chaque mois ({{ eur(b.prices?.month.amount ?? 0) }} par pack).<template v-if="yearlyAvailable"> En annuel : {{ eur(Math.round(yearlyTotal / 12)) }} par mois.</template></template>
+            <template v-else>Facturé chaque mois ({{ eur(b.prices?.month.amount ?? 0) }} par pack).<template v-if="yearlyAvailable"> En annuel : {{ eur(Math.round(yearlyTotal / 12)) }} par mois.<template v-if="active"> Pour passer en annuel, ouvre « Gérer mon abonnement » : tu peux aussi y changer de pack en même temps.</template></template></template>
           </div>
           <div v-if="showAnnual && saved > 0" class="inline-flex min-h-8 items-center gap-2 self-start rounded-full bg-st-okBg px-3 py-1 text-sm font-extrabold leading-5 text-st-ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>Tu économises {{ eur(saved) }} par an</div>
         </div>
@@ -114,7 +114,7 @@ const submit = () => {
 
         <div class="flex flex-col gap-2.5">
           <button type="button" class="st-btn !min-h-14 !rounded-[14px] !text-base sm:self-start" :disabled="studio.busy.value || unchanged || (active && !b.canManage)" @click="submit">{{ active ? (unchanged ? 'Aucun changement' : 'Mettre à jour mon abonnement') : 'Continuer vers le paiement' }}</button>
-          <div class="text-[13px] leading-5 text-st-dim">{{ active ? (unchanged ? 'Déplace le curseur pour changer le nombre de packs.' : 'Tu confirmeras sur la page sécurisée de Stripe, avec le détail avant de valider.') : 'Tu paies sur une page sécurisée. Tu pourras gérer ou résilier ton abonnement ensuite.' }}</div>
+          <div class="text-[13px] leading-5 text-st-dim">{{ active ? (unchanged ? 'Déplace le curseur pour changer le nombre de packs, ou ouvre « Gérer mon abonnement » pour changer de rythme.' : 'Tu confirmeras sur la page sécurisée de Stripe, avec le détail avant de valider.') : 'Tu paies sur une page sécurisée. Tu pourras gérer ou résilier ton abonnement ensuite.' }}</div>
         </div>
       </section>
 
