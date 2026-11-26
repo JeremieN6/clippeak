@@ -109,6 +109,8 @@ Livrer Clippeak V1: landing page Nuxt interactive avec simulation complete du fl
 
 - **2026-11-17 (ouverture par lots)** : branche `feat/ouverture-par-lots`. L'inscription libre se regle en AJOUTANT des places (champ libre « Combien de places ouvrir », `openAdd` : le serveur calcule `openUntil = max(openUntil, places prises) + N`, `openUntilAfterAdd`), jamais en saisissant un total. Ouverture AUTOMATIQUE (`invitation_settings.auto_open_batch`, 0 = manuelle, defaut) : le worker (`autoOpenStep`, toutes les 30 min) ouvre `batch` places de plus quand toutes les places sont prises, que des gens attendent et que le dernier lot se gere bien (`batchHealth.ts`) : chaines du lot jugees 24 h apres l'enregistrement de leur premier live, >= 80 % avec un premier clip pret en moins de 24 h, serveur « ok » >= 90 % des mesures sur 24 h, au moins max(3, 60 % du lot) chaines jugees. Sinon rien ne s'ouvre et un message admin part (une fois par jour et par cause). Les places prises comptent TOUTES les invitations (la chaine du porteur incluse). Migrations `202611171200_auto_open_batch` et `202611170900_open_signup` additives. A FAIRE : regler le lot (ex. 10) dans /admin > Vagues apres la premiere ouverture manuelle.
 
+- **2026-11-26 (YouTube en public)** : un envoi depuis Clippeak arrive EN PUBLIC sur YouTube (essai reel, Short jIydTUAgBdU : « Publique » dans YouTube Studio et visible sans connexion). Les messages « YouTube garde les videos en prive » sont retires du studio (branche `fix/message-youtube-prive`). Les mentions « YouTube OK en prive » plus haut sont perimees. Cause du changement non connue ; le premier essai du 2026-10-29 etait sorti en prive. L'audit « YouTube API Services » reste en cours.
+
 ---
 
 ## Lecons Apprises

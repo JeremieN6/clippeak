@@ -83,7 +83,7 @@ async function schedule() {
           <input v-model="custom" type="datetime-local" class="st-field !min-h-10 sm:!w-auto" aria-label="Autre date et heure">
           <div><button type="button" class="st-btn-ghost" :disabled="studio.busy.value || !when" @click="schedule">Programmer{{ when ? ` le ${fmt(when)}` : '' }}</button></div>
         </div>
-        <p v-if="platform === 'youtube'" class="m-0 text-[12px] leading-4 st-muted">Tant que Google n’a pas validé Clippeak, YouTube garde les vidéos publiées par Clippeak en privé : tu pourras les passer en public depuis YouTube Studio.</p>
+        <p v-if="platform === 'youtube'" class="m-0 text-[12px] leading-4 st-muted">La vidéo est envoyée en public sur ta chaîne YouTube.</p>
       </template>
     </template>
   </section>
