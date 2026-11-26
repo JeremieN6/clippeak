@@ -89,7 +89,7 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleString('fr-FR', { weekday
 
       <div v-if="state === 'published'" role="status" class="flex items-start gap-2.5 rounded-xl bg-st-okBg px-3.5 py-3 text-st-ok">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="mt-0.5 flex-none"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
-        <div class="text-sm leading-[21px]"><strong class="font-extrabold">Publiée sur YouTube<template v-if="youtube?.publishedAt"> · {{ fmtDate(youtube.publishedAt) }}</template></strong><div class="mt-0.5 opacity-90">Elle est privée tant que Google n’a pas validé Clippeak : tu peux la rendre publique depuis YouTube Studio.</div></div>
+        <div class="text-sm leading-[21px]"><strong class="font-extrabold">Publiée sur YouTube<template v-if="youtube?.publishedAt"> · {{ fmtDate(youtube.publishedAt) }}</template></strong><div class="mt-0.5 opacity-90">Tu peux changer sa visibilité depuis YouTube Studio.</div></div>
       </div>
 
       <div v-if="state === 'ready' && sending" role="status" class="flex items-center gap-2.5 rounded-xl bg-st-infoBg px-3.5 py-3 text-sm font-bold text-st-info">
@@ -101,7 +101,7 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleString('fr-FR', { weekday
       <div v-if="state === 'ready' && confirming" role="group" aria-label="Publier sur YouTube" class="flex flex-col gap-3 rounded-xl border border-st-accentBorder bg-st-field p-3.5">
         <div class="text-[15px] font-extrabold">Publier sur YouTube</div>
         <div class="text-sm text-st-soft">Chaîne : celle que tu as choisie à la connexion YouTube.</div>
-        <div class="rounded-[10px] bg-st-warnBg px-3 py-2.5 text-[13px] leading-5 text-st-warn">La vidéo sera envoyée en privé. YouTube garde les vidéos privées tant que Google n’a pas validé Clippeak. Tu pourras la rendre publique depuis YouTube Studio.</div>
+        <div class="rounded-[10px] bg-st-warnBg px-3 py-2.5 text-[13px] leading-5 text-st-warn">La vidéo est envoyée en public sur ta chaîne YouTube.</div>
         <div class="flex flex-wrap gap-2">
           <button type="button" class="st-btn min-w-[180px] flex-1" :disabled="studio.busy.value" @click="publish">Publier sur YouTube</button>
           <button type="button" class="st-btn-ghost flex-1" @click="confirming = false">Annuler</button>

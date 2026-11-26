@@ -60,8 +60,8 @@ async function classify(response: Response, action: string): Promise<PublishErro
   return new PublishError('rejected', detail)
 }
 
-// Publication d'un Short : envoi en deux temps (la session d'envoi, puis le fichier). Tant que l'application n'a pas passe l'audit de
-// Google, YouTube garde les videos en prive quoi qu'on demande ; l'identifiant et le lien sont rendus dans tous les cas.
+// Publication d'un Short : envoi en deux temps (la session d'envoi, puis le fichier). Visibilite demandee : public (constate en
+// public le 2026-11-26) ; l'identifiant et le lien sont rendus dans tous les cas.
 export function createYoutubePublisher(deps: YoutubeDeps): Publisher {
   const fetchFn = deps.fetchFn ?? fetch
   const chunkBytes = deps.chunkBytes ?? UPLOAD_CHUNK_BYTES

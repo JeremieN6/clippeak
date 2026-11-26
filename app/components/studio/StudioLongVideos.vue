@@ -106,7 +106,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
       <p class="m-0 text-sm leading-relaxed st-muted">
         <template v-if="youtube?.connected">Les extraits sont publiés sur la chaîne que tu as choisie à la connexion.<template v-if="youtube?.accountName"> Compte : {{ youtube.accountName }}.</template></template>
         <template v-else>Connecte ta chaîne pour pouvoir publier tes extraits longs. Pour une chaîne secondaire (compte de marque), choisis-la quand Google te demande sur quelle chaîne publier.</template>
-        Tant que Google n’a pas validé Clippeak, YouTube garde les vidéos en privé : tu pourras les passer en public depuis YouTube Studio.
+        Les vidéos sont envoyées en public sur ta chaîne YouTube.
       </p>
     </section>
 

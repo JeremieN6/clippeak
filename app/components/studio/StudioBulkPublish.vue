@@ -79,7 +79,7 @@ onBeforeUnmount(() => {
       </fieldset>
 
       <p v-if="tooMany" class="st-alert st-alert-warn m-0">YouTube limite le nombre d’envois par jour (environ 6 pour toute l’application) : au-delà, les derniers peuvent échouer. Préfère les créneaux.</p>
-      <p class="m-0 text-[12px] leading-4 st-muted">Tant que Google n’a pas validé Clippeak, YouTube garde les vidéos en privé : tu pourras les passer en public depuis YouTube Studio. Pour publier sur TikTok ou Instagram, ouvre « Détails » d’un clip : chacun demande une validation clip par clip.</p>
+      <p class="m-0 text-[12px] leading-4 st-muted">Les vidéos sont envoyées en public sur ta chaîne YouTube. Pour publier sur TikTok ou Instagram, ouvre « Détails » d’un clip : chacun demande une validation clip par clip.</p>
 
       <div class="flex flex-wrap gap-2">
         <button type="button" class="st-btn min-w-[220px] flex-1" :disabled="!youtubeConnected || !selected.length || studio.busy.value" @click="confirm">{{ mode === 'now' ? `Publier ${selected.length} clip${selected.length > 1 ? 's' : ''} maintenant` : `Programmer ${selected.length} clip${selected.length > 1 ? 's' : ''}` }}</button>
